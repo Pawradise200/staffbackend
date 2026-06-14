@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Pawradise 員工系統</title>
-<link rel="icon" href="assets/pawradise-logo.jpg">
+<link rel="icon" href="pawradise-logo.jpg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Fredoka:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap');
 
@@ -1043,7 +1043,7 @@ function Login({ onLogin }) {
   return (
     <div className="pwd-login">
       <div className="pwd-login-top">
-        <div className="pwd-login-crest"><img src="assets/pawradise-logo-full.png" alt="Pawradise" /></div>
+        <div className="pwd-login-crest"><img src="pawradise-logo-full.png" alt="Pawradise" /></div>
         <div className="pwd-login-sub">員工後台管理系統</div>
       </div>
       <form className="pwd-login-card" onSubmit={submit}>
@@ -2022,10 +2022,10 @@ function CommissionApp() {
   }
 
   if (screen === 'login') return <Login onLogin={doLogin} />;
-  if (screen === 'loading') return <div className="pwd-loading"><img src="assets/pawradise-logo-full.png" alt="" /><div className="pwd-spinner" /><div className="pwd-loading-txt">載入你的資料…</div></div>;
+  if (screen === 'loading') return <div className="pwd-loading"><img src="pawradise-logo-full.png" alt="" /><div className="pwd-spinner" /><div className="pwd-loading-txt">載入你的資料…</div></div>;
   if (screen === 'error') return (
     <div className="pwd-login">
-      <div className="pwd-login-top"><div className="pwd-login-crest"><img src="assets/pawradise-logo-full.png" alt="" /></div></div>
+      <div className="pwd-login-top"><div className="pwd-login-crest"><img src="pawradise-logo-full.png" alt="" /></div></div>
       <div className="pwd-login-card">
         <div className="pwd-login-err">{errMsg}</div>
         <button className="pwd-login-btn" onClick={() => (staff ? loadDashboard(staff) : setScreen('login'))}>重試</button>
@@ -2042,7 +2042,7 @@ function CommissionApp() {
   return (
     <div className="pwd-screen">
       <div className="pwd-header">
-        <div className="pwd-h-logo"><img src="assets/pawradise-logo.jpg" alt="" /></div>
+        <div className="pwd-h-logo"><img src="pawradise-logo.jpg" alt="" /></div>
         <div className="pwd-h-text">
           <h1>{staff.name}</h1>
           <p>{isManager ? '店長 · ' : ''}Pawradise · {team.month}</p>
@@ -2100,3 +2100,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 </script>
 </body>
 </html>
+
