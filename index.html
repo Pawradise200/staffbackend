@@ -638,8 +638,10 @@ const CLUB_TIERS = {
   active:   { key: 'active', label: 'Active', fee: 1699, bonus: 200, color: 'var(--pw-cat-puzzle)' },
   ultimate: { key: 'ultimate', label: 'Ultimate', fee: 1999, bonus: 250, color: 'var(--pw-gold)' },
 };
+// 未知崗位一律當前台處理,避免任何手誤令整個面板崩潰變空白
+function roleKpi(role) { return ROLE_KPIS[role] || ROLE_KPIS.frontdesk; }
 function buildScorecard(role, failIds = []) {
-  return ROLE_KPIS[role].items.map(it => ({ ...it, pass: !failIds.includes(it.id) }));
+  return roleKpi(role).items.map(it => ({ ...it, pass: !failIds.includes(it.id) }));
 }
 function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
   if (override) return { ratio: 0, band: '失格', reason: overrideReason || '缺勤 / 紀律 / 安全事故' };
@@ -813,7 +815,7 @@ function PayoutLedger({ calc, kpi }) {
   );
 }
 function KpiCard({ role, items, score, kpi, editable, onToggle }) {
-  const roleLabel = ROLE_KPIS[role].label;
+  const roleLabel = roleKpi(role).label;
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   return (
     <div className="pwd-card pwd-kpi">
@@ -1238,7 +1240,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
     <>
       {kpi.ratio === 0 && <div className="pwd-warn">KPI {kpi.reason ? kpi.reason : '未達 71 分'} — {isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'}</div>}
       <div className="pwd-card pwd-heroA">
-        <div className="pwd-eyebrow">{staff.name} · {ROLE_KPIS[staff.role].label} · 本月實際{isFd ? '收入' : '領取'}</div>
+        <div className="pwd-eyebrow">{staff.name} · {roleKpi(staff.role).label} · 本月實際{isFd ? '收入' : '領取'}</div>
         <DonutChart parts={actualParts} total={actualTotal}>
           <div className="pwd-ring-num"><span className="cur">HK$</span>{moneyPlain(actualTotal)}</div>
           <div className="pwd-ring-sub">本月預計</div>
@@ -1603,7 +1605,7 @@ function MgrKpi({ month, mgrData }) {
       <div className="pwd-card pwd-block">
         <div className="pwd-kpi-head">
           <div>
-            <div className="pwd-eyebrow">{ROLE_KPIS[staff.role].label} · KPI 評核</div>
+            <div className="pwd-eyebrow">{roleKpi(staff.role).label} · KPI 評核</div>
             <div className="pwd-kpi-band">發放比例 <b className={'r-' + tone}>{Math.round(kpi.ratio * 100)}%</b> · {kpi.band}</div>
           </div>
           <div className={'pwd-kpi-score r-' + tone}><span className="n">{score}</span><span className="d">分</span></div>
