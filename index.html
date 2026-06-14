@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Pawradise 員工系統</title>
+<link rel="icon" href="assets/pawradise-logo.jpg">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Fredoka:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap');
+
+:root {
+  --pw-navy:#2C4A6E; --pw-navy-deep:#1F3552; --pw-navy-light:#4A7BAF;
+  --pw-gold:#F4B860; --pw-gold-deep:#E08850;
+  --pw-cream:#F5F0E8; --pw-cream-soft:#FAF5EE; --pw-cream-deep:#EDE6D8;
+  --pw-paper:#FFFFFF; --pw-ink:#1F3552; --pw-ink-soft:#2C4A6E;
+  --pw-ink-mute:#6B7A8F; --pw-ink-faint:#A8B2C0; --pw-ink-ghost:#C8D0DA;
+  --pw-brown:#7B5538; --pw-brown-deep:#5C3E27; --pw-tan:#D9994A; --pw-heart:#EF6E6E;
+  --pw-cat-sniff:#6B8E3D; --pw-cat-lick:#FF8C42; --pw-cat-puzzle:#0E7490;
+  --pw-cat-frozen:#60A5FA; --pw-cat-explore:#3B82F6; --pw-cat-bond:#F4A6B8;
+  --pw-success:#15803D; --pw-success-bg:#DCFCE7; --pw-warn:#A16207; --pw-warn-bg:#FEF9C3;
+  --pw-danger:#B91C1C; --pw-danger-bg:#FEE2E2; --pw-info:#1D4ED8; --pw-info-bg:#DBEAFE;
+  --pw-violet:#6D28D9; --pw-violet-bg:#EDE9FE;
+  --pw-r-xs:6px; --pw-r-sm:8px; --pw-r-md:12px; --pw-r-lg:18px; --pw-r-xl:24px; --pw-r-pill:999px;
+  --pw-space-1:4px; --pw-space-2:8px; --pw-space-3:12px; --pw-space-4:16px; --pw-space-5:24px; --pw-space-6:32px; --pw-space-7:48px;
+  --pw-shadow-card:0 4px 20px rgba(92,62,39,.12); --pw-shadow-hover:0 8px 28px rgba(92,62,39,.18);
+  --pw-shadow-header:0 2px 16px rgba(44,28,16,.28); --pw-shadow-pop:0 12px 40px rgba(92,62,39,.20);
+  --pw-shadow-inset:inset 0 0 0 1.5px var(--pw-cream-deep);
+  --pw-stroke:1.5px; --pw-stroke-focus:2px;
+  --pw-font-sans:'Nunito','Helvetica Neue',system-ui,sans-serif;
+  --pw-font-display:'Fredoka','Nunito',sans-serif;
+  --pw-font-serif:'Cormorant Garamond',Georgia,serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--pw-font-sans); background: var(--pw-cream); -webkit-font-smoothing: antialiased; }
+img { display: block; }
+
+/* App shell — centred mobile column */
+#root { min-height: 100vh; }
+.pwd-app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--pw-cream); box-shadow: 0 0 60px rgba(44,74,110,.10); position: relative; }
+
+/* Loading screen */
+.pwd-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: var(--pw-navy-deep); }
+.pwd-loading img { width: 120px; opacity: .95; }
+.pwd-spinner { width: 36px; height: 36px; border: 3.5px solid rgba(255,255,255,.25); border-top-color: var(--pw-gold); border-radius: 50%; animation: pwSpin .8s linear infinite; }
+@keyframes pwSpin { to { transform: rotate(360deg); } }
+.pwd-loading-txt { font-size: 12.5px; font-weight: 800; color: rgba(255,255,255,.7); letter-spacing: .04em; }
+
+/* Screen shell */
+.pwd-screen { min-height: 100vh; background: var(--pw-cream); color: var(--pw-ink); display: flex; flex-direction: column; }
+.pwd-eyebrow { font-weight: 900; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--pw-ink-faint); }
+
+/* Header (gold) */
+.pwd-header { background: var(--pw-gold); padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px 13px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 14px rgba(44,28,16,.16); position: sticky; top: 0; z-index: 20; }
+.pwd-h-logo { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; background: #fff; border: 2px solid rgba(31,53,82,.22); flex-shrink: 0; }
+.pwd-h-logo img { width: 100%; height: 100%; object-fit: cover; }
+.pwd-h-text { flex: 1; min-width: 0; }
+.pwd-h-text h1 { font-size: 19px; font-weight: 900; color: var(--pw-ink); letter-spacing: -.01em; }
+.pwd-h-text p { font-size: 11px; font-weight: 700; color: rgba(31,53,82,.62); margin-top: 1px; }
+.pwd-h-ava { width: 38px; height: 38px; border-radius: 50%; background: var(--pw-navy); color: #fff; font-weight: 900; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid rgba(255,255,255,.35); }
+.pwd-h-logout { border: none; background: none; padding: 0; cursor: pointer; flex-shrink: 0; }
+
+/* Body */
+.pwd-body { padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+
+/* Bottom tab bar */
+.pwd-tabbar { position: sticky; bottom: 0; z-index: 30; display: flex; background: var(--pw-paper); border-top: 1.5px solid var(--pw-cream-deep); padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 10px); box-shadow: 0 -3px 16px rgba(44,74,110,.07); }
+.pwd-tabbtn { flex: 1; border: none; background: none; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 800; font-size: 11px; color: var(--pw-ink-faint); cursor: pointer; padding: 4px; transition: color .15s; }
+.pwd-tabbtn.on { color: var(--pw-navy); }
+.pwd-tabbtn-ico { font-size: 21px; line-height: 1; filter: grayscale(1); opacity: .55; transition: all .15s; }
+.pwd-tabbtn.on .pwd-tabbtn-ico { filter: none; opacity: 1; }
+
+.pwd-card { background: var(--pw-paper); border-radius: var(--pw-r-lg); box-shadow: var(--pw-shadow-card); padding: 18px; }
+.pwd-block { display: flex; flex-direction: column; gap: 14px; }
+
+/* Duty roster */
+.pwd-roster-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pwd-roster-nav { display: flex; align-items: center; gap: 6px; flex: 1; }
+.pwd-wk-btn { width: 32px; height: 32px; border-radius: var(--pw-r-md); border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-navy); font-size: 19px; font-weight: 700; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+.pwd-wk-btn:hover:not(:disabled) { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-wk-btn:disabled { opacity: .35; cursor: default; }
+.pwd-roster-weekbox { flex: 1; text-align: center; }
+.pwd-roster-week { font-family: var(--pw-font-display); font-weight: 700; font-size: 18px; color: var(--pw-navy-deep); line-height: 1.1; }
+.pwd-roster-tag { font-size: 10px; font-weight: 900; letter-spacing: .04em; color: var(--pw-ink-faint); margin-top: 1px; }
+.pwd-wk-today { border: 1.5px solid var(--pw-navy); background: var(--pw-paper); color: var(--pw-navy); font-family: inherit; font-weight: 900; font-size: 11px; padding: 6px 11px; border-radius: var(--pw-r-pill); cursor: pointer; flex-shrink: 0; }
+.pwd-wk-today:hover { background: var(--pw-navy); color: #fff; }
+.pwd-roster-sum { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; font-weight: 800; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-pill); padding: 7px 12px; margin-top: 12px; }
+.pwd-roster-sum b { font-family: var(--pw-font-display); font-weight: 700; font-size: 15px; color: var(--pw-navy); }
+.pwd-roster-sum .dot { color: var(--pw-ink-faint); }
+.pwd-duty { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; }
+.pwd-duty-row { display: flex; align-items: center; gap: 11px; padding: 9px 11px; border-radius: var(--pw-r-md); background: var(--pw-cream-soft); }
+.pwd-duty-row.today { background: #FFF7E8; box-shadow: inset 0 0 0 1.5px var(--pw-gold); }
+.pwd-duty-row.off { opacity: .55; }
+.pwd-duty-date { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
+.pwd-duty-wd { font-size: 10px; font-weight: 800; color: var(--pw-ink-faint); }
+.pwd-duty-num { font-family: var(--pw-font-display); font-weight: 700; font-size: 18px; color: var(--pw-ink); line-height: 1; }
+.pwd-duty-info { flex: 1; display: flex; align-items: center; gap: 7px; min-width: 0; }
+.pwd-duty-shift { font-size: 12.5px; font-weight: 900; color: var(--pw-ink); }
+.pwd-duty-row.off .pwd-duty-shift { color: var(--pw-ink-faint); }
+.pwd-duty-pos { font-size: 10.5px; font-weight: 900; padding: 3px 9px; border-radius: var(--pw-r-pill); flex-shrink: 0; }
+.pwd-duty-right { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.pwd-duty-time { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-duty-now { font-size: 9.5px; font-weight: 900; color: var(--pw-gold-deep); background: var(--pw-paper); border: 1.5px solid var(--pw-gold); border-radius: var(--pw-r-pill); padding: 2px 8px; }
+.sh-academy { background: #FCEFD6; color: var(--pw-gold-deep); }
+.sh-hotelA { background: #E4ECF6; color: #2C4A6E; }
+.sh-hotelB { background: #F4E2E0; color: #B0544E; }
+.sh-hotelC { background: #E7E4F1; color: #6155A0; }
+
+/* Co-workers */
+.pwd-coworkers { margin-top: 14px; padding-top: 13px; border-top: 1.5px solid var(--pw-cream-soft); }
+.pwd-coworkers-lbl { font-size: 11px; font-weight: 900; color: var(--pw-ink-mute); }
+.pwd-coworkers-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.pwd-coworker { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: var(--pw-ink-soft); background: var(--pw-cream-soft); border-radius: var(--pw-r-pill); padding: 4px 11px 4px 4px; }
+.pwd-coworker-ava { width: 22px; height: 22px; border-radius: 50%; background: var(--pw-navy); color: #fff; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+
+/* Swap */
+.pwd-swap-head { display: flex; align-items: center; justify-content: space-between; }
+.pwd-swap-toggle { border: 1.5px solid var(--pw-navy); background: var(--pw-paper); color: var(--pw-navy); font-family: inherit; font-weight: 900; font-size: 12px; padding: 5px 13px; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-swap-toggle:hover { background: var(--pw-navy); color: #fff; }
+.pwd-swap-ok { margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--pw-success); background: var(--pw-success-bg); border-radius: var(--pw-r-sm); padding: 11px 13px; }
+.pwd-swap-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pwd-swap-hint { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-swap-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 11px 13px; font-family: inherit; cursor: pointer; transition: all .15s; }
+.pwd-swap-item:hover { border-color: var(--pw-navy-light); background: var(--pw-paper); }
+.pwd-swap-date { font-weight: 900; font-size: 13px; color: var(--pw-ink); flex-shrink: 0; }
+.pwd-swap-shift { font-size: 11.5px; font-weight: 700; color: var(--pw-ink-mute); flex: 1; }
+.pwd-swap-arr { font-size: 18px; font-weight: 700; color: var(--pw-ink-faint); }
+.pwd-swap-cancel { border: none; background: none; font-family: inherit; font-weight: 800; font-size: 12px; color: var(--pw-ink-mute); cursor: pointer; padding: 4px; align-self: center; }
+
+/* Leave records */
+.pwd-leave-by-inline { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-faint); margin-top: 2px; }
+.pwd-larec { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+.pwd-larec-row { display: flex; align-items: center; gap: 10px; background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 9px 12px; }
+.pwd-larec-type { font-size: 11px; font-weight: 900; padding: 3px 10px; border-radius: var(--pw-r-pill); flex-shrink: 0; }
+.t-年假 { background: var(--pw-info-bg); color: var(--pw-info); }
+.t-例假 { background: var(--pw-success-bg); color: var(--pw-success); }
+.t-病假 { background: var(--pw-violet-bg); color: var(--pw-violet); }
+.t-事假 { background: var(--pw-warn-bg); color: var(--pw-warn); }
+.pwd-larec-date { font-size: 12.5px; font-weight: 800; color: var(--pw-ink); }
+.pwd-larec-del { margin-left: auto; border: none; background: none; color: var(--pw-ink-faint); font-size: 13px; font-weight: 800; cursor: pointer; padding: 2px 4px; }
+.pwd-larec-del:hover { color: var(--pw-danger); }
+.pwd-la-form { margin-top: 14px; padding-top: 13px; border-top: 1.5px solid var(--pw-cream-soft); display: flex; flex-direction: column; gap: 12px; }
+.pwd-la-row { display: flex; flex-direction: column; gap: 8px; }
+.pwd-la-lbl { font-size: 11px; font-weight: 800; color: var(--pw-ink-mute); }
+.pwd-la-types { display: flex; gap: 7px; }
+.pwd-la-chip { flex: 1; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-ink-mute); font-family: inherit; font-weight: 800; font-size: 12px; padding: 8px 0; border-radius: var(--pw-r-pill); cursor: pointer; transition: all .15s; }
+.pwd-la-chip.on { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-la-days { display: flex; gap: 6px; }
+.pwd-la-day { flex: 1; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-ink-soft); font-family: var(--pw-font-display); font-weight: 700; font-size: 15px; padding: 7px 0 6px; border-radius: var(--pw-r-md); cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: all .15s; }
+.pwd-la-day i { font-style: normal; font-family: var(--pw-font-sans); font-size: 9px; font-weight: 800; color: var(--pw-ink-faint); margin-top: 1px; }
+.pwd-la-day.on { background: var(--pw-gold); border-color: var(--pw-gold); color: var(--pw-ink); }
+.pwd-la-day.on i { color: var(--pw-ink); }
+.pwd-la-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pwd-la-confirm { border: none; background: var(--pw-navy); color: #fff; font-family: inherit; font-weight: 900; font-size: 13px; padding: 10px 20px; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-la-confirm:disabled { opacity: .4; cursor: default; }
+.pwd-la-daterow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.pwd-la-datelbl { font-size: 12px; font-weight: 800; color: var(--pw-ink-mute); }
+.pwd-la-date { border: 2px solid var(--pw-cream-deep); background: var(--pw-paper); border-radius: var(--pw-r-md); padding: 8px 12px; font-family: inherit; font-weight: 800; font-size: 13px; color: var(--pw-navy-deep); cursor: pointer; }
+.pwd-la-date:focus { outline: none; border-color: var(--pw-navy-light); }
+
+/* Leave / balance */
+.pwd-leave-head { display: flex; align-items: center; justify-content: space-between; }
+.pwd-leave-by { font-size: 10px; font-weight: 900; color: var(--pw-ink-faint); background: var(--pw-cream-soft); border-radius: var(--pw-r-pill); padding: 3px 9px; }
+.pwd-ph { margin-top: 14px; }
+.pwd-ph-lbl { font-size: 11px; font-weight: 800; color: var(--pw-ink-mute); margin-bottom: 7px; }
+.pwd-ph-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.pwd-ph-chip { font-size: 11.5px; font-weight: 800; color: var(--pw-navy); background: var(--pw-info-bg); border-radius: var(--pw-r-sm); padding: 6px 11px; }
+.pwd-ph-empty { font-size: 11.5px; font-weight: 700; color: var(--pw-ink-faint); }
+.pwd-leave-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
+.pwd-leave-cell { background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 11px 6px; text-align: center; }
+.pwd-leave-cell-lbl { font-size: 10px; font-weight: 800; color: var(--pw-ink-mute); margin-bottom: 8px; line-height: 1.3; }
+.pwd-leave-val { font-family: var(--pw-font-display); font-weight: 700; font-size: 18px; color: var(--pw-navy-deep); white-space: nowrap; }
+.pwd-leave-val.big { font-size: 25px; }
+.pwd-leave-val i { font-style: normal; font-family: var(--pw-font-sans); font-size: 10px; font-weight: 800; color: var(--pw-ink-faint); margin-left: 1px; }
+.pwd-leave-edit { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.pwd-leave-edit button { width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-navy); font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pwd-leave-edit button:hover { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-leave-edit .pwd-leave-val { font-size: 16px; }
+
+/* Readout / warnings */
+.pwd-readout { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700; color: var(--pw-ink-mute); padding: 2px 2px; flex-wrap: wrap; }
+.pwd-readout b { color: var(--pw-ink); font-weight: 900; }
+.pwd-readout-tag { background: var(--pw-cream-deep); color: var(--pw-ink-soft); font-weight: 900; font-size: 10px; letter-spacing: .04em; padding: 3px 9px; border-radius: var(--pw-r-pill); }
+.pwd-warn { background: var(--pw-warn-bg); border: 1.5px solid #F4D77E; color: var(--pw-warn); border-radius: var(--pw-r-sm); padding: 10px 13px; font-size: 12px; font-weight: 700; }
+
+/* Fixed badge */
+.pwd-fixed { display: flex; align-items: center; gap: 8px; border-radius: var(--pw-r-sm); padding: 9px 13px; font-size: 12px; font-weight: 800; }
+.pwd-fixed .pwd-fixed-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.pwd-fixed.on { background: var(--pw-success-bg); color: var(--pw-success); }
+.pwd-fixed.off { background: var(--pw-cream-soft); color: var(--pw-ink-mute); border: 1.5px solid var(--pw-cream-deep); }
+
+.pwd-foot { text-align: center; font-size: 11px; font-weight: 700; color: var(--pw-ink-faint); padding: 6px 0 2px; }
+
+/* Hero A */
+.pwd-heroA { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 22px 18px 20px; text-align: center; }
+.pwd-heroA .pwd-eyebrow { align-self: center; }
+.pwd-ring-num { font-family: var(--pw-font-display); font-weight: 700; font-size: 33px; color: var(--pw-navy-deep); line-height: 1; letter-spacing: -.01em; }
+.pwd-ring-num .cur { font-size: 15px; color: var(--pw-gold-deep); vertical-align: super; margin-right: 1px; }
+.pwd-ring-sub { font-size: 11px; font-weight: 800; color: var(--pw-ink-mute); margin-top: 7px; }
+.pwd-heroA .pwd-fixed { width: 100%; justify-content: center; }
+.pwd-comp { width: 100%; display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.pwd-comp-row { display: flex; align-items: center; gap: 9px; padding: 9px 2px; text-align: left; }
+.pwd-comp-row + .pwd-comp-row { border-top: 1.5px solid var(--pw-cream-soft); }
+.pwd-comp-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+.pwd-comp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pwd-comp-label { font-weight: 900; font-size: 13px; color: var(--pw-ink); }
+.pwd-comp-detail { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-comp-pct { font-family: var(--pw-font-display); font-weight: 700; font-size: 13px; color: var(--pw-ink-faint); flex-shrink: 0; min-width: 34px; text-align: right; }
+.pwd-comp-amt { font-family: var(--pw-font-display); font-weight: 700; font-size: 16px; color: var(--pw-navy-deep); flex-shrink: 0; min-width: 74px; text-align: right; }
+.pwd-kpi-divider { display: flex; align-items: center; gap: 12px; padding: 6px 2px 0; }
+.pwd-kpi-divider::before, .pwd-kpi-divider::after { content: ''; flex: 1; height: 1.5px; background: var(--pw-cream-deep); }
+.pwd-kpi-divider span { font-size: 10.5px; font-weight: 900; letter-spacing: .04em; color: var(--pw-ink-faint); white-space: nowrap; }
+
+/* Rate table */
+.pwd-rate { background: var(--pw-paper); border-radius: var(--pw-r-lg); box-shadow: var(--pw-shadow-card); overflow: hidden; }
+.pwd-rate-head { width: 100%; border: none; background: none; font-family: inherit; font-weight: 900; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--pw-ink-mute); padding: 15px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.pwd-rate-arr { transition: transform .3s; font-size: 14px; }
+.pwd-rate-arr.open { transform: rotate(180deg); }
+.pwd-rate-body { overflow: hidden; transition: max-height .38s ease; }
+.pwd-rate-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 11px 18px; border-top: 1.5px solid var(--pw-cream-soft); }
+.pwd-rate-lbl { font-weight: 800; font-size: 12.5px; color: var(--pw-ink-soft); }
+.pwd-rate-rate { font-weight: 900; font-size: 12px; color: var(--pw-gold-deep); text-align: right; }
+.pwd-rate-note { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-faint); grid-column: 1 / -1; }
+
+/* Payout ledger */
+.pwd-ledger { display: flex; flex-direction: column; }
+.pwd-led-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; }
+.pwd-led-row + .pwd-led-row { border-top: 1.5px solid var(--pw-cream-soft); }
+.pwd-led-lbl { font-size: 12.5px; font-weight: 800; color: var(--pw-ink-soft); }
+.pwd-led-val { font-family: var(--pw-font-display); font-weight: 700; font-size: 16px; color: var(--pw-ink); }
+.pwd-led-row.mul .pwd-led-lbl { color: var(--pw-ink-mute); }
+.pwd-led-ratio { font-family: var(--pw-font-display); font-weight: 700; font-size: 18px; }
+.pwd-led-ratio.full { color: var(--pw-success); }
+.pwd-led-ratio.mid { color: var(--pw-gold-deep); }
+.pwd-led-ratio.zero { color: var(--pw-danger); }
+.pwd-led-row.total { border-top: 2px solid var(--pw-cream-deep); margin-top: 2px; }
+.pwd-led-row.total .pwd-led-lbl { font-size: 13px; font-weight: 900; color: var(--pw-ink); }
+.pwd-led-row.total .pwd-led-val { font-size: 22px; color: var(--pw-gold-deep); }
+
+/* KPI scorecard */
+.pwd-kpi { display: flex; flex-direction: column; gap: 12px; }
+.pwd-kpi-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pwd-kpi-band { font-size: 11.5px; font-weight: 800; color: var(--pw-ink-mute); margin-top: 4px; }
+.pwd-kpi-band b { font-family: var(--pw-font-display); font-weight: 700; font-size: 14px; }
+.pwd-kpi-score { flex-shrink: 0; display: flex; align-items: baseline; gap: 1px; }
+.pwd-kpi-score .n { font-family: var(--pw-font-display); font-weight: 700; font-size: 34px; line-height: 1; }
+.pwd-kpi-score .d { font-size: 12px; font-weight: 800; }
+.r-full { color: var(--pw-success); }
+.r-mid { color: var(--pw-gold-deep); }
+.r-zero { color: var(--pw-danger); }
+.pwd-kpi-meter { position: relative; height: 9px; border-radius: var(--pw-r-pill); background: var(--pw-cream-deep); overflow: visible; }
+.pwd-kpi-meter-fill { height: 100%; border-radius: var(--pw-r-pill); background: var(--pw-navy); transition: width .5s ease; }
+.pwd-kpi-meter-mark { position: absolute; top: -3px; bottom: -3px; width: 2.5px; background: var(--pw-gold-deep); border-radius: 2px; }
+.pwd-kpi-scale { display: flex; font-size: 9.5px; font-weight: 800; color: var(--pw-ink-faint); margin-top: -4px; }
+.pwd-kpi-items { display: flex; flex-direction: column; gap: 7px; }
+.pwd-kpi-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 1.5px solid var(--pw-cream-soft); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 9px 11px; font-family: inherit; }
+.pwd-kpi-item.edit { cursor: pointer; transition: all .15s; }
+.pwd-kpi-item.edit:hover { border-color: var(--pw-cream-deep); }
+.pwd-kpi-check { width: 19px; height: 19px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #fff; flex-shrink: 0; }
+.pwd-kpi-item.pass .pwd-kpi-check { background: var(--pw-success); }
+.pwd-kpi-item.fail .pwd-kpi-check { background: var(--pw-danger); }
+.pwd-kpi-item.fail { opacity: .72; }
+.pwd-kpi-text { flex: 1; font-size: 11.5px; font-weight: 700; color: var(--pw-ink-soft); line-height: 1.4; }
+.pwd-kpi-team { font-style: normal; font-size: 9px; font-weight: 900; color: var(--pw-navy-light); background: var(--pw-info-bg); padding: 1px 5px; border-radius: var(--pw-r-pill); margin-left: 5px; vertical-align: middle; }
+.pwd-kpi-w { font-family: var(--pw-font-display); font-weight: 700; font-size: 15px; color: var(--pw-ink-mute); flex-shrink: 0; }
+.pwd-kpi-hint { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-faint); text-align: center; }
+
+/* KPI clauses */
+.pwd-clauses { background: var(--pw-paper); border-radius: var(--pw-r-lg); box-shadow: var(--pw-shadow-card); padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+.pwd-clauses-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 900; color: var(--pw-danger); line-height: 1.4; }
+.pwd-clauses-ico { font-size: 15px; flex-shrink: 0; }
+.pwd-clause { display: flex; align-items: center; gap: 10px; background: var(--pw-cream-soft); border: 1.5px solid var(--pw-cream-deep); border-radius: var(--pw-r-md); padding: 11px 12px; }
+.pwd-clause.hit { background: var(--pw-danger-bg); border-color: var(--pw-danger); }
+.pwd-clause-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pw-ink-faint); flex-shrink: 0; }
+.pwd-clause.hit .pwd-clause-dot { background: var(--pw-danger); }
+.pwd-clause-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pwd-clause-text b { font-size: 12.5px; font-weight: 900; color: var(--pw-ink); line-height: 1.35; }
+.pwd-clause-sub { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-clause-tag { font-size: 10px; font-weight: 900; color: var(--pw-ink-mute); background: var(--pw-paper); border-radius: var(--pw-r-pill); padding: 4px 9px; flex-shrink: 0; white-space: nowrap; }
+.pwd-clause-tag.hit { background: var(--pw-danger); color: #fff; }
+
+/* Year-end pool */
+.pwd-pool { display: flex; align-items: center; gap: 11px; background: #FFF7E8; border: 1.5px solid var(--pw-gold); border-radius: var(--pw-r-lg); padding: 12px 14px; }
+.pwd-pool-ico { font-size: 26px; flex-shrink: 0; }
+.pwd-pool-t { font-weight: 900; font-size: 13px; color: var(--pw-gold-deep); }
+.pwd-pool-s { font-weight: 700; font-size: 11px; color: var(--pw-ink-mute); margin-top: 2px; line-height: 1.4; }
+
+/* Goal unlock */
+.pwd-goals { display: flex; flex-direction: column; gap: 11px; }
+.pwd-goal { display: flex; gap: 11px; align-items: flex-start; }
+.pwd-goal-ico { width: 30px; height: 30px; border-radius: 50%; background: var(--pw-cream-deep); color: var(--pw-ink-mute); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; flex-shrink: 0; }
+.pwd-goal.hit .pwd-goal-ico { background: var(--pw-gold); color: var(--pw-ink); }
+.pwd-goal-mid { flex: 1; min-width: 0; }
+.pwd-goal-top { display: flex; align-items: center; gap: 7px; }
+.pwd-goal-label { font-weight: 900; font-size: 13px; color: var(--pw-ink); }
+.pwd-goal-scope { font-size: 9px; font-weight: 900; padding: 1px 6px; border-radius: var(--pw-r-pill); }
+.pwd-goal-scope.s-team { background: var(--pw-info-bg); color: var(--pw-info); }
+.pwd-goal-scope.s-me { background: var(--pw-success-bg); color: var(--pw-success); }
+.pwd-goal-scope.s-mgr { background: var(--pw-violet-bg); color: var(--pw-violet); }
+.pwd-goal-hint { font-size: 10px; font-weight: 800; color: var(--pw-gold-deep); background: #FFF7E8; border-radius: var(--pw-r-xs); padding: 4px 8px; margin-top: 6px; display: inline-block; }
+.pwd-goal-bar { height: 6px; border-radius: var(--pw-r-pill); background: var(--pw-cream-deep); margin: 6px 0 5px; overflow: hidden; }
+.pwd-goal-bar div { height: 100%; border-radius: var(--pw-r-pill); background: var(--pw-navy); transition: width .6s ease; }
+.pwd-goal-bar div.hit { background: var(--pw-gold); }
+.pwd-goal-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pwd-goal-num { font-size: 11px; font-weight: 800; color: var(--pw-ink-soft); white-space: nowrap; flex-shrink: 0; }
+.pwd-goal-num i { font-style: normal; color: var(--pw-ink-faint); font-weight: 700; }
+.pwd-goal-reward { font-size: 10px; font-weight: 800; color: var(--pw-ink-faint); text-align: right; line-height: 1.35; }
+.pwd-goal-reward.on { color: var(--pw-success); }
+
+/* Commission history */
+.pwd-hist-cum { display: flex; flex-direction: column; margin-top: 8px; }
+.pwd-hist-cum-num { font-family: var(--pw-font-display); font-weight: 700; font-size: 32px; color: var(--pw-navy-deep); line-height: 1; }
+.pwd-hist-cum-num .cur { font-size: 15px; color: var(--pw-gold-deep); vertical-align: super; margin-right: 2px; }
+.pwd-hist-cum-sub { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); margin-top: 6px; }
+.pwd-hist-linewrap { margin-top: 14px; }
+.pwd-hist-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.pwd-hist-x { font-size: 10px; font-weight: 800; fill: var(--pw-ink-mute); font-family: var(--pw-font-sans); }
+.pwd-hist-x.now { fill: var(--pw-gold-deep); font-weight: 900; }
+.pwd-hist-peak { font-size: 11px; font-weight: 900; fill: var(--pw-gold-deep); font-family: var(--pw-font-display); }
+.pwd-hist-note { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 9px 12px; margin-top: 14px; line-height: 1.45; text-align: center; }
+
+/* Club */
+.pwd-club-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pwd-club-sub { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); margin-top: 3px; }
+.pwd-club-earned { flex-shrink: 0; font-size: 11px; font-weight: 800; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-pill); padding: 6px 12px; white-space: nowrap; }
+.pwd-club-earned b { font-family: var(--pw-font-display); font-weight: 700; font-size: 15px; color: var(--pw-gold-deep); margin-left: 3px; }
+.pwd-club-tiers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
+.pwd-club-tier { background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 12px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pwd-club-tier-dot { width: 9px; height: 9px; border-radius: 50%; }
+.pwd-club-tier-name { font-weight: 900; font-size: 12.5px; color: var(--pw-ink); }
+.pwd-club-tier-fee { font-size: 10px; font-weight: 700; color: var(--pw-ink-faint); }
+.pwd-club-tier-bonus { font-family: var(--pw-font-display); font-weight: 700; font-size: 14px; color: var(--pw-navy-deep); margin-top: 1px; }
+.pwd-club-add { width: 100%; margin-top: 14px; border: 1.5px solid var(--pw-navy); background: var(--pw-paper); color: var(--pw-navy); font-family: inherit; font-weight: 900; font-size: 13px; padding: 11px 0; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-club-add:hover { background: var(--pw-navy); color: #fff; }
+.pwd-club-form { margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--pw-cream-soft); display: flex; flex-direction: column; gap: 10px; }
+.pwd-club-frow { display: flex; gap: 8px; }
+.pwd-club-input { flex: 1; min-width: 0; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); border-radius: var(--pw-r-md); padding: 10px 12px; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--pw-ink); }
+.pwd-club-input::placeholder { color: var(--pw-ink-faint); font-weight: 600; }
+.pwd-club-input:focus { outline: none; border-color: var(--pw-navy-light); }
+.pwd-club-formacts { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pwd-club-hint { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 8px 11px; line-height: 1.45; }
+.pwd-club-list { margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--pw-cream-soft); display: flex; flex-direction: column; gap: 8px; }
+.pwd-club-list-lbl { font-size: 11px; font-weight: 900; color: var(--pw-ink-mute); }
+.pwd-club-nom { display: flex; align-items: center; gap: 10px; background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 10px 12px; }
+.pwd-club-nom-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.pwd-club-nom-info { flex: 1; min-width: 0; }
+.pwd-club-nom-info b { display: block; font-size: 13px; font-weight: 900; color: var(--pw-ink); }
+.pwd-club-nom-owner { font-weight: 700; color: var(--pw-ink-mute); font-size: 11px; margin-left: 5px; }
+.pwd-club-nom-info span { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-club-status { font-size: 9.5px; font-weight: 900; padding: 4px 9px; border-radius: var(--pw-r-pill); flex-shrink: 0; text-align: center; line-height: 1.3; white-space: nowrap; }
+.pwd-club-status.pending { background: var(--pw-warn-bg); color: var(--pw-warn); }
+.pwd-club-status.approved { background: var(--pw-info-bg); color: var(--pw-info); }
+.pwd-club-status.subscribed { background: var(--pw-success-bg); color: var(--pw-success); }
+.pwd-club-status.rejected { background: var(--pw-cream-deep); color: var(--pw-ink-faint); }
+
+/* Manager goal */
+.pwd-mgrgoal { display: flex; flex-direction: column; gap: 12px; }
+.pwd-mgrgoal-cur { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pwd-mgrgoal-lbl { font-size: 11px; font-weight: 800; color: var(--pw-ink-mute); }
+.pwd-mgrgoal-rev { font-family: var(--pw-font-display); font-weight: 700; font-size: 26px; color: var(--pw-navy-deep); margin-top: 2px; }
+.pwd-mgrgoal-amt { text-align: right; flex-shrink: 0; }
+.pwd-mgrgoal-amt-num { display: block; font-family: var(--pw-font-display); font-weight: 700; font-size: 21px; color: var(--pw-gold-deep); }
+.pwd-mgrgoal-amt-sub { font-size: 10px; font-weight: 800; color: var(--pw-ink-faint); }
+.pwd-mgrgoal-next { font-size: 11.5px; font-weight: 800; color: var(--pw-gold-deep); background: #FFF7E8; border-radius: var(--pw-r-sm); padding: 9px 12px; line-height: 1.45; }
+.pwd-mgrgoal-next b { font-weight: 900; color: var(--pw-ink); }
+.pwd-mgrgoal-ladder { display: flex; flex-direction: column; gap: 6px; }
+.pwd-mgrgoal-step { display: flex; align-items: center; gap: 11px; padding: 9px 11px; border-radius: var(--pw-r-md); background: var(--pw-cream-soft); }
+.pwd-mgrgoal-step.hit { background: #FCF4E4; }
+.pwd-mgrgoal-step.cur { box-shadow: inset 0 0 0 1.5px var(--pw-gold); }
+.pwd-mgrgoal-step-node { width: 20px; height: 20px; border-radius: 50%; background: var(--pw-cream-deep); color: #fff; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pwd-mgrgoal-step.hit .pwd-mgrgoal-step-node { background: var(--pw-gold); }
+.pwd-mgrgoal-step-min { font-weight: 900; font-size: 13px; color: var(--pw-ink); }
+.pwd-mgrgoal-step-amt { margin-left: auto; font-family: var(--pw-font-display); font-weight: 700; font-size: 16px; color: var(--pw-navy-deep); }
+.pwd-mgrgoal-step-tag { font-size: 9.5px; font-weight: 900; color: var(--pw-gold-deep); background: var(--pw-paper); border: 1.5px solid var(--pw-gold); border-radius: var(--pw-r-pill); padding: 2px 8px; flex-shrink: 0; }
+.pwd-mgrgoal-foot { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 8px 11px; }
+
+/* Stepper */
+.pwd-step-field { display: flex; align-items: center; gap: 8px; }
+.pwd-step-btn { width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-navy); font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; }
+.pwd-step-btn:hover { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-step-mid { flex: 1; text-align: center; }
+.pwd-step-num { font-family: var(--pw-font-display); font-weight: 700; font-size: 22px; color: var(--pw-ink); }
+.pwd-step-suf { font-family: var(--pw-font-sans); font-size: 11px; font-weight: 800; color: var(--pw-ink-faint); margin-left: 2px; }
+.pwd-step-hint { font-size: 9px; font-weight: 700; color: var(--pw-ink-faint); margin-top: 1px; }
+
+/* Attendance dots */
+.pwd-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.pwd-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-ink-faint); font-size: 11px; font-weight: 800; font-family: inherit; display: flex; align-items: center; justify-content: center; }
+.pwd-dot.edit { cursor: pointer; transition: all .15s; }
+.pwd-dot.on { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+
+/* Manager panel */
+.pwd-mgr-banner { display: flex; align-items: center; gap: 11px; background: var(--pw-navy); border-radius: var(--pw-r-lg); padding: 13px 15px; color: #fff; }
+.pwd-mgr-banner-ico { font-size: 22px; flex-shrink: 0; }
+.pwd-mgr-banner b { display: block; font-size: 14px; font-weight: 900; }
+.pwd-mgr-banner span { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.7); }
+.pwd-mgr-lock { margin-left: auto; flex-shrink: 0; border: 1.5px solid rgba(255,255,255,.4); background: transparent; color: #fff; font-family: inherit; font-weight: 800; font-size: 11.5px; padding: 6px 12px; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-mgr-lock:hover { background: rgba(255,255,255,.14); }
+.pwd-mgrgate { display: flex; flex-direction: column; align-items: center; padding: 24px 8px 8px; }
+.pwd-mgrgate-lock { font-size: 34px; }
+.pwd-mgrgate-title { font-weight: 900; font-size: 16px; color: var(--pw-ink); margin-top: 12px; }
+.pwd-mgrgate-sub { font-size: 11.5px; font-weight: 700; color: var(--pw-ink-mute); margin-top: 5px; text-align: center; line-height: 1.5; max-width: 280px; }
+.pwd-mgrgate-dots { display: flex; gap: 12px; margin-top: 22px; }
+.pwd-mgrgate-dots.err { animation: pwShake .3s; }
+.pwd-mgrgate-dot { width: 13px; height: 13px; border-radius: 50%; background: var(--pw-cream-deep); transition: all .15s; }
+.pwd-mgrgate-dot.on { background: var(--pw-navy); transform: scale(1.05); }
+@keyframes pwShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+.pwd-mgrgate-err { font-size: 12px; font-weight: 800; color: var(--pw-danger); margin-top: 12px; }
+.pwd-mgrgate-keypad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; margin-top: 22px; }
+.pwd-mgrgate-key { height: 56px; border: none; border-radius: var(--pw-r-md); background: var(--pw-paper); box-shadow: var(--pw-shadow-card); font-family: var(--pw-font-display); font-weight: 600; font-size: 24px; color: var(--pw-ink); cursor: pointer; transition: all .12s; }
+.pwd-mgrgate-key:hover { background: var(--pw-cream-soft); }
+.pwd-mgrgate-key:active { transform: scale(.95); }
+.pwd-mgrgate-key.del { font-family: var(--pw-font-sans); font-size: 20px; color: var(--pw-ink-mute); background: transparent; box-shadow: none; }
+.pwd-mgr-nav { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+.pwd-mgr-nav::-webkit-scrollbar { display: none; }
+.pwd-mgr-navbtn { flex-shrink: 0; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-ink-mute); font-family: inherit; font-weight: 800; font-size: 12.5px; padding: 8px 15px; border-radius: var(--pw-r-pill); cursor: pointer; transition: all .15s; }
+.pwd-mgr-navbtn.on { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-mgr-stack { display: flex; flex-direction: column; gap: 14px; }
+.pwd-mgr-fieldgrid { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.pwd-mgr-field label { display: block; font-size: 11.5px; font-weight: 800; color: var(--pw-ink-mute); margin-bottom: 8px; }
+.pwd-mgr-field label b { color: var(--pw-ink); font-weight: 900; }
+.pwd-mgr-people { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.pwd-mgr-people::-webkit-scrollbar { display: none; }
+.pwd-mgr-person { flex-shrink: 0; display: flex; align-items: center; gap: 7px; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-ink-soft); font-family: inherit; font-weight: 800; font-size: 13px; padding: 6px 14px 6px 6px; border-radius: var(--pw-r-pill); cursor: pointer; transition: all .15s; }
+.pwd-mgr-person.on { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-mgr-person-ava { width: 26px; height: 26px; border-radius: 50%; background: var(--pw-cream-deep); color: var(--pw-navy); font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.pwd-mgr-person.on .pwd-mgr-person-ava { background: var(--pw-gold); color: var(--pw-ink); }
+.pwd-mgr-danger { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pwd-mgr-danger.on { box-shadow: 0 0 0 1.5px var(--pw-danger), var(--pw-shadow-card); }
+.pwd-mgr-danger-text b { display: block; font-size: 13.5px; font-weight: 900; color: var(--pw-ink); }
+.pwd-mgr-danger-text span { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-toggle { width: 48px; height: 28px; border-radius: 16px; border: none; background: var(--pw-cream-deep); cursor: pointer; position: relative; flex-shrink: 0; transition: background .2s; }
+.pwd-toggle.on { background: var(--pw-danger); }
+.pwd-toggle-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: transform .2s; }
+.pwd-toggle.on .pwd-toggle-knob { transform: translateX(20px); }
+.pwd-mgr-preview, .pwd-mgr-result { text-align: center; }
+.pwd-mgr-preview-num, .pwd-mgr-result-num { font-family: var(--pw-font-display); font-weight: 700; font-size: 32px; color: var(--pw-navy-deep); margin-top: 6px; }
+.pwd-mgr-preview-sub, .pwd-mgr-result-sub { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); margin-top: 5px; }
+.pwd-mgr-result { box-shadow: 0 0 0 1.5px var(--pw-gold), var(--pw-shadow-card); }
+.pwd-mgr-late-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pwd-mgr-late-row b { display: block; font-size: 13px; font-weight: 900; color: var(--pw-ink); }
+.pwd-mgr-late-row span { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-mgr-late-row .pwd-step-field { width: 120px; flex-shrink: 0; }
+.pwd-mgr-swaps { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.pwd-mgr-swap { background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 12px; }
+.pwd-mgr-swap-top { display: flex; align-items: center; gap: 10px; }
+.pwd-mgr-swap-ava { width: 32px; height: 32px; border-radius: 50%; background: var(--pw-navy); color: #fff; font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pwd-mgr-swap-info { flex: 1; min-width: 0; }
+.pwd-mgr-swap-info b { display: block; font-size: 13px; font-weight: 900; color: var(--pw-ink); }
+.pwd-mgr-swap-info span { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); }
+.pwd-mgr-swap-acts { display: flex; gap: 8px; margin-top: 11px; }
+.pwd-btn-reject, .pwd-btn-approve { flex: 1; border: none; font-family: inherit; font-weight: 900; font-size: 13px; padding: 9px 0; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-btn-reject { background: var(--pw-paper); border: 1.5px solid var(--pw-cream-deep); color: var(--pw-ink-mute); }
+.pwd-btn-approve { background: var(--pw-navy); color: #fff; }
+.pwd-mgr-swap.done { display: flex; align-items: center; gap: 10px; }
+.pwd-mgr-swap-status { margin-left: auto; font-size: 10.5px; font-weight: 900; padding: 4px 10px; border-radius: var(--pw-r-pill); flex-shrink: 0; }
+.pwd-mgr-swap-status.approved { background: var(--pw-success-bg); color: var(--pw-success); }
+.pwd-mgr-swap-status.rejected { background: var(--pw-danger-bg); color: var(--pw-danger); }
+.pwd-mgr-selwrap { position: relative; flex: 1; }
+.pwd-mgr-selwrap:first-of-type { flex: 0 0 96px; }
+.pwd-mgr-sel { -webkit-appearance: none; appearance: none; width: 100%; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-navy); font-family: inherit; font-weight: 900; font-size: 12.5px; padding: 8px 26px 8px 13px; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-mgr-selwrap::after { content: '⌄'; position: absolute; right: 12px; top: 50%; transform: translateY(-60%); font-size: 13px; font-weight: 700; color: var(--pw-ink-faint); pointer-events: none; }
+.pwd-mgr-sel.pos { color: var(--pw-ink-mute); background: var(--pw-cream-deep); border-color: transparent; }
+.pwd-mgr-sel.pos:disabled { opacity: .5; cursor: default; }
+.pwd-mgr-sel.pos.sh-academy { background: #FCEFD6; color: var(--pw-gold-deep); }
+.pwd-mgr-sel.pos.sh-hotelA { background: #E4ECF6; color: #2C4A6E; }
+.pwd-mgr-sel.pos.sh-hotelB { background: #F4E2E0; color: #B0544E; }
+.pwd-mgr-sel.pos.sh-hotelC { background: #E7E4F1; color: #6155A0; }
+.pwd-mgr-rostersave { text-align: center; font-size: 11px; font-weight: 700; color: var(--pw-ink-faint); }
+.pwd-club-mgr-hint { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 9px 12px; margin-top: 12px; line-height: 1.45; }
+.pwd-club-tierconfirm { display: flex; gap: 7px; margin-top: 11px; }
+.pwd-club-tierconfirm-btn { flex: 1; border: 1.5px solid var(--pw-navy); background: var(--pw-paper); color: var(--pw-navy); font-family: inherit; font-weight: 900; font-size: 12px; padding: 9px 0; border-radius: var(--pw-r-md); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; transition: all .15s; }
+.pwd-club-tierconfirm-btn:hover { background: var(--pw-navy); color: #fff; }
+.pwd-club-tierconfirm-btn i { font-style: normal; font-size: 10px; font-weight: 800; opacity: .7; }
+.pwd-club-mgr-cancel { width: 100%; margin-top: 8px; border: none; background: none; font-family: inherit; font-weight: 800; font-size: 11.5px; color: var(--pw-ink-faint); cursor: pointer; padding: 4px; }
+.pwd-club-mgr-cancel:hover { color: var(--pw-danger); }
+.pwd-mgr-storerow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding: 11px 13px; background: var(--pw-navy); border-radius: var(--pw-r-md); color: #fff; }
+.pwd-mgr-storerow span { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.8); }
+.pwd-mgr-storerow b { font-family: var(--pw-font-display); font-weight: 700; font-size: 17px; }
+.pwd-money-input { display: flex; align-items: center; gap: 8px; border: 2px solid var(--pw-cream-deep); background: var(--pw-paper); border-radius: var(--pw-r-md); padding: 10px 14px; transition: border-color .15s; }
+.pwd-money-input:focus-within { border-color: var(--pw-navy-light); }
+.pwd-money-cur { font-family: var(--pw-font-display); font-weight: 700; font-size: 16px; color: var(--pw-gold-deep); flex-shrink: 0; }
+.pwd-money-field { flex: 1; border: none; outline: none; background: none; font-family: var(--pw-font-display); font-weight: 700; font-size: 22px; color: var(--pw-navy-deep); width: 100%; }
+.pwd-money-note { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-faint); margin-top: 6px; }
+.pwd-acad-items { display: flex; flex-direction: column; gap: 8px; }
+.pwd-acad-row { display: flex; align-items: center; gap: 10px; }
+.pwd-acad-lbl { font-size: 12.5px; font-weight: 800; color: var(--pw-ink-soft); width: 72px; flex-shrink: 0; }
+.pwd-acad-input { flex: 1; display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); border-radius: var(--pw-r-sm); padding: 7px 12px; transition: border-color .15s; }
+.pwd-acad-input:focus-within { border-color: var(--pw-navy-light); }
+.pwd-acad-cur { font-weight: 800; font-size: 12px; color: var(--pw-gold-deep); flex-shrink: 0; }
+.pwd-acad-input input { flex: 1; border: none; outline: none; background: none; font-family: var(--pw-font-display); font-weight: 700; font-size: 16px; color: var(--pw-navy-deep); width: 100%; }
+.pwd-acad-sum { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; padding: 9px 12px; background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); }
+.pwd-acad-sum span { font-size: 11.5px; font-weight: 800; color: var(--pw-ink-mute); }
+.pwd-acad-sum b { font-family: var(--pw-font-display); font-weight: 700; font-size: 17px; color: var(--pw-navy-deep); }
+.pwd-mgr-saved { font-size: 11.5px; font-weight: 800; color: var(--pw-success); text-align: center; }
+.pwd-mgr-savebtn { width: 100%; border: none; background: var(--pw-navy); color: #fff; font-family: inherit; font-weight: 900; font-size: 14px; padding: 13px; border-radius: var(--pw-r-md); cursor: pointer; }
+.pwd-mgr-savebtn:disabled { opacity: .5; cursor: default; }
+
+/* Login */
+.pwd-login { min-height: 100vh; background: var(--pw-navy-deep); display: flex; flex-direction: column; align-items: center; padding: calc(env(safe-area-inset-top, 0px) + 70px) 26px 30px; gap: 22px; }
+.pwd-login-top { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 8px; }
+.pwd-login-crest { width: 196px; background: none; box-shadow: none; padding: 0; }
+.pwd-login-crest img { width: 100%; height: auto; display: block; filter: drop-shadow(0 8px 22px rgba(0,0,0,.3)); }
+.pwd-login-sub { font-size: 16px; font-weight: 800; color: rgba(255,255,255,.78); letter-spacing: .06em; }
+.pwd-login-card { width: 100%; background: var(--pw-paper); border-radius: var(--pw-r-xl); padding: 24px 20px; box-shadow: var(--pw-shadow-pop); display: flex; flex-direction: column; gap: 15px; }
+.pwd-field { display: flex; flex-direction: column; gap: 6px; }
+.pwd-field-lbl { font-size: 11px; font-weight: 900; letter-spacing: .04em; color: var(--pw-ink-mute); }
+.pwd-input { width: 100%; border: 2px solid var(--pw-cream-deep); background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 12px 14px; font-family: var(--pw-font-sans); font-weight: 700; font-size: 15px; color: var(--pw-ink); outline: none; transition: border-color .15s, background .15s; }
+.pwd-input::placeholder { color: var(--pw-ink-faint); font-weight: 600; }
+.pwd-input:focus { border-color: var(--pw-navy-light); background: var(--pw-paper); }
+.pwd-login-err { font-size: 11.5px; font-weight: 800; color: var(--pw-danger); background: var(--pw-danger-bg); border-radius: var(--pw-r-sm); padding: 9px 12px; text-align: center; }
+.pwd-login-btn { border: none; background: var(--pw-navy); color: #fff; font-family: inherit; font-weight: 900; font-size: 14px; padding: 14px; border-radius: var(--pw-r-md); cursor: pointer; transition: all .16s; margin-top: 2px; }
+.pwd-login-btn:hover:not(:disabled) { background: var(--pw-navy-deep); }
+.pwd-login-btn:active:not(:disabled) { transform: scale(.98); }
+.pwd-login-btn:disabled { background: var(--pw-cream-deep); color: var(--pw-ink-faint); cursor: not-allowed; }
+.pwd-login-foot { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5); margin-top: auto; }
+</style>
+</head>
+<body>
+<div id="root"><div class="pwd-loading"><div class="pwd-spinner"></div><div class="pwd-loading-txt">載入中…</div></div></div>
+
+<script>
+  // ⚙️ 你的 Apps Script Web App URL
+  window.APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwO54JDHOCduudFGsBniyXDW3gh513eTHuoNUA8_jWVBAqM2zT0i3mmZYUXZgSzGVmesA/exec';
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+// ═══════════ API ═══════════
+async function pwApi(action, params = {}) {
+  const qs = new URLSearchParams();
+  qs.set('action', action);
+  Object.keys(params).forEach(k => {
+    if (params[k] !== undefined && params[k] !== null) qs.set(k, params[k]);
+  });
+  const res = await fetch(window.APPS_SCRIPT_URL + '?' + qs.toString(), { method: 'GET', redirect: 'follow' });
+  if (!res.ok) throw new Error('網絡錯誤 ' + res.status);
+  return res.json();
+}
+function currentMonth() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function monthLabelShort(m) { return parseInt(m.split('-')[1]) + '月'; }
+
+// ═══════════ 業務邏輯 (port from commission-data.js) ═══════════
+const HEADCOUNT = 3;
+const TARGETS = { hotelThreshold: 150000, newStudentTier: 20, packageGoal: 12, attendanceMin: 4 };
+const ROLE_KPIS = {
+  junior: { label: '初級寵物照顧員', items: [
+    { id: 'j1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
+    { id: 'j2', text: '操作錯誤:混亂食物藥物、錯誤執拾 / 遺漏物品、CCTV 邀請遺留 / 錯誤 ≤ 3 次 (以團隊計算)', weight: 20, team: true },
+    { id: 'j3', text: '每日每位客戶收到 > 5 條相片 / 影片 (以團隊計算)', weight: 20, team: true },
+    { id: 'j4', text: '完成指定環境及犬隻清潔流程;衛生投訴 ≤ 2 次', weight: 20, team: false },
+    { id: 'j5', text: '保持儀容整潔、穿着整齊制服', weight: 10, team: false },
+  ] },
+  senior: { label: '高級寵物照顧員', items: [
+    { id: 's1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
+    { id: 's2', text: '操作錯誤:混亂食物藥物、錯誤執拾 / 遺漏物品、CCTV 邀請遺留 / 錯誤 ≤ 3 次 (以團隊計算)', weight: 20, team: true },
+    { id: 's3', text: '每日每位客戶收到 > 5 條相片 / 影片 (以團隊計算)', weight: 20, team: true },
+    { id: 's4', text: '完成指定環境及犬隻清潔流程;衛生投訴 ≤ 2 次', weight: 20, team: false },
+    { id: 's5', text: '培訓團隊,確保團隊中初級寵物照顧員 KPI 達 80 分以上', weight: 10, team: false },
+  ] },
+  frontdesk: { label: '前台', items: [
+    { id: 'f1', text: '招待客戶有效投訴 ≤ 1 人', weight: 30, team: false },
+    { id: 'f2', text: '線上訊息於同一工作天辦公時間內必須回覆', weight: 20, team: false },
+    { id: 'f3', text: '每日行程編排 / 套票整理 / 文件準備 / 課堂預約 100% 完成,錯誤 ≤ 3 個', weight: 20, team: false },
+    { id: 'f4', text: '完成指定環境清潔流程;衛生投訴 ≤ 2 次', weight: 20, team: false },
+    { id: 'f5', text: '保持儀容整潔、穿着制服', weight: 10, team: false },
+  ] },
+  manager: { label: '店長', items: [
+    { id: 'm1', text: '每月完成團隊保底業績 (寵物酒店 ≥ 20 萬 ＋ 社交學院 ≥ 10 萬)', weight: 30, team: true },
+    { id: 'm2', text: '客戶有效投訴 ≤ 1 人', weight: 20, team: true },
+    { id: 'm3', text: '每月加入的新客戶 ≥ 20 個', weight: 20, team: true },
+    { id: 'm4', text: '每月購買的套票 ≥ 12 個', weight: 20, team: true },
+    { id: 'm5', text: '管理體系:按實際運作調整崗位 SOP、流程標準、接單銷售 FAQ 並推行使用', weight: 10, team: false },
+  ] },
+};
+const PARTS_META = {
+  fixed:  { label: '固定獎金', icon: '📅', color: 'var(--pw-gold)' },
+  hotel:  { label: '酒店部', icon: '🏨', color: 'var(--pw-navy)' },
+  newcmm: { label: '學院新生', icon: '🎓', color: 'var(--pw-cat-sniff)' },
+  renew:  { label: '舊生續報', icon: '🔄', color: 'var(--pw-cat-puzzle)' },
+  mgrtier:{ label: '門店業績佣金', icon: '🏪', color: 'var(--pw-navy)' },
+  base:   { label: '底薪', icon: '💼', color: 'var(--pw-navy)' },
+  kpibonus:{ label: 'KPI 獎金', icon: '⭐', color: 'var(--pw-gold)' },
+  club:   { label: '會籍獎金', icon: '🐾', color: 'var(--pw-cat-sniff)' },
+};
+const MGR_TIERS = [ { min: 320000, amt: 3800 }, { min: 420000, amt: 5800 }, { min: 520000, amt: 7800 }, { min: 620000, amt: 9800 } ];
+function managerTier(revenue) {
+  let cur = { min: 0, amt: 0, index: -1 };
+  MGR_TIERS.forEach((t, i) => { if (revenue >= t.min) cur = { ...t, index: i }; });
+  const next = MGR_TIERS[cur.index + 1] || null;
+  return { amt: cur.amt, tierMin: cur.min, next, index: cur.index };
+}
+const RATES = [
+  { label: '固定獎金', rate: 'HK$2,000', note: '≥ 4 日學院出勤' },
+  { label: '酒店部 (超門檻)', rate: '12% ÷ 3 人', note: '門檻 HK$150,000' },
+  { label: '學院新生 · 首 20 隻', rate: '$150 / 隻 ÷ 3 人', note: '每人 HK$50' },
+  { label: '學院新生 · 第 21 隻起', rate: '$300 / 隻 ÷ 3 人', note: '每人 HK$100 (需達 20 隻目標)' },
+  { label: '舊生續報', rate: '$600 / 個 ÷ 3 人', note: '每人 HK$200' },
+];
+const CLUB_TIERS = {
+  light:    { key: 'light', label: 'Light', fee: 699, bonus: 100, color: 'var(--pw-cat-sniff)' },
+  active:   { key: 'active', label: 'Active', fee: 1699, bonus: 200, color: 'var(--pw-cat-puzzle)' },
+  ultimate: { key: 'ultimate', label: 'Ultimate', fee: 1999, bonus: 250, color: 'var(--pw-gold)' },
+};
+function buildScorecard(role, failIds = []) {
+  return ROLE_KPIS[role].items.map(it => ({ ...it, pass: !failIds.includes(it.id) }));
+}
+function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
+  if (override) return { ratio: 0, band: '失格', reason: overrideReason || '缺勤 / 紀律 / 安全事故' };
+  if (score >= 91) return { ratio: 1, band: '滿額' };
+  if (score >= 81) return { ratio: score / 100, band: '按完成率' };
+  if (score >= 71) return { ratio: 0.5, band: '半額' };
+  return { ratio: 0, band: '不發放' };
+}
+function scorecardTotal(items) { return items.reduce((a, it) => a + (it.pass ? it.weight : 0), 0); }
+function calc({ attendance, newStudents, renewals, hotelRevenue, headcount = HEADCOUNT }) {
+  const fixedOk = attendance >= 4;
+  const fixed = fixedOk ? 2000 : 0;
+  const hotelOver = Math.max(0, hotelRevenue - 150000);
+  const hotel = hotelOver * 0.12 / headcount;
+  const newPool = newStudents <= 20 ? newStudents * 150 : 20 * 150 + (newStudents - 20) * 300;
+  const newcmm = newPool / headcount;
+  const renew = renewals * 600 / headcount;
+  const projectCommission = hotel + newcmm + renew;
+  const total = fixed + projectCommission;
+  return { fixed, fixedOk, hotel, hotelOver, hotelRevenue, newcmm, newStudents, renew, renewals, projectCommission, total,
+    attendance, attendanceNeed: Math.max(0, 4 - attendance),
+    parts: [ { key: 'fixed', value: fixed }, { key: 'hotel', value: hotel }, { key: 'newcmm', value: newcmm }, { key: 'renew', value: renew } ] };
+}
+function calcManager({ attendance, storeRevenue, hotelRevenue, academyRevenue }) {
+  const fixedOk = attendance >= 4;
+  const fixed = fixedOk ? 2000 : 0;
+  const tier = managerTier(storeRevenue);
+  const tierAmt = tier.amt;
+  const projectCommission = tierAmt;
+  const total = fixed + projectCommission;
+  return { isManager: true, fixed, fixedOk, storeRevenue, hotelRevenue, academyRevenue,
+    tierAmt, tierMin: tier.tierMin, tierNext: tier.next, tierIndex: tier.index, projectCommission, total,
+    attendance, attendanceNeed: Math.max(0, 4 - attendance),
+    parts: [ { key: 'fixed', value: fixed }, { key: 'mgrtier', value: tierAmt } ] };
+}
+function calcFrontdesk() {
+  const baseSalary = 16000, kpiBonus = 2000, total = baseSalary + kpiBonus;
+  return { isFrontdesk: true, baseSalary, kpiBonus, baseFixed: baseSalary, projectCommission: kpiBonus, total,
+    fixed: 0, fixedOk: true, attendance: 99, attendanceNeed: 0,
+    parts: [ { key: 'base', value: baseSalary, noKpi: true }, { key: 'kpibonus', value: kpiBonus } ] };
+}
+function applyKpi(calcResult, score, opts = {}) {
+  const { ratio, band, reason } = payoutRatio(score, opts);
+  const baseFixed = calcResult.baseFixed || 0;
+  const kpiBase = calcResult.total - baseFixed;
+  const actualTotal = baseFixed + kpiBase * ratio;
+  const actualProject = calcResult.projectCommission * ratio;
+  const deducted = kpiBase - kpiBase * ratio;
+  const actualParts = calcResult.parts.map(p => p.noKpi ? { ...p } : { ...p, value: p.value * ratio });
+  return { score, ratio, band, reason, actualProject, deducted, actualTotal, actualParts, fixedActual: calcResult.fixed * ratio };
+}
+// 基本美容併入酒店總業績計佣;店長業績 = 酒店(含基本美容) + 學院 + 星級美容 + 接送 (套票、其他除外)
+function hotelForCommission(team) { return (team.hotelRevenue || 0) + (team.groomBasic || 0); }
+function storeRevenueOf(team) { return hotelForCommission(team) + (team.academyRevenue || 0) + (team.groomStar || 0) + (team.pickup || 0); }
+function fullResult(staff, team, overrides = {}) {
+  const att = overrides.attendance != null ? overrides.attendance : staff.attendance;
+  const c = staff.role === 'manager'
+    ? calcManager({ attendance: att, storeRevenue: storeRevenueOf(team), hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue })
+    : staff.role === 'frontdesk'
+    ? calcFrontdesk()
+    : calc({ attendance: att, newStudents: team.newStudents, renewals: team.renewals, hotelRevenue: hotelForCommission(team) });
+  const items = overrides.scorecard || buildScorecard(staff.role, staff.kpiFail || []);
+  const score = scorecardTotal(items);
+  const lateLeave = overrides.lateLeave != null ? overrides.lateLeave : (staff.lateLeave || 0);
+  const dogEscape = overrides.dogEscape != null ? overrides.dogEscape : (team.dogEscape || false);
+  let override = false, overrideReason = '';
+  if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
+  else if (lateLeave > 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (超過 3 次)`; }
+  else if (att < 1 && staff.role !== 'frontdesk' && staff.role !== 'manager') { override = true; overrideReason = '當月缺勤'; }
+  const kpi = applyKpi(c, score, { override, overrideReason });
+  return { calc: c, items, kpi, lateLeave, dogEscape };
+}
+function clubBonusFor(staffId, noms) {
+  return (noms || []).filter(n => n.staffId == staffId && n.status === 'subscribed' && n.tier)
+    .reduce((a, n) => a + CLUB_TIERS[n.tier].bonus, 0);
+}
+const money = (n) => 'HK$' + Math.round(n).toLocaleString('en-US');
+const moneyPlain = (n) => Math.round(n).toLocaleString('en-US');
+
+// ═══════════ 更表 helpers ═══════════
+const SHIFTS = {
+  early: { label: '早更', time: '08:30–16:30', hrs: 8 },
+  mid:   { label: '午更', time: '12:30–20:30', hrs: 8 },
+  full:  { label: '全日更', time: '08:30–20:30', hrs: 12 },
+  off:   { label: '休息', time: '', hrs: 0 },
+};
+const POSITIONS = {
+  academy: { label: '學院', cls: 'academy' },
+  hotelA:  { label: '酒店A位', cls: 'hotelA' },
+  hotelB:  { label: '酒店B位', cls: 'hotelB' },
+  hotelC:  { label: '酒店C位', cls: 'hotelC' },
+};
+const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
+function buildWeekDays(week, wi, currentWeekIdx, todayDow) {
+  const shifts = (week && week.shifts) || [];
+  return WEEKDAYS.map((wd, i) => {
+    const r = shifts[i] || ['off', null];
+    const key = r[0] || 'off';
+    const sh = SHIFTS[key] || SHIFTS.off;
+    const posKey = r[1] || null;
+    return {
+      weekday: wd, date: week.dates[i],
+      today: wi === currentWeekIdx && i === todayDow,
+      shiftKey: key, label: sh.label, time: sh.time, off: key === 'off',
+      pos: posKey ? POSITIONS[posKey] : null, posKey,
+    };
+  });
+}
+function weekSummary(week) {
+  const shifts = (week && week.shifts) || [];
+  return {
+    academyDays: shifts.filter(r => r && r[1] === 'academy').length,
+    workDays: shifts.filter(r => r && r[0] && r[0] !== 'off').length,
+    weekHours: shifts.reduce((a, r) => a + ((r && SHIFTS[r[0]] ? SHIFTS[r[0]].hrs : 0) || 0), 0),
+  };
+}
+
+// ═══════════ UI atoms ═══════════
+function FixedBadge({ ok, need }) {
+  return (
+    <div className={'pwd-fixed ' + (ok ? 'on' : 'off')}>
+      <span className="pwd-fixed-dot" />
+      {ok ? '固定獎金 HK$2,000 已解鎖' : `再 ${need} 日學院出勤即解鎖固定獎金`}
+    </div>
+  );
+}
+function DonutChart({ parts, total, size = 188, stroke = 24, children }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const gap = total > 0 ? 0.012 * c : 0;
+  let acc = 0;
+  const segs = parts.filter(p => p.value > 0).map(p => {
+    const frac = p.value / total;
+    const seg = { key: p.key, color: PARTS_META[p.key].color, len: Math.max(0, frac * c - gap), offset: -acc * c };
+    acc += frac;
+    return seg;
+  });
+  return (
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--pw-cream-deep)" strokeWidth={stroke} />
+        {segs.map(s => (
+          <circle key={s.key} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={stroke}
+            strokeDasharray={`${s.len} ${c - s.len}`} strokeDashoffset={s.offset}
+            style={{ transition: 'stroke-dasharray .7s ease, stroke-dashoffset .7s ease' }} />
+        ))}
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+function PayoutLedger({ calc, kpi }) {
+  const full = kpi.ratio >= 1;
+  return (
+    <div className="pwd-ledger">
+      <div className="pwd-led-row">
+        <span className="pwd-led-lbl">計算佣金 (固定＋項目)</span>
+        <span className="pwd-led-val">{money(calc.total)}</span>
+      </div>
+      <div className="pwd-led-row mul">
+        <span className="pwd-led-lbl">× KPI 發放比例</span>
+        <span className={'pwd-led-ratio ' + (full ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero')}>{Math.round(kpi.ratio * 100)}%</span>
+      </div>
+      <div className="pwd-led-row total">
+        <span className="pwd-led-lbl">實際領取</span>
+        <span className="pwd-led-val">{money(kpi.actualTotal)}</span>
+      </div>
+    </div>
+  );
+}
+function KpiCard({ role, items, score, kpi, editable, onToggle }) {
+  const roleLabel = ROLE_KPIS[role].label;
+  const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
+  return (
+    <div className="pwd-card pwd-kpi">
+      <div className="pwd-kpi-head">
+        <div>
+          <div className="pwd-eyebrow">KPI 計分卡 · {roleLabel}</div>
+          <div className="pwd-kpi-band">發放比例 <b className={'r-' + tone}>{Math.round(kpi.ratio * 100)}%</b> · {kpi.band}</div>
+        </div>
+        <div className={'pwd-kpi-score r-' + tone}><span className="n">{score}</span><span className="d">分</span></div>
+      </div>
+      <div className="pwd-kpi-meter">
+        <div className="pwd-kpi-meter-fill" style={{ width: score + '%' }} />
+        <span className="pwd-kpi-meter-mark" style={{ left: '91%' }} />
+      </div>
+      <div className="pwd-kpi-scale"><span>0</span><span style={{ marginLeft: 'auto' }}>91 滿額 →</span><span>100</span></div>
+      <div className="pwd-kpi-items">
+        {items.map(it => (
+          <button key={it.id} className={'pwd-kpi-item' + (it.pass ? ' pass' : ' fail') + (editable ? ' edit' : '')}
+            onClick={editable ? () => onToggle(it.id) : undefined} disabled={!editable}>
+            <span className="pwd-kpi-check">{it.pass ? '✓' : '✕'}</span>
+            <span className="pwd-kpi-text">{it.text}{it.team && <em className="pwd-kpi-team">團隊</em>}</span>
+            <span className="pwd-kpi-w">{it.weight}</span>
+          </button>
+        ))}
+      </div>
+      {editable && <div className="pwd-kpi-hint">點項目切換達標 / 未達標 — 即時影響發放比例</div>}
+    </div>
+  );
+}
+function YearEndPool({ deducted }) {
+  if (deducted < 1) return null;
+  return (
+    <div className="pwd-pool">
+      <span className="pwd-pool-ico">🏆</span>
+      <div>
+        <div className="pwd-pool-t">{money(deducted)} 已撥入年終花紅獎池</div>
+        <div className="pwd-pool-s">因 KPI 未滿額而扣起的提成不會消失 — 全年達標可按平均 KPI 取回</div>
+      </div>
+    </div>
+  );
+}
+function FrontdeskGoal({ kpi, score }) {
+  const bands = [ { min: 91, pct: 100 }, { min: 81, pct: 90 }, { min: 71, pct: 50 }, { min: 0, pct: 0 } ];
+  const curMin = score >= 91 ? 91 : score >= 81 ? 81 : score >= 71 ? 71 : 0;
+  const bonus = Math.round(2000 * kpi.ratio);
+  return (
+    <div className="pwd-mgrgoal">
+      <div className="pwd-mgrgoal-cur">
+        <div>
+          <div className="pwd-mgrgoal-lbl">本月 KPI 分數</div>
+          <div className="pwd-mgrgoal-rev">{score} <span style={{ fontSize: 15 }}>分</span></div>
+        </div>
+        <div className="pwd-mgrgoal-amt">
+          <span className="pwd-mgrgoal-amt-num">{money(bonus)}</span>
+          <span className="pwd-mgrgoal-amt-sub">本月 KPI 獎金</span>
+        </div>
+      </div>
+      {score < 91 && (
+        <div className="pwd-mgrgoal-next">KPI 達 <b>91 分</b> → 獎金全額發放 <b>HK$2,000</b>(現時 +{money(2000 - bonus)} 空間)</div>
+      )}
+      <div className="pwd-mgrgoal-ladder">
+        {bands.map((b, i) => {
+          const isCur = b.min === curMin;
+          return (
+            <div key={i} className={'pwd-mgrgoal-step' + (score >= b.min ? ' hit' : '') + (isCur ? ' cur' : '')}>
+              <span className="pwd-mgrgoal-step-node">{score >= b.min ? '✓' : ''}</span>
+              <span className="pwd-mgrgoal-step-min">{b.min === 0 ? '70 分以下' : b.min + ' 分以上'}</span>
+              <span className="pwd-mgrgoal-step-amt">{b.min === 81 ? '按 % 發放' : money(2000 * b.pct / 100)}</span>
+              {isCur && <span className="pwd-mgrgoal-step-tag">現時</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="pwd-mgrgoal-foot">底薪 HK$16,000 為固定收入,不受 KPI 影響</div>
+    </div>
+  );
+}
+function ManagerGoal({ calc }) {
+  const rev = calc.storeRevenue;
+  const next = calc.tierNext;
+  return (
+    <div className="pwd-mgrgoal">
+      <div className="pwd-mgrgoal-cur">
+        <div>
+          <div className="pwd-mgrgoal-lbl">本月門店總業績 (酒店+學院+美容+接送)</div>
+          <div className="pwd-mgrgoal-rev">{money(rev)}</div>
+        </div>
+        <div className="pwd-mgrgoal-amt">
+          <span className="pwd-mgrgoal-amt-num">{money(calc.tierAmt)}</span>
+          <span className="pwd-mgrgoal-amt-sub">本級佣金</span>
+        </div>
+      </div>
+      {next && (
+        <div className="pwd-mgrgoal-next">再衝 <b>{money(next.min - rev)}</b> 業績 → 佣金升至 <b>{money(next.amt)}</b>(+{money(next.amt - calc.tierAmt)})</div>
+      )}
+      <div className="pwd-mgrgoal-ladder">
+        {MGR_TIERS.map((t, i) => {
+          const hit = rev >= t.min;
+          const isCur = i === calc.tierIndex;
+          return (
+            <div key={i} className={'pwd-mgrgoal-step' + (hit ? ' hit' : '') + (isCur ? ' cur' : '')}>
+              <span className="pwd-mgrgoal-step-node">{hit ? '✓' : ''}</span>
+              <span className="pwd-mgrgoal-step-min">{money(t.min)}</span>
+              <span className="pwd-mgrgoal-step-amt">{money(t.amt)}</span>
+              {isCur && <span className="pwd-mgrgoal-step-tag">現時</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="pwd-mgrgoal-foot">另：當月完成 4 日學院工作 → 額外固定獎金 HK$2,000</div>
+    </div>
+  );
+}
+function GoalUnlock({ team, calc, role }) {
+  const T = TARGETS;
+  const goals = [
+    { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$400' },
+    { icon: '🎓', scope: '團隊', label: '學院新生達標', cur: team.newStudents, target: T.newStudentTier, fmt: (n) => n + ' 隻', reward: '第 21 隻起由 $150 → $300', hit: team.newStudents >= T.newStudentTier, hint: '每多 1 隻新生 ≈ 每人 +HK$100' },
+    { icon: '🔄', scope: '團隊', label: '舊生續報', cur: team.renewals, target: Math.max(team.renewals, 10), fmt: (n) => n + ' 個', reward: '$600 / 個 ÷ 3 人', hit: false, noTarget: true, hint: '每多 1 隻舊生續報 ≈ 每人 +HK$200' },
+    { icon: '📅', scope: '個人', label: '學院出勤達標', cur: calc.attendance, target: T.attendanceMin, fmt: (n) => n + ' 日', reward: '解鎖固定獎金 HK$2,000', hit: calc.fixedOk },
+  ];
+  if (role === 'manager') {
+    goals.push({ icon: '🔄', scope: '店長', label: '套票銷售目標', cur: team.packages, target: T.packageGoal, fmt: (n) => n + ' 個', reward: '店長 KPI 項目 (套票不另計佣)', hit: team.packages >= T.packageGoal });
+  }
+  return (
+    <div className="pwd-goals">
+      {goals.map((g, i) => {
+        const pct = g.noTarget ? 100 : Math.min(100, g.cur / g.target * 100);
+        return (
+          <div key={i} className={'pwd-goal' + (g.hit || g.noTarget ? ' hit' : '')}>
+            <div className="pwd-goal-ico">{(g.hit || g.noTarget) ? '✓' : i + 1}</div>
+            <div className="pwd-goal-mid">
+              <div className="pwd-goal-top">
+                <span className="pwd-goal-label">{g.label}</span>
+                <span className={'pwd-goal-scope s-' + (g.scope === '個人' ? 'me' : g.scope === '店長' ? 'mgr' : 'team')}>{g.scope}</span>
+              </div>
+              <div className="pwd-goal-bar"><div style={{ width: pct + '%' }} className={g.hit || g.noTarget ? 'hit' : ''} /></div>
+              <div className="pwd-goal-foot">
+                <span className="pwd-goal-num">{g.noTarget ? g.fmt(g.cur) : <>{g.fmt(g.cur)} <i>/ {g.fmt(g.target)}</i></>}</span>
+                <span className={'pwd-goal-reward' + (g.hit || g.noTarget ? ' on' : '')}>{g.noTarget ? '' : g.hit ? '✓ ' : ''}{g.reward}</span>
+              </div>
+              {g.hint && <div className="pwd-goal-hint">{g.hint}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function RateTable({ role }) {
+  const [open, setOpen] = useState(false);
+  const isMgr = role === 'manager', isFd = role === 'frontdesk';
+  const rows = isMgr
+    ? [ { label: '門店業績 ≥ $320,000', rate: 'HK$3,800', note: '酒店 + 學院 總業績' },
+        { label: '門店業績 ≥ $420,000', rate: 'HK$5,800', note: '' },
+        { label: '門店業績 ≥ $520,000', rate: 'HK$7,800', note: '' },
+        { label: '門店業績 ≥ $620,000', rate: 'HK$9,800', note: '' },
+        { label: '固定獎金', rate: 'HK$2,000', note: '當月完成 4 日學院工作' } ]
+    : isFd
+    ? [ { label: '固定底薪', rate: 'HK$16,000', note: '每月固定,不受 KPI 影響' },
+        { label: 'KPI 獎金 · 91 分以上', rate: 'HK$2,000', note: '全額發放' },
+        { label: 'KPI 獎金 · 81–90 分', rate: '按完成率', note: '獎金 × KPI %' },
+        { label: 'KPI 獎金 · 71–80 分', rate: 'HK$1,000', note: '半額' },
+        { label: 'KPI 獎金 · 70 分以下', rate: 'HK$0', note: '不發放' } ]
+    : RATES;
+  return (
+    <div className="pwd-rate">
+      <button className="pwd-rate-head" onClick={() => setOpen(o => !o)}>
+        <span>{isMgr ? '店長佣金制度' : isFd ? '前台薪酬制度' : '佣金率參考表'}</span>
+        <span className={'pwd-rate-arr' + (open ? ' open' : '')}>⌄</span>
+      </button>
+      <div className="pwd-rate-body" style={{ maxHeight: open ? 460 : 0 }}>
+        {rows.map((r, i) => (
+          <div key={i} className="pwd-rate-row">
+            <span className="pwd-rate-lbl">{r.label}</span>
+            <span className="pwd-rate-rate">{r.rate}</span>
+            {r.note && <span className="pwd-rate-note">{r.note}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function KpiClauses({ lateLeave, dogEscape }) {
+  const lateTriggered = lateLeave > 3;
+  return (
+    <div className="pwd-clauses">
+      <div className="pwd-clauses-head">
+        <span className="pwd-clauses-ico">⚠</span>
+        <span>KPI 特別否決條款 — 任何一項觸發,當月 KPI 直接為 0</span>
+      </div>
+      <div className={'pwd-clause' + (lateTriggered ? ' hit' : '')}>
+        <span className="pwd-clause-dot" />
+        <div className="pwd-clause-text">
+          <b>當月累積遲到或請假超過 3 次</b>
+          <span className="pwd-clause-sub">個人 · 本月已累積 {lateLeave} 次</span>
+        </div>
+        <span className={'pwd-clause-tag' + (lateTriggered ? ' hit' : '')}>{lateTriggered ? '已觸發' : `尚餘 ${Math.max(0, 3 - lateLeave)} 次`}</span>
+      </div>
+      <div className={'pwd-clause' + (dogEscape ? ' hit' : '')}>
+        <span className="pwd-clause-dot" />
+        <div className="pwd-clause-text">
+          <b>狗狗走失 (狗狗單獨離開店舖範圍)</b>
+          <span className="pwd-clause-sub">團隊 · 全店所有人 KPI 為 0</span>
+        </div>
+        <span className={'pwd-clause-tag' + (dogEscape ? ' hit' : '')}>{dogEscape ? '已觸發' : '本月正常'}</span>
+      </div>
+    </div>
+  );
+}
+function Stepper({ value, onChange, min = 0, suffix = '隻', hint }) {
+  return (
+    <div className="pwd-step-field">
+      <button className="pwd-step-btn" onClick={() => onChange(Math.max(min, value - 1))}>−</button>
+      <div className="pwd-step-mid">
+        <div className="pwd-step-num">{value}<span className="pwd-step-suf">{suffix}</span></div>
+        {hint && <div className="pwd-step-hint">{hint}</div>}
+      </div>
+      <button className="pwd-step-btn" onClick={() => onChange(value + 1)}>+</button>
+    </div>
+  );
+}
+function AttendanceDots({ days, editable, onChange, max = 8 }) {
+  return (
+    <div className="pwd-dots">
+      {Array.from({ length: max }, (_, i) => i + 1).map(n => (
+        <button key={n} className={'pwd-dot' + (n <= days ? ' on' : '') + (editable ? ' edit' : '')}
+          onClick={editable ? () => onChange(n === days ? n - 1 : n) : undefined} disabled={!editable}>{n}</button>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════ Login ═══════════
+function Login({ onLogin }) {
+  const [name, setName] = useState('');
+  const [id, setId] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit(e) {
+    if (e) e.preventDefault();
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const res = await pwApi('auth', { name: name.trim(), id: id.trim() });
+      if (!res.ok) { setError(res.error || '登入失敗,請重試'); setBusy(false); return; }
+      onLogin(res.staff);
+    } catch (err) {
+      setError('連線失敗,請檢查網絡後重試'); setBusy(false);
+    }
+  }
+  return (
+    <div className="pwd-login">
+      <div className="pwd-login-top">
+        <div className="pwd-login-crest"><img src="assets/pawradise-logo-full.png" alt="Pawradise" /></div>
+        <div className="pwd-login-sub">員工後台管理系統</div>
+      </div>
+      <form className="pwd-login-card" onSubmit={submit}>
+        <div className="pwd-eyebrow" style={{ textAlign: 'center' }}>員工登入</div>
+        <label className="pwd-field">
+          <span className="pwd-field-lbl">全名</span>
+          <input className="pwd-input" type="text" autoComplete="off" placeholder="請輸入你的全名" value={name}
+            onChange={(e) => { setName(e.target.value); setError(''); }} />
+        </label>
+        <label className="pwd-field">
+          <span className="pwd-field-lbl">身份證號碼</span>
+          <input className="pwd-input" type="password" autoComplete="off" placeholder="例如 A1234567(首字母 + 7 位數字)" value={id}
+            onChange={(e) => { setId(e.target.value); setError(''); }} />
+        </label>
+        {error && <div className="pwd-login-err">{error}</div>}
+        <button type="submit" className="pwd-login-btn" disabled={!name.trim() || !id.trim() || busy}>{busy ? '登入中…' : '登入'}</button>
+      </form>
+      <div className="pwd-login-foot">Pawradise · 毛孩社交學院</div>
+    </div>
+  );
+}
+
+// ═══════════ ClubCard ═══════════
+function ClubCard({ staff, noms, onSubmit }) {
+  const mine = noms.filter(n => n.staffId == staff.id);
+  const earned = mine.filter(n => n.status === 'subscribed' && n.tier).reduce((a, n) => a + CLUB_TIERS[n.tier].bonus, 0);
+  const [open, setOpen] = useState(false);
+  const [dog, setDog] = useState('');
+  const [owner, setOwner] = useState('');
+  const [busy, setBusy] = useState(false);
+  const STATUS = {
+    pending: { label: '待店長審批', cls: 'pending' },
+    approved: { label: '已批准 · 待主人訂閱', cls: 'approved' },
+    subscribed: { label: '已成功訂閱', cls: 'subscribed' },
+    rejected: { label: '未獲批准', cls: 'rejected' },
+  };
+  async function submit() {
+    if (!dog.trim() || busy) return;
+    setBusy(true);
+    await onSubmit({ dogName: dog.trim(), ownerName: owner.trim() || '客戶' });
+    setDog(''); setOwner(''); setOpen(false); setBusy(false);
+  }
+  return (
+    <div className="pwd-card pwd-block pwd-club">
+      <div className="pwd-club-head">
+        <div>
+          <div className="pwd-eyebrow">Calm Explorer Club</div>
+          <div className="pwd-club-sub">提名合適狗狗,成功訂閱賺一次性獎金</div>
+        </div>
+        <div className="pwd-club-earned">本月已賺 <b>{money(earned)}</b></div>
+      </div>
+      <div className="pwd-club-tiers">
+        {Object.values(CLUB_TIERS).map(t => (
+          <div key={t.key} className="pwd-club-tier">
+            <span className="pwd-club-tier-dot" style={{ background: t.color }} />
+            <span className="pwd-club-tier-name">{t.label}</span>
+            <span className="pwd-club-tier-fee">${t.fee}/月</span>
+            <span className="pwd-club-tier-bonus">獎金 ${t.bonus}</span>
+          </div>
+        ))}
+      </div>
+      {!open && <button className="pwd-club-add" onClick={() => setOpen(true)}>＋ 提名狗狗</button>}
+      {open && (
+        <div className="pwd-club-form">
+          <div className="pwd-club-frow">
+            <input className="pwd-club-input" placeholder="狗狗名稱" value={dog} onChange={(e) => setDog(e.target.value)} />
+            <input className="pwd-club-input" placeholder="主人稱呼" value={owner} onChange={(e) => setOwner(e.target.value)} />
+          </div>
+          <div className="pwd-club-hint">只需提名合適狗狗 · 主人實際訂閱哪個方案,由店長確認後計算獎金</div>
+          <div className="pwd-club-formacts">
+            <button className="pwd-swap-cancel" onClick={() => setOpen(false)}>取消</button>
+            <button className="pwd-la-confirm" disabled={!dog.trim() || busy} onClick={submit}>{busy ? '提交中…' : '提交提名'}</button>
+          </div>
+        </div>
+      )}
+      {mine.length > 0 && (
+        <div className="pwd-club-list">
+          <div className="pwd-club-list-lbl">我的提名 ({mine.length})</div>
+          {mine.map(n => {
+            const t = n.tier ? CLUB_TIERS[n.tier] : null;
+            const st = STATUS[n.status] || STATUS.pending;
+            return (
+              <div key={n.id} className="pwd-club-nom">
+                <span className="pwd-club-nom-dot" style={{ background: t ? t.color : 'var(--pw-cream-deep)' }} />
+                <div className="pwd-club-nom-info">
+                  <b>{n.dog}<span className="pwd-club-nom-owner">· {n.owner}</span></b>
+                  <span>{t ? `${t.label} · $${t.fee}/月 · 獎金 $${t.bonus}` : '方案待主人訂閱後由店長確認'}</span>
+                </div>
+                <span className={'pwd-club-status ' + st.cls}>{st.label}{t && n.status === 'subscribed' ? ` +$${t.bonus}` : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════ CommissionHistory ═══════════
+function CommissionHistory({ history, current, monthLabel }) {
+  const data = [...history, { m: monthLabel, v: Math.round(current), now: true }];
+  let run = 0;
+  const pts = data.map(d => { run += d.v; return { m: d.m, cum: run, now: d.now }; });
+  const cumulative = run;
+  const avg = Math.round(cumulative / data.length);
+  const W = 320, H = 132, padX = 14, padTop = 16, padBot = 24;
+  const maxCum = pts[pts.length - 1].cum || 1;
+  const x = (i) => padX + (W - padX * 2) * (i / Math.max(1, pts.length - 1));
+  const y = (v) => padTop + (H - padTop - padBot) * (1 - v / maxCum);
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.cum).toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L ${x(pts.length - 1).toFixed(1)} ${H - padBot} L ${x(0).toFixed(1)} ${H - padBot} Z`;
+  const last = pts[pts.length - 1];
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">本年累計佣金</div>
+      <div className="pwd-hist-cum">
+        <span className="pwd-hist-cum-num"><span className="cur">HK$</span>{moneyPlain(cumulative)}</span>
+        <span className="pwd-hist-cum-sub">2026 年至今 · 平均每月 {money(avg)}</span>
+      </div>
+      <div className="pwd-hist-linewrap">
+        <svg viewBox={`0 0 ${W} ${H}`} className="pwd-hist-svg" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="histFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--pw-gold)" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="var(--pw-gold)" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill="url(#histFill)" />
+          <path d={linePath} fill="none" stroke="var(--pw-gold-deep)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {pts.map((p, i) => (
+            <g key={i}>
+              <circle cx={x(i)} cy={y(p.cum)} r={p.now ? 5 : 3.5} fill={p.now ? 'var(--pw-gold-deep)' : 'var(--pw-paper)'} stroke="var(--pw-gold-deep)" strokeWidth="2" />
+              <text x={x(i)} y={H - 8} textAnchor="middle" className={'pwd-hist-x' + (p.now ? ' now' : '')}>{p.m}</text>
+            </g>
+          ))}
+          <text x={x(pts.length - 1)} y={y(last.cum) - 11} textAnchor="end" className="pwd-hist-peak">{money(last.cum)}</text>
+        </svg>
+      </div>
+      <div className="pwd-hist-note">持續達標,多勞多得,累積越滾越大 🎯</div>
+    </div>
+  );
+}
+
+// ═══════════ IndividualView ═══════════
+function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, clubNoms, history, monthLabel, onClubSubmit }) {
+  const clubBonus = clubBonusFor(staff.id, clubNoms);
+  const actualTotal = kpi.actualTotal + clubBonus;
+  const actualParts = clubBonus > 0 ? [...kpi.actualParts, { key: 'club', value: clubBonus }] : kpi.actualParts;
+  const pctOf = (v) => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
+  const score = scorecardTotal(items);
+  const isMgr = calc.isManager, isFd = calc.isFrontdesk;
+  const newDetail = calc.newStudents <= 20 ? `團隊 ${calc.newStudents} 隻 · 首20費率` : `團隊 ${calc.newStudents} 隻 · 含超額 ${calc.newStudents - 20}`;
+  const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $150k';
+  const compRowsBase = isMgr
+    ? [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `學院出勤 ${calc.attendance} 日 ✓` : `學院出勤 ${calc.attendance} 日` },
+        { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
+    : isFd
+    ? [ { pk: 'base', value: kpi.actualParts[0].value, detail: '每月固定底薪 · 不受 KPI 影響' },
+        { pk: 'kpibonus', value: kpi.actualParts[1].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
+    : [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `出勤 ${calc.attendance} 日 ✓` : `出勤 ${calc.attendance} 日` },
+        { pk: 'hotel', value: kpi.actualParts[1].value, detail: hotelDetail },
+        { pk: 'newcmm', value: kpi.actualParts[2].value, detail: newDetail },
+        { pk: 'renew', value: kpi.actualParts[3].value, detail: `團隊 ${calc.renewals} 個舊生續報` } ];
+  const subscribedCount = clubNoms.filter(n => n.staffId == staff.id && n.status === 'subscribed').length;
+  const compRows = clubBonus > 0 ? [...compRowsBase, { pk: 'club', value: clubBonus, detail: `Calm Explorer Club · ${subscribedCount} 個成功訂閱` }] : compRowsBase;
+  return (
+    <>
+      {kpi.ratio === 0 && <div className="pwd-warn">KPI {kpi.reason ? kpi.reason : '未達 71 分'} — {isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'}</div>}
+      <div className="pwd-card pwd-heroA">
+        <div className="pwd-eyebrow">{staff.name} · {ROLE_KPIS[staff.role].label} · 本月實際{isFd ? '收入' : '領取'}</div>
+        <DonutChart parts={actualParts} total={actualTotal}>
+          <div className="pwd-ring-num"><span className="cur">HK$</span>{moneyPlain(actualTotal)}</div>
+          <div className="pwd-ring-sub">本月預計</div>
+        </DonutChart>
+        {isFd
+          ? <div className={'pwd-fixed ' + (kpi.ratio >= 1 ? 'on' : 'off')}><span className="pwd-fixed-dot" />{kpi.ratio >= 1 ? 'KPI 獎金 HK$2,000 全額發放' : `KPI ${score} 分 · 獎金發放 ${Math.round(kpi.ratio * 100)}%`}</div>
+          : <FixedBadge ok={calc.fixedOk} need={calc.attendanceNeed} />}
+        <div className="pwd-comp">
+          {compRows.map(r => {
+            const meta = PARTS_META[r.pk];
+            return (
+              <div key={r.pk} className="pwd-comp-row">
+                <span className="pwd-comp-dot" style={{ background: meta.color }} />
+                <span className="pwd-comp-main">
+                  <span className="pwd-comp-label">{meta.label}</span>
+                  <span className="pwd-comp-detail">{r.detail}</span>
+                </span>
+                <span className="pwd-comp-pct">{pctOf(r.value)}%</span>
+                <span className="pwd-comp-amt">{money(r.value)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">{isFd ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'}</div>
+        {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} />}
+      </div>
+      <ClubCard staff={staff} noms={clubNoms} onSubmit={onClubSubmit} />
+      <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
+      <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
+      <KpiCard role={staff.role} items={items} score={score} kpi={kpi} editable={false} />
+      <KpiClauses lateLeave={lateLeave} dogEscape={dogEscape} />
+      <YearEndPool deducted={kpi.deducted} />
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">計算 → KPI → 實際領取</div>
+        <PayoutLedger calc={calc} kpi={kpi} />
+      </div>
+      <RateTable role={staff.role} />
+    </>
+  );
+}
+
+// ═══════════ DutyRoster ═══════════
+function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, coworkers, onSwap }) {
+  const [weekIndex, setWeekIndex] = useState(currentWeekIdx);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapDone, setSwapDone] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const week = weeks[weekIndex] || weeks[currentWeekIdx];
+  const days = buildWeekDays(week, weekIndex, currentWeekIdx, todayDow);
+  const sum = weekSummary(week);
+  const isCurrent = weekIndex === currentWeekIdx;
+  const tag = isCurrent ? '本週' : (weekIndex < currentWeekIdx ? '過去' : '未來');
+  const curWeek = weeks[currentWeekIdx];
+  const myShifts = buildWeekDays(curWeek, currentWeekIdx, currentWeekIdx, todayDow)
+    .map((d, i) => ({ ...d, i })).filter(d => !d.off && d.i >= todayDow);
+  async function requestSwap(s) {
+    if (busy) return;
+    setBusy(true);
+    const dateStr = `${curWeek.weekStart.slice(0, 7)}-${String(s.date).padStart(2, '0')}`;
+    await onSwap({ date: dateStr, shift: `${s.label} ${s.time}` });
+    setSwapDone(`${s.date}日 (${s.weekday}) ${s.label}`); setSwapOpen(false); setBusy(false);
+  }
+  return (
+    <>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-roster-head">
+          <div className="pwd-roster-nav">
+            <button className="pwd-wk-btn" disabled={weekIndex <= 0} onClick={() => setWeekIndex(weekIndex - 1)}>‹</button>
+            <div className="pwd-roster-weekbox">
+              <div className="pwd-roster-week">{week.label}</div>
+              <div className="pwd-roster-tag">{tag}</div>
+            </div>
+            <button className="pwd-wk-btn" disabled={weekIndex >= weeks.length - 1} onClick={() => setWeekIndex(weekIndex + 1)}>›</button>
+          </div>
+          {!isCurrent && <button className="pwd-wk-today" onClick={() => setWeekIndex(currentWeekIdx)}>回本週</button>}
+        </div>
+        <div className="pwd-roster-sum">
+          <span><b>{sum.workDays}</b> 更</span><span className="dot">·</span>
+          <span><b>{sum.weekHours}</b> 時</span><span className="dot">·</span>
+          <span>學院 <b>{sum.academyDays}</b> 日</span>
+        </div>
+        <div className="pwd-duty">
+          {days.map((d, i) => (
+            <div key={i} className={'pwd-duty-row' + (d.today ? ' today' : '') + (d.off ? ' off' : '')}>
+              <div className="pwd-duty-date">
+                <span className="pwd-duty-wd">{d.weekday}</span>
+                <span className="pwd-duty-num">{d.date}</span>
+              </div>
+              <div className="pwd-duty-info">
+                <span className="pwd-duty-shift">{d.label}</span>
+                {d.pos && <span className={'pwd-duty-pos sh-' + d.pos.cls}>{d.pos.label}</span>}
+              </div>
+              <div className="pwd-duty-right">
+                <span className="pwd-duty-time">{d.time || '—'}</span>
+                {d.today && <span className="pwd-duty-now">今天</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+        {isCurrent && coworkers.length > 0 && (
+          <div className="pwd-coworkers">
+            <span className="pwd-coworkers-lbl">今天同更</span>
+            <div className="pwd-coworkers-list">
+              {coworkers.map((c, i) => (
+                <span key={i} className="pwd-coworker"><span className="pwd-coworker-ava">{c.initial}</span>{c.name} · {c.pos}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="pwd-card pwd-block">
+        <div className="pwd-swap-head">
+          <div className="pwd-eyebrow">換更 / 調更申請</div>
+          {!swapOpen && <button className="pwd-swap-toggle" onClick={() => { setSwapOpen(true); setSwapDone(null); }}>＋ 申請</button>}
+        </div>
+        {swapDone && <div className="pwd-swap-ok">✓ 已提交 {swapDone} 換更申請,待店長批核</div>}
+        {swapOpen && !swapDone && (
+          <div className="pwd-swap-list">
+            <div className="pwd-swap-hint">選擇想申請換更的日子:</div>
+            {myShifts.length === 0 && <div className="pwd-ph-empty">本週今天起已沒有可申請的更</div>}
+            {myShifts.map(s => (
+              <button key={s.i} className="pwd-swap-item" disabled={busy} onClick={() => requestSwap(s)}>
+                <span className="pwd-swap-date">{s.date}日 ({s.weekday})</span>
+                <span className="pwd-swap-shift">{s.label} {s.time}</span>
+                <span className="pwd-swap-arr">›</span>
+              </button>
+            ))}
+            <button className="pwd-swap-cancel" onClick={() => setSwapOpen(false)}>取消</button>
+          </div>
+        )}
+      </div>
+
+      <div className="pwd-card pwd-block">
+        <div className="pwd-swap-head">
+          <div>
+            <div className="pwd-eyebrow">請假記錄</div>
+            <div className="pwd-leave-by-inline">由店長登記</div>
+          </div>
+        </div>
+        {leaveRecords.length > 0 ? (
+          <div className="pwd-larec">
+            {leaveRecords.map((rec, i) => (
+              <div key={i} className="pwd-larec-row">
+                <span className={'pwd-larec-type t-' + rec.type}>{rec.type}</span>
+                <span className="pwd-larec-date">{rec.date}</span>
+              </div>
+            ))}
+          </div>
+        ) : <div className="pwd-ph-empty" style={{ marginTop: 12 }}>本月暫無請假記錄</div>}
+      </div>
+
+      <div className="pwd-card pwd-block">
+        <div className="pwd-leave-head">
+          <div className="pwd-eyebrow">假期 / 結餘</div>
+          <span className="pwd-leave-by">由店長更新</span>
+        </div>
+        <div className="pwd-ph">
+          <div className="pwd-ph-lbl">待放公眾假期</div>
+          {leave.ph && leave.ph.length ? (
+            <div className="pwd-ph-list">
+              {leave.ph.map((p, i) => <span key={i} className="pwd-ph-chip">🎌 {p.name} · {p.date}</span>)}
+            </div>
+          ) : <div className="pwd-ph-empty">本月暫無待放公眾假期</div>}
+        </div>
+        <div className="pwd-leave-grid">
+          {[ { key: 'annual', lbl: '尚餘年假' }, { key: 'statutory', lbl: '例假結餘' }, { key: 'sick', lbl: '累積有薪病假' } ].map(c => (
+            <div key={c.key} className="pwd-leave-cell">
+              <div className="pwd-leave-cell-lbl">{c.lbl}</div>
+              <div className="pwd-leave-val big">{leave[c.key]}<i>日</i></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="pwd-foot">更表如有調動,以店長公佈為準</div>
+    </>
+  );
+}
+
+// ═══════════ Manager helpers ═══════════
+const MGR_AREAS = [
+  { key: 'ops', label: '營運數據' }, { key: 'kpi', label: 'KPI 評核' },
+  { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
+  { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
+];
+function datesFromWeekStart(weekStart) {
+  const [y, m, d] = weekStart.split('-').map(Number);
+  const base = new Date(y, m - 1, d);
+  return WEEKDAYS.map((_, i) => { const dd = new Date(base); dd.setDate(base.getDate() + i); return dd.getDate(); });
+}
+function SaveBtn({ onSave, label = '儲存到 Google Sheet' }) {
+  const [state, setState] = useState('idle'); // idle|saving|saved|err
+  async function go() {
+    setState('saving');
+    try { const r = await onSave(); setState(r && r.ok === false ? 'err' : 'saved'); setTimeout(() => setState('idle'), 2500); }
+    catch (e) { setState('err'); setTimeout(() => setState('idle'), 2500); }
+  }
+  return (
+    <>
+      <button className="pwd-mgr-savebtn" disabled={state === 'saving'} onClick={go}>
+        {state === 'saving' ? '儲存中…' : state === 'saved' ? '✓ 已儲存' : label}
+      </button>
+      {state === 'err' && <div className="pwd-mgr-saved" style={{ color: 'var(--pw-danger)' }}>儲存失敗,請重試</div>}
+    </>
+  );
+}
+
+// ── 營運數據 ──
+function MoneyField({ label, value, onChange, note }) {
+  return (
+    <div className="pwd-mgr-field" style={{ marginTop: 14 }}>
+      <label>{label}</label>
+      <div className="pwd-money-input">
+        <span className="pwd-money-cur">HK$</span>
+        <input className="pwd-money-field" type="text" inputMode="numeric" value={(value || 0).toLocaleString('en-US')}
+          onChange={(e) => onChange(Math.max(0, +e.target.value.replace(/[^0-9]/g, '') || 0))} />
+      </div>
+      {note && <div className="pwd-money-note">{note}</div>}
+    </div>
+  );
+}
+function MgrOps({ month, mgrData }) {
+  const [team, setTeam] = useState(() => ({ ...mgrData.team, academyItems: { ...mgrData.team.academyItems } }));
+  const set = (k, v) => setTeam(t => ({ ...t, [k]: v }));
+  const ACAD = [
+    { key: 'trial', label: '試堂' }, { key: 's1', label: 'S1' }, { key: 's2', label: 'S2' },
+    { key: 'combo', label: 'S1+S2' }, { key: 'monthlyFee', label: '月費' },
+  ];
+  const acad = team.academyItems || { trial: 0, s1: 0, s2: 0, combo: 0, monthlyFee: 0 };
+  const setAcad = (key, val) => {
+    const next = { ...acad, [key]: val };
+    const sum = ACAD.reduce((a, it) => a + (next[it.key] || 0), 0);
+    setTeam(t => ({ ...t, academyItems: next, academyRevenue: sum }));
+  };
+  const acadTotal = ACAD.reduce((a, it) => a + (acad[it.key] || 0), 0);
+  const teamForCalc = { ...team, academyRevenue: acadTotal };
+  const storeRev = storeRevenueOf(teamForCalc);
+  const previewTotal = mgrData.staffList.reduce((a, s) => {
+    const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0, attendance: null };
+    const att = k.attendance != null ? k.attendance : 4;
+    const { kpi } = fullResult({ ...s, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
+    return a + kpi.actualTotal;
+  }, 0);
+  function save() {
+    return pwApi('saveOps', {
+      month, hotelRevenue: team.hotelRevenue, academyRevenue: acadTotal,
+      trial: acad.trial || 0, s1: acad.s1 || 0, s2: acad.s2 || 0, combo: acad.combo || 0, monthlyFee: acad.monthlyFee || 0,
+      newStudents: team.newStudents, renewals: team.renewals,
+      pickup: team.pickup || 0, groomBasic: team.groomBasic || 0, groomStar: team.groomStar || 0,
+      packageRevenue: team.packageRevenue || 0, packages: team.packages, other: team.other || 0,
+      dogEscape: team.dogEscape ? 'true' : 'false',
+    });
+  }
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">數量統計 · 學院新生 / 續報 / 套票</div>
+        <div className="pwd-mgr-fieldgrid">
+          <div className="pwd-mgr-field"><label>學院新生</label>
+            <Stepper value={team.newStudents} suffix="隻" hint="首20 $150／第21起 $300" onChange={(v) => set('newStudents', v)} /></div>
+          <div className="pwd-mgr-field"><label>舊生續報 (繼報)</label>
+            <Stepper value={team.renewals} suffix="個" hint="$600 / 個 ÷ 3" onChange={(v) => set('renewals', v)} /></div>
+          <div className="pwd-mgr-field"><label>套票數量 (店長 KPI)</label>
+            <Stepper value={team.packages} suffix="個" hint="目標 ≥ 12" onChange={(v) => set('packages', v)} /></div>
+        </div>
+      </div>
+
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">A. 酒店總業績 (含基本美容,計佣)</div>
+        <MoneyField label="酒店總業績" value={team.hotelRevenue} onChange={(v) => set('hotelRevenue', v)}
+          note="門檻 HK$150,000 · 超出 12% 為照顧員酒店佣金池" />
+        <MoneyField label="D. 基本美容總業績" value={team.groomBasic} onChange={(v) => set('groomBasic', v)}
+          note="歸納入酒店總業績一齊計佣" />
+        <div className="pwd-mgr-storerow">
+          <span>酒店計佣基數 (酒店 + 基本美容)</span>
+          <b>{money(hotelForCommission(team))}</b>
+        </div>
+      </div>
+
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">B. 學院總業績 · 分項輸入</div>
+        <div className="pwd-acad-items">
+          {ACAD.map(it => (
+            <div key={it.key} className="pwd-acad-row">
+              <span className="pwd-acad-lbl">{it.label}</span>
+              <div className="pwd-acad-input">
+                <span className="pwd-acad-cur">HK$</span>
+                <input type="text" inputMode="numeric" value={(acad[it.key] || 0).toLocaleString('en-US')}
+                  onChange={(e) => setAcad(it.key, Math.max(0, +e.target.value.replace(/[^0-9]/g, '') || 0))} />
+              </div>
+            </div>
+          ))}
+          <div className="pwd-acad-sum"><span>學院總業績合計</span><b>{money(acadTotal)}</b></div>
+        </div>
+      </div>
+
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">其他業績線</div>
+        <MoneyField label="C. 接送總業績" value={team.pickup} onChange={(v) => set('pickup', v)} note="計入店長業績 · 不分員工佣金" />
+        <MoneyField label="E. 星級美容總業績" value={team.groomStar} onChange={(v) => set('groomStar', v)} note="計入店長業績 · 不分員工佣金" />
+        <MoneyField label="F. 套票總業績" value={team.packageRevenue} onChange={(v) => set('packageRevenue', v)} note="公司現金流 · 不計入任何佣金" />
+        <MoneyField label="G. 其他" value={team.other} onChange={(v) => set('other', v)} note="只記錄 · 不計入佣金" />
+      </div>
+
+      <div className="pwd-card pwd-mgr-preview">
+        <div className="pwd-eyebrow">門店總業績 · 店長佣金基準</div>
+        <div className="pwd-mgr-preview-num">{money(storeRev)}</div>
+        <div className="pwd-mgr-preview-sub">酒店 + 學院 + 基本美容 + 星級美容 + 接送(套票、其他除外)</div>
+      </div>
+
+      <div className={'pwd-card pwd-mgr-danger' + (team.dogEscape ? ' on' : '')}>
+        <div className="pwd-mgr-danger-text">
+          <b>走失狗狗事故</b>
+          <span>開啟 → 本月團隊全員 KPI 直接為 0</span>
+        </div>
+        <button className={'pwd-toggle' + (team.dogEscape ? ' on' : '')} onClick={() => set('dogEscape', !team.dogEscape)}>
+          <span className="pwd-toggle-knob" />
+        </button>
+      </div>
+
+      <div className="pwd-card pwd-mgr-preview">
+        <div className="pwd-eyebrow">團隊本月實際領取合計 (預覽)</div>
+        <div className="pwd-mgr-preview-num">{money(previewTotal)}</div>
+        <div className="pwd-mgr-preview-sub">已計入各人 KPI 發放 · 出勤未設者以達標估算</div>
+      </div>
+      <SaveBtn onSave={save} />
+    </div>
+  );
+}
+
+// ── KPI 評核 ──
+function MgrKpi({ month, mgrData }) {
+  const list = mgrData.staffList.filter(s => s.role !== 'manager');
+  const [sel, setSel] = useState(list[0] ? list[0].id : null);
+  const staff = list.find(s => s.id == sel);
+  const k0 = mgrData.allKpi[sel] || { kpiFail: [], lateLeave: 0, attendance: null };
+  const [fail, setFail] = useState(() => k0.kpiFail.slice());
+  const [lateLeave, setLate] = useState(k0.lateLeave || 0);
+  const [att, setAtt] = useState(k0.attendance != null ? k0.attendance : 4);
+  function reseed(id) {
+    const k = mgrData.allKpi[id] || { kpiFail: [], lateLeave: 0, attendance: null };
+    setSel(id); setFail(k.kpiFail.slice()); setLate(k.lateLeave || 0); setAtt(k.attendance != null ? k.attendance : 4);
+  }
+  const items = buildScorecard(staff.role, fail);
+  const { calc, kpi } = fullResult({ ...staff, attendance: att, kpiFail: fail, lateLeave }, mgrData.team, { scorecard: items, lateLeave });
+  const score = scorecardTotal(items);
+  const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
+  const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
+  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(','), attendance: att }); }
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-mgr-people">
+        {list.map(s => (
+          <button key={s.id} className={'pwd-mgr-person' + (sel == s.id ? ' on' : '')} onClick={() => reseed(s.id)}>
+            <span className="pwd-mgr-person-ava">{s.initial}</span>{s.name}
+          </button>
+        ))}
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-kpi-head">
+          <div>
+            <div className="pwd-eyebrow">{ROLE_KPIS[staff.role].label} · KPI 評核</div>
+            <div className="pwd-kpi-band">發放比例 <b className={'r-' + tone}>{Math.round(kpi.ratio * 100)}%</b> · {kpi.band}</div>
+          </div>
+          <div className={'pwd-kpi-score r-' + tone}><span className="n">{score}</span><span className="d">分</span></div>
+        </div>
+        <div className="pwd-kpi-items">
+          {items.map(it => (
+            <button key={it.id} className={'pwd-kpi-item edit' + (it.pass ? ' pass' : ' fail')} onClick={() => toggle(it.id)}>
+              <span className="pwd-kpi-check">{it.pass ? '✓' : '✕'}</span>
+              <span className="pwd-kpi-text">{it.text}{it.team && <em className="pwd-kpi-team">團隊</em>}</span>
+              <span className="pwd-kpi-w">{it.weight}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {staff.role !== 'frontdesk' && (
+        <div className="pwd-card pwd-mgr-late">
+          <div className="pwd-mgr-late-row">
+            <div><b>本月學院出勤日數</b><span>≥ 4 日 → 固定獎金 HK$2,000</span></div>
+            <Stepper value={att} suffix="日" onChange={setAtt} />
+          </div>
+        </div>
+      )}
+      <div className="pwd-card pwd-mgr-late">
+        <div className="pwd-mgr-late-row">
+          <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
+          <Stepper value={lateLeave} suffix="次" onChange={setLate} />
+        </div>
+        {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {staff.name} 本月 KPI 將為 0</div>}
+      </div>
+      <div className="pwd-card pwd-mgr-result">
+        <div className="pwd-eyebrow">{staff.name} 本月實際領取</div>
+        <div className="pwd-mgr-result-num">{money(kpi.actualTotal)}</div>
+        <div className="pwd-mgr-result-sub">計算 {money(calc.total)} × {Math.round(kpi.ratio * 100)}% 發放</div>
+      </div>
+      <SaveBtn onSave={save} label={`儲存 ${staff.name} 的評核`} />
+    </div>
+  );
+}
+
+// ── 換更審批 ──
+function MgrSwap({ mgrData }) {
+  const nameOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.name : id; };
+  const initOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.initial : '?'; };
+  const [reqs, setReqs] = useState(() => mgrData.allSwaps.map(r => ({ ...r })));
+  async function act(id, status) {
+    setReqs(rs => rs.map(r => r.id === id ? { ...r, status } : r));
+    await pwApi('approveSwap', { swapId: id, status });
+  }
+  const pending = reqs.filter(r => r.status === 'pending');
+  const done = reqs.filter(r => r.status !== 'pending');
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">待審批 ({pending.length})</div>
+        {pending.length === 0 ? <div className="pwd-ph-empty" style={{ marginTop: 12 }}>沒有待審批的換更申請</div> : (
+          <div className="pwd-mgr-swaps">
+            {pending.map(r => (
+              <div key={r.id} className="pwd-mgr-swap">
+                <div className="pwd-mgr-swap-top">
+                  <span className="pwd-mgr-swap-ava">{initOf(r.staffId)}</span>
+                  <div className="pwd-mgr-swap-info">
+                    <b>{nameOf(r.staffId)} · {r.date}</b>
+                    <span>{r.shift}{r.note ? ' · ' + r.note : ''}</span>
+                  </div>
+                </div>
+                <div className="pwd-mgr-swap-acts">
+                  <button className="pwd-btn-reject" onClick={() => act(r.id, 'rejected')}>拒絕</button>
+                  <button className="pwd-btn-approve" onClick={() => act(r.id, 'approved')}>批准</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {done.length > 0 && (
+        <div className="pwd-card pwd-block">
+          <div className="pwd-eyebrow">已處理</div>
+          <div className="pwd-mgr-swaps">
+            {done.map(r => (
+              <div key={r.id} className="pwd-mgr-swap done">
+                <span className="pwd-mgr-swap-ava">{initOf(r.staffId)}</span>
+                <div className="pwd-mgr-swap-info"><b>{nameOf(r.staffId)} · {r.date}</b><span>{r.shift}</span></div>
+                <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : '已拒絕'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 請假 / 假期結餘 ──
+function MgrLeave({ month, mgrData }) {
+  const list = mgrData.staffList.filter(s => s.role !== 'manager');
+  const [sel, setSel] = useState(list[0] ? list[0].id : null);
+  const staff = list.find(s => s.id == sel);
+  const b0 = mgrData.allLeaveBal[sel] || { annual: 0, statutory: 0, sick: 0 };
+  const [bal, setBal] = useState({ annual: b0.annual, statutory: b0.statutory, sick: b0.sick });
+  const [recs, setRecs] = useState(() => (mgrData.allLeaveRec[sel] || []).slice());
+  const [type, setType] = useState('年假');
+  const [date, setDate] = useState('');
+  function reseed(id) {
+    const b = mgrData.allLeaveBal[id] || { annual: 0, statutory: 0, sick: 0 };
+    setSel(id); setBal({ annual: b.annual, statutory: b.statutory, sick: b.sick });
+    setRecs((mgrData.allLeaveRec[id] || []).slice()); setDate('');
+  }
+  const adj = (k, d) => setBal(b => ({ ...b, [k]: Math.max(0, +(b[k] + d).toFixed(1)) }));
+  const fmtDate = (iso) => { const [, m, d] = iso.split('-'); return `${+m}月${+d}日`; };
+  function saveBal() { return pwApi('saveLeave', { month, staffId: sel, annual: bal.annual, statutory: bal.statutory, sick: bal.sick }); }
+  async function addRec() {
+    if (!date) return;
+    const ds = fmtDate(date);
+    setRecs(r => [...r, { date: ds, type }]);
+    setDate('');
+    await pwApi('addLeaveRec', { month, staffId: sel, date: ds, type });
+  }
+  async function delRec(rec, i) {
+    setRecs(r => r.filter((_, j) => j !== i));
+    await pwApi('deleteLeaveRec', { month, staffId: sel, date: rec.date, type: rec.type });
+  }
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-mgr-people">
+        {list.map(s => (
+          <button key={s.id} className={'pwd-mgr-person' + (sel == s.id ? ' on' : '')} onClick={() => reseed(s.id)}>
+            <span className="pwd-mgr-person-ava">{s.initial}</span>{s.name}
+          </button>
+        ))}
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">{staff.name} · 假期結餘 (可調整)</div>
+        <div className="pwd-leave-grid">
+          {[ { key: 'annual', lbl: '尚餘年假', step: 1 }, { key: 'statutory', lbl: '例假結餘', step: 1 }, { key: 'sick', lbl: '累積有薪病假', step: 0.5 } ].map(c => (
+            <div key={c.key} className="pwd-leave-cell">
+              <div className="pwd-leave-cell-lbl">{c.lbl}</div>
+              <div className="pwd-leave-edit">
+                <button onClick={() => adj(c.key, -c.step)}>−</button>
+                <span className="pwd-leave-val">{bal[c.key]}<i>日</i></span>
+                <button onClick={() => adj(c.key, c.step)}>＋</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 14 }}><SaveBtn onSave={saveBal} label="儲存結餘" /></div>
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">登記請假</div>
+        <div className="pwd-la-types" style={{ marginTop: 12 }}>
+          {['年假', '例假', '病假', '事假'].map(t => (
+            <button key={t} className={'pwd-la-chip' + (type === t ? ' on' : '')} onClick={() => setType(t)}>{t}</button>
+          ))}
+        </div>
+        <div className="pwd-la-daterow">
+          <span className="pwd-la-datelbl">請假日期</span>
+          <input className="pwd-la-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <button className="pwd-la-confirm" style={{ marginTop: 12, width: '100%' }} disabled={!date} onClick={addRec}>
+          ＋ 為 {staff.name} 登記{date ? ` ${fmtDate(date)} ` : ''}{type}
+        </button>
+        <div className="pwd-larec" style={{ marginTop: 14 }}>
+          {recs.map((rec, i) => (
+            <div key={i} className="pwd-larec-row">
+              <span className={'pwd-larec-type t-' + rec.type}>{rec.type}</span>
+              <span className="pwd-larec-date">{rec.date}</span>
+              <button className="pwd-larec-del" onClick={() => delRec(rec, i)}>✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 排更 ──
+function MgrRoster({ mgrData }) {
+  const list = mgrData.staffList;
+  const [sel, setSel] = useState(list[0] ? list[0].id : null);
+  const [rosters, setRosters] = useState(() => {
+    const o = {};
+    list.forEach(s => { o[s.id] = (mgrData.allRosters[s.id] || []).map(r => Array.isArray(r) ? r.slice() : ['off', null]); });
+    return o;
+  });
+  const dates = datesFromWeekStart(mgrData.weekStart);
+  const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
+  const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
+  const POS_LABEL = { academy: '學院', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位' };
+  const cur = rosters[sel] || [];
+  const setDay = (i, shift, pos) => {
+    setRosters(o => {
+      const next = (o[sel] || []).map(r => r.slice());
+      while (next.length < 7) next.push(['off', null]);
+      next[i] = [shift, shift === 'off' ? null : pos];
+      return { ...o, [sel]: next };
+    });
+  };
+  function save() { return pwApi('saveRoster', { weekStart: mgrData.weekStart, staffId: sel, shifts: JSON.stringify(rosters[sel]) }); }
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-mgr-people">
+        {list.map(s => (
+          <button key={s.id} className={'pwd-mgr-person' + (sel == s.id ? ' on' : '')} onClick={() => setSel(s.id)}>
+            <span className="pwd-mgr-person-ava">{s.initial}</span>{s.name}
+          </button>
+        ))}
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-roster-head"><div><div className="pwd-eyebrow">{list.find(s => s.id == sel).name} · 本週排更</div><div className="pwd-roster-week">{mgrData.team.month}</div></div></div>
+        <div className="pwd-duty" style={{ marginTop: 14 }}>
+          {WEEKDAYS.map((wd, i) => {
+            const r = cur[i] || ['off', null];
+            const off = r[0] === 'off';
+            return (
+              <div key={i} className={'pwd-duty-row' + (off ? ' off' : '')}>
+                <div className="pwd-duty-date"><span className="pwd-duty-wd">{wd}</span><span className="pwd-duty-num">{dates[i]}</span></div>
+                <div className="pwd-mgr-selwrap">
+                  <select className="pwd-mgr-sel" value={r[0]} onChange={(e) => setDay(i, e.target.value, r[1])}>
+                    {SHIFT_CYCLE.map(k => <option key={k} value={k}>{SHIFT_LABEL[k]}</option>)}
+                  </select>
+                </div>
+                <div className="pwd-mgr-selwrap">
+                  <select className={'pwd-mgr-sel pos' + (r[1] ? ' sh-' + r[1] : '')} value={r[1] || ''} disabled={off} onChange={(e) => setDay(i, r[0], e.target.value || null)}>
+                    {off ? <option value="">—</option> : [
+                      <option key="none" value="">未定崗</option>,
+                      ...['academy', 'hotelA', 'hotelB', 'hotelC'].map(k => <option key={k} value={k}>{POS_LABEL[k]}</option>),
+                    ]}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <SaveBtn onSave={save} label="發佈本週排更" />
+      <div className="pwd-mgr-rostersave">發佈後員工即時看到</div>
+    </div>
+  );
+}
+
+// ── 會籍提名審批 ──
+function MgrClub({ mgrData }) {
+  const nameOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.name : id; };
+  const initOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.initial : '?'; };
+  const [noms, setNoms] = useState(() => mgrData.allNoms.map(n => ({ ...n })));
+  async function set(id, status) { setNoms(l => l.map(n => n.id === id ? { ...n, status } : n)); await pwApi('approveNom', { nomId: id, status }); }
+  async function setTier(id, tier) { setNoms(l => l.map(n => n.id === id ? { ...n, tier, status: 'subscribed' } : n)); await pwApi('approveNom', { nomId: id, tier, status: 'subscribed' }); }
+  const pending = noms.filter(n => n.status === 'pending');
+  const approved = noms.filter(n => n.status === 'approved');
+  const closed = noms.filter(n => n.status === 'subscribed' || n.status === 'rejected');
+  const totalBonus = noms.filter(n => n.status === 'subscribed' && n.tier).reduce((a, n) => a + CLUB_TIERS[n.tier].bonus, 0);
+  const NomLine = ({ n }) => {
+    const t = n.tier ? CLUB_TIERS[n.tier] : null;
+    return (
+      <div className="pwd-mgr-swap-top">
+        <span className="pwd-mgr-swap-ava">{initOf(n.staffId)}</span>
+        <div className="pwd-mgr-swap-info">
+          <b>{n.dog}{t ? <> · {t.label} <span style={{ color: t.color }}>${t.bonus}</span></> : ''}</b>
+          <span>提名人 {nameOf(n.staffId)} · 主人 {n.owner}</span>
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-card pwd-mgr-preview">
+        <div className="pwd-eyebrow">本月會籍獎金已發放合計</div>
+        <div className="pwd-mgr-preview-num">{money(totalBonus)}</div>
+        <div className="pwd-mgr-preview-sub">已成功訂閱 {noms.filter(n => n.status === 'subscribed').length} 個會籍</div>
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">待審批提名 ({pending.length})</div>
+        {pending.length === 0 ? <div className="pwd-ph-empty" style={{ marginTop: 12 }}>沒有待審批的提名</div> : (
+          <div className="pwd-mgr-swaps">
+            {pending.map(n => (
+              <div key={n.id} className="pwd-mgr-swap">
+                <NomLine n={n} />
+                <div className="pwd-mgr-swap-acts">
+                  <button className="pwd-btn-reject" onClick={() => set(n.id, 'rejected')}>拒絕</button>
+                  <button className="pwd-btn-approve" onClick={() => set(n.id, 'approved')}>批准提名</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {approved.length > 0 && (
+        <div className="pwd-card pwd-block">
+          <div className="pwd-eyebrow">已批准 · 待客戶訂閱 ({approved.length})</div>
+          <div className="pwd-club-mgr-hint">主人實際訂閱後,揀選對應方案即發放獎金給提名員工</div>
+          <div className="pwd-mgr-swaps">
+            {approved.map(n => (
+              <div key={n.id} className="pwd-mgr-swap">
+                <NomLine n={n} />
+                <div className="pwd-club-tierconfirm">
+                  {Object.values(CLUB_TIERS).map(t => (
+                    <button key={t.key} className="pwd-club-tierconfirm-btn" onClick={() => setTier(n.id, t.key)}>{t.label}<i>+${t.bonus}</i></button>
+                  ))}
+                </div>
+                <button className="pwd-club-mgr-cancel" onClick={() => set(n.id, 'rejected')}>取消提名</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {closed.length > 0 && (
+        <div className="pwd-card pwd-block">
+          <div className="pwd-eyebrow">已處理</div>
+          <div className="pwd-mgr-swaps">
+            {closed.map(n => {
+              const t = n.tier ? CLUB_TIERS[n.tier] : null;
+              return (
+                <div key={n.id} className="pwd-mgr-swap done">
+                  <span className="pwd-mgr-swap-ava">{initOf(n.staffId)}</span>
+                  <div className="pwd-mgr-swap-info"><b>{n.dog}{t ? ` · ${t.label}` : ''}</b><span>{nameOf(n.staffId)} · {n.owner}</span></div>
+                  <span className={'pwd-mgr-swap-status ' + (n.status === 'subscribed' ? 'approved' : 'rejected')}>
+                    {n.status === 'subscribed' && t ? `已訂閱 +$${t.bonus}` : '已拒絕'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ManagerGate ──
+function ManagerGate({ onUnlock }) {
+  const [pin, setPin] = useState('');
+  const [err, setErr] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const LEN = 6;
+  async function check(code) {
+    setBusy(true);
+    try {
+      const res = await pwApi('verifyMgr', { passcode: code });
+      if (res.ok) onUnlock();
+      else { setErr(true); setPin(''); }
+    } catch (e) { setErr(true); setPin(''); }
+    setBusy(false);
+  }
+  function tap(d) {
+    if (busy) return;
+    if (d === 'del') { setErr(false); return setPin(p => p.slice(0, -1)); }
+    if (pin.length >= LEN) return;
+    const next = pin + d;
+    setErr(false); setPin(next);
+    if (next.length === LEN) setTimeout(() => check(next), 150);
+  }
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
+  return (
+    <div className="pwd-mgrgate">
+      <div className="pwd-mgrgate-lock">🔒</div>
+      <div className="pwd-mgrgate-title">團隊管理 · 需要管理密碼</div>
+      <div className="pwd-mgrgate-sub">高敏感操作 · 請輸入只有店長 / 老闆知道的管理密碼</div>
+      <div className={'pwd-mgrgate-dots' + (err ? ' err' : '')}>
+        {Array.from({ length: LEN }).map((_, i) => <span key={i} className={'pwd-mgrgate-dot' + (pin.length > i ? ' on' : '')} />)}
+      </div>
+      {err && <div className="pwd-mgrgate-err">密碼錯誤,請重試</div>}
+      <div className="pwd-mgrgate-keypad">
+        {keys.map((k, i) => k === '' ? <span key={i} /> : (
+          <button key={i} className={'pwd-mgrgate-key' + (k === 'del' ? ' del' : '')} onClick={() => tap(k)}>{k === 'del' ? '⌫' : k}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── ManagerPanel ──
+function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, onLoadData }) {
+  const [area, setArea] = useState('ops');
+  if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
+  if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
+  return (
+    <>
+      <div className="pwd-mgr-banner">
+        <span className="pwd-mgr-banner-ico">🛠</span>
+        <div><b>團隊管理</b><span>店長專用 · 你的 KPI 由老闆評核</span></div>
+        <button className="pwd-mgr-lock" onClick={onLock}>🔒 鎖定</button>
+      </div>
+      <div className="pwd-mgr-nav">
+        {MGR_AREAS.map(a => (
+          <button key={a.key} className={'pwd-mgr-navbtn' + (area === a.key ? ' on' : '')} onClick={() => setArea(a.key)}>{a.label}</button>
+        ))}
+      </div>
+      {area === 'ops' && <MgrOps month={month} mgrData={mgrData} />}
+      {area === 'kpi' && <MgrKpi month={month} mgrData={mgrData} />}
+      {area === 'club' && <MgrClub mgrData={mgrData} />}
+      {area === 'swap' && <MgrSwap mgrData={mgrData} />}
+      {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
+      {area === 'roster' && <MgrRoster mgrData={mgrData} />}
+    </>
+  );
+}
+
+// ═══════════ CommissionApp ═══════════
+function CommissionApp() {
+  const month = currentMonth();
+  const [screen, setScreen] = useState('login'); // login | loading | dash | error
+  const [errMsg, setErrMsg] = useState('');
+  const [staff, setStaff] = useState(null);
+  const [dash, setDash] = useState(null);
+  const [tab, setTab] = useState('pay');
+  const [mgrUnlocked, setMgrUnlocked] = useState(false);
+  const [mgrData, setMgrData] = useState(null);
+
+  async function loadDashboard(st) {
+    setScreen('loading');
+    try {
+      const res = await pwApi('dashboard', { staffId: st.id, month });
+      if (!res.ok) { setErrMsg(res.error || '載入失敗'); setScreen('error'); return; }
+      setDash(res); setStaff({ ...st, ...res.staff }); setScreen('dash');
+    } catch (e) { setErrMsg('連線失敗,請檢查網絡'); setScreen('error'); }
+  }
+  // 自動續登
+  useEffect(() => {
+    const saved = sessionStorage.getItem('pw_staff');
+    if (saved) { try { const st = JSON.parse(saved); setStaff(st); loadDashboard(st); } catch (e) {} }
+  }, []);
+
+  function doLogin(st) {
+    sessionStorage.setItem('pw_staff', JSON.stringify(st));
+    setStaff(st); setTab('pay'); setMgrUnlocked(false); setMgrData(null); loadDashboard(st);
+  }
+  function doLogout() {
+    sessionStorage.removeItem('pw_staff');
+    setStaff(null); setDash(null); setTab('pay'); setMgrUnlocked(false); setMgrData(null); setScreen('login');
+  }
+  async function reloadDash() { if (staff) { const res = await pwApi('dashboard', { staffId: staff.id, month }); if (res.ok) { setDash(res); } } }
+
+  async function submitClub({ dogName, ownerName }) {
+    await pwApi('nominate', { staffId: staff.id, dogName, ownerName });
+    await reloadDash();
+  }
+  async function submitSwap({ date, shift }) {
+    await pwApi('swap', { staffId: staff.id, date, shift });
+  }
+  async function unlockMgr() {
+    setMgrUnlocked(true);
+    try { const res = await pwApi('managerData', { month }); if (res.ok) setMgrData(res); } catch (e) {}
+  }
+
+  if (screen === 'login') return <Login onLogin={doLogin} />;
+  if (screen === 'loading') return <div className="pwd-loading"><img src="assets/pawradise-logo-full.png" alt="" /><div className="pwd-spinner" /><div className="pwd-loading-txt">載入你的資料…</div></div>;
+  if (screen === 'error') return (
+    <div className="pwd-login">
+      <div className="pwd-login-top"><div className="pwd-login-crest"><img src="assets/pawradise-logo-full.png" alt="" /></div></div>
+      <div className="pwd-login-card">
+        <div className="pwd-login-err">{errMsg}</div>
+        <button className="pwd-login-btn" onClick={() => (staff ? loadDashboard(staff) : setScreen('login'))}>重試</button>
+        <button className="pwd-swap-cancel" onClick={doLogout}>返回登入</button>
+      </div>
+    </div>
+  );
+
+  const isManager = staff.role === 'manager';
+  const team = dash.team;
+  const staffForCalc = { ...staff, attendance: dash.staff.attendance, kpiFail: dash.kpiFail, lateLeave: dash.lateLeave };
+  const { calc, items, kpi, lateLeave, dogEscape } = fullResult(staffForCalc, team);
+
+  return (
+    <div className="pwd-screen">
+      <div className="pwd-header">
+        <div className="pwd-h-logo"><img src="assets/pawradise-logo.jpg" alt="" /></div>
+        <div className="pwd-h-text">
+          <h1>{staff.name}</h1>
+          <p>{isManager ? '店長 · ' : ''}Pawradise · {team.month}</p>
+        </div>
+        <button className="pwd-h-logout" onClick={doLogout} title="登出"><span className="pwd-h-ava">{staff.initial}</span></button>
+      </div>
+
+      <div className="pwd-body">
+        {tab === 'pay' && (
+          <>
+            {staff.role !== 'frontdesk' && (
+              <div className="pwd-readout">
+                <span className="pwd-readout-tag">本月實際</span>
+                {isManager
+                  ? <span>門店總業績 <b>{money(storeRevenueOf(team))}</b></span>
+                  : <span>學院新生 <b>{team.newStudents}</b> · 續報 <b>{team.renewals}</b> · 酒店 <b>{money(hotelForCommission(team))}</b></span>}
+              </div>
+            )}
+            <IndividualView staff={staff} calc={calc} items={items} kpi={kpi} team={team}
+              lateLeave={lateLeave} dogEscape={dogEscape} clubNoms={dash.clubNoms} history={dash.history}
+              monthLabel={monthLabelShort(month)} onClubSubmit={submitClub} />
+            <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt}</div>
+          </>
+        )}
+        {tab === 'duty' && (
+          <DutyRoster staff={staff} weeks={dash.weeks} currentWeekIdx={dash.currentWeekIdx} todayDow={dash.todayDow}
+            leave={dash.leave} leaveRecords={dash.leaveRecords} coworkers={dash.coworkers} onSwap={submitSwap} />
+        )}
+        {tab === 'mgr' && (
+          <ManagerPanel month={month} unlocked={mgrUnlocked} mgrData={mgrData}
+            onUnlock={unlockMgr} onLock={() => setMgrUnlocked(false)} />
+        )}
+      </div>
+
+      <div className="pwd-tabbar">
+        <button className={'pwd-tabbtn' + (tab === 'pay' ? ' on' : '')} onClick={() => setTab('pay')}>
+          <span className="pwd-tabbtn-ico">💰</span><span>我的佣金</span>
+        </button>
+        <button className={'pwd-tabbtn' + (tab === 'duty' ? ' on' : '')} onClick={() => setTab('duty')}>
+          <span className="pwd-tabbtn-ico">📅</span><span>更表</span>
+        </button>
+        {isManager && (
+          <button className={'pwd-tabbtn' + (tab === 'mgr' ? ' on' : '')} onClick={() => setTab('mgr')}>
+            <span className="pwd-tabbtn-ico">🗂</span><span>店長後台</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div className="pwd-app"><CommissionApp /></div>
+);
+</script>
+</body>
+</html>
