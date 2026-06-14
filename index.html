@@ -108,6 +108,7 @@ img { display: block; }
 .sh-hotelA { background: #E4ECF6; color: #2C4A6E; }
 .sh-hotelB { background: #F4E2E0; color: #B0544E; }
 .sh-hotelC { background: #E7E4F1; color: #6155A0; }
+.sh-reception { background: #D6EFEA; color: #0E7490; }
 
 /* Co-workers */
 .pwd-coworkers { margin-top: 14px; padding-top: 13px; border-top: 1.5px solid var(--pw-cream-soft); }
@@ -473,6 +474,7 @@ img { display: block; }
 .pwd-mgr-sel.pos.sh-hotelA { background: #E4ECF6; color: #2C4A6E; }
 .pwd-mgr-sel.pos.sh-hotelB { background: #F4E2E0; color: #B0544E; }
 .pwd-mgr-sel.pos.sh-hotelC { background: #E7E4F1; color: #6155A0; }
+.pwd-mgr-sel.pos.sh-reception { background: #D6EFEA; color: #0E7490; }
 .pwd-mgr-rostersave { text-align: center; font-size: 11px; font-weight: 700; color: var(--pw-ink-faint); }
 .pwd-club-mgr-hint { font-size: 11px; font-weight: 700; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 9px 12px; margin-top: 12px; line-height: 1.45; }
 .pwd-club-tierconfirm { display: flex; gap: 7px; margin-top: 11px; }
@@ -729,6 +731,7 @@ const POSITIONS = {
   hotelA:  { label: '酒店A位', cls: 'hotelA' },
   hotelB:  { label: '酒店B位', cls: 'hotelB' },
   hotelC:  { label: '酒店C位', cls: 'hotelC' },
+  reception: { label: '前台', cls: 'reception' },
 };
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 function buildWeekDays(week, wi, currentWeekIdx, todayDow) {
@@ -1477,8 +1480,8 @@ function MgrOps({ month, mgrData }) {
   const teamForCalc = { ...team, academyRevenue: acadTotal };
   const storeRev = storeRevenueOf(teamForCalc);
   const previewTotal = mgrData.staffList.reduce((a, s) => {
-    const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0, attendance: null };
-    const att = k.attendance != null ? k.attendance : 4;
+    const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0 };
+    const att = (mgrData.allAttendance && mgrData.allAttendance[s.id] != null) ? mgrData.allAttendance[s.id] : 0;
     const { kpi } = fullResult({ ...s, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
     return a + kpi.actualTotal;
   }, 0);
@@ -1574,20 +1577,21 @@ function MgrKpi({ month, mgrData }) {
   const list = mgrData.staffList.filter(s => s.role !== 'manager');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
-  const k0 = mgrData.allKpi[sel] || { kpiFail: [], lateLeave: 0, attendance: null };
+  const k0 = mgrData.allKpi[sel] || { kpiFail: [], lateLeave: 0 };
   const [fail, setFail] = useState(() => k0.kpiFail.slice());
   const [lateLeave, setLate] = useState(k0.lateLeave || 0);
-  const [att, setAtt] = useState(k0.attendance != null ? k0.attendance : 4);
+  // 學院出勤由更表自動計,唯讀
+  const att = (mgrData.allAttendance && mgrData.allAttendance[sel] != null) ? mgrData.allAttendance[sel] : 0;
   function reseed(id) {
-    const k = mgrData.allKpi[id] || { kpiFail: [], lateLeave: 0, attendance: null };
-    setSel(id); setFail(k.kpiFail.slice()); setLate(k.lateLeave || 0); setAtt(k.attendance != null ? k.attendance : 4);
+    const k = mgrData.allKpi[id] || { kpiFail: [], lateLeave: 0 };
+    setSel(id); setFail(k.kpiFail.slice()); setLate(k.lateLeave || 0);
   }
   const items = buildScorecard(staff.role, fail);
   const { calc, kpi } = fullResult({ ...staff, attendance: att, kpiFail: fail, lateLeave }, mgrData.team, { scorecard: items, lateLeave });
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
-  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(','), attendance: att }); }
+  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(',') }); }
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-people">
@@ -1618,8 +1622,8 @@ function MgrKpi({ month, mgrData }) {
       {staff.role !== 'frontdesk' && (
         <div className="pwd-card pwd-mgr-late">
           <div className="pwd-mgr-late-row">
-            <div><b>本月學院出勤日數</b><span>≥ 4 日 → 固定獎金 HK$2,000</span></div>
-            <Stepper value={att} suffix="日" onChange={setAtt} />
+            <div><b>本月學院出勤日數</b><span>由「排更」崗位＝學院自動計 · ≥ 4 日 → 固定獎金 HK$2,000</span></div>
+            <b style={{ fontFamily: 'var(--pw-font-display)', fontSize: 18, whiteSpace: 'nowrap', color: att >= 4 ? 'var(--pw-success)' : 'var(--pw-ink-mute)' }}>{att} 日{att >= 4 ? ' ✓' : ''}</b>
           </div>
         </div>
       )}
@@ -1787,7 +1791,7 @@ function MgrRoster({ mgrData }) {
   const dates = datesFromWeekStart(mgrData.weekStart);
   const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
   const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
-  const POS_LABEL = { academy: '學院', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位' };
+  const POS_LABEL = { academy: '學院', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位', reception: '前台' };
   const cur = rosters[sel] || [];
   const setDay = (i, shift, pos) => {
     setRosters(o => {
@@ -1825,7 +1829,7 @@ function MgrRoster({ mgrData }) {
                   <select className={'pwd-mgr-sel pos' + (r[1] ? ' sh-' + r[1] : '')} value={r[1] || ''} disabled={off} onChange={(e) => setDay(i, r[0], e.target.value || null)}>
                     {off ? <option value="">—</option> : [
                       <option key="none" value="">未定崗</option>,
-                      ...['academy', 'hotelA', 'hotelB', 'hotelC'].map(k => <option key={k} value={k}>{POS_LABEL[k]}</option>),
+                      ...['academy', 'hotelA', 'hotelB', 'hotelC', 'reception'].map(k => <option key={k} value={k}>{POS_LABEL[k]}</option>),
                     ]}
                   </select>
                 </div>
@@ -2137,7 +2141,3 @@ function CommissionApp() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <div className="pwd-app"><CommissionApp /></div>
-);
-</script>
-</body>
-</html>
