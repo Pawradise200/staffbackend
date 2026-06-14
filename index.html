@@ -184,6 +184,10 @@ img { display: block; }
 .pwd-readout { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700; color: var(--pw-ink-mute); padding: 2px 2px; flex-wrap: wrap; }
 .pwd-readout b { color: var(--pw-ink); font-weight: 900; }
 .pwd-readout-tag { background: var(--pw-cream-deep); color: var(--pw-ink-soft); font-weight: 900; font-size: 10px; letter-spacing: .04em; padding: 3px 9px; border-radius: var(--pw-r-pill); }
+.pwd-monthbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.pwd-monthbar-lbl { font-size: 11px; font-weight: 900; letter-spacing: .04em; color: var(--pw-ink-mute); background: var(--pw-cream-deep); padding: 4px 10px; border-radius: var(--pw-r-pill); flex-shrink: 0; }
+.pwd-monthsel { flex: 1; appearance: none; -webkit-appearance: none; font-family: var(--pw-font-sans); font-size: 14px; font-weight: 800; color: var(--pw-ink); background: var(--pw-paper); border: var(--pw-stroke) solid var(--pw-cream-deep); border-radius: var(--pw-r-md); padding: 9px 36px 9px 13px; cursor: pointer; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232C4A6E' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 13px center; }
+.pwd-monthsel:focus { outline: none; border-color: var(--pw-navy-light); }
 .pwd-warn { background: var(--pw-warn-bg); border: 1.5px solid #F4D77E; color: var(--pw-warn); border-radius: var(--pw-r-sm); padding: 10px 13px; font-size: 12px; font-weight: 700; }
 
 /* Fixed badge */
@@ -550,6 +554,25 @@ function currentMonth() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 function monthLabelShort(m) { return parseInt(m.split('-')[1]) + '月'; }
+// 員工可查看的最早月份
+const FIRST_MONTH = '2026-05';
+function monthOptions() {
+  const out = [];
+  const cur = currentMonth();
+  let [y, m] = FIRST_MONTH.split('-').map(Number);
+  const [cy, cm] = cur.split('-').map(Number);
+  // 萬一系統時間早於起始月,最少都顯示起始月
+  if (cy < y || (cy === y && cm < m)) return [FIRST_MONTH];
+  while (y < cy || (y === cy && m <= cm)) {
+    out.push(y + '-' + String(m).padStart(2, '0'));
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return out.reverse(); // 最新月份排最前
+}
+function monthLabelFull(m) {
+  const p = m.split('-');
+  return p[0] + ' 年 ' + parseInt(p[1]) + ' 月';
+}
 
 // ═══════════ 業務邏輯 (port from commission-data.js) ═══════════
 const HEADCOUNT = 3;
@@ -1072,7 +1095,7 @@ function ClubCard({ staff, noms, onSubmit }) {
   const earned = mine.filter(n => n.status === 'subscribed' && n.tier).reduce((a, n) => a + CLUB_TIERS[n.tier].bonus, 0);
   const [open, setOpen] = useState(false);
   const [dog, setDog] = useState('');
-  const [owner, setOwner] = useState('');
+  const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const STATUS = {
     pending: { label: '待店長審批', cls: 'pending' },
@@ -1083,8 +1106,8 @@ function ClubCard({ staff, noms, onSubmit }) {
   async function submit() {
     if (!dog.trim() || busy) return;
     setBusy(true);
-    await onSubmit({ dogName: dog.trim(), ownerName: owner.trim() || '客戶' });
-    setDog(''); setOwner(''); setOpen(false); setBusy(false);
+    await onSubmit({ dogName: dog.trim(), phone: phone.trim() });
+    setDog(''); setPhone(''); setOpen(false); setBusy(false);
   }
   return (
     <div className="pwd-card pwd-block pwd-club">
@@ -1110,7 +1133,7 @@ function ClubCard({ staff, noms, onSubmit }) {
         <div className="pwd-club-form">
           <div className="pwd-club-frow">
             <input className="pwd-club-input" placeholder="狗狗名稱" value={dog} onChange={(e) => setDog(e.target.value)} />
-            <input className="pwd-club-input" placeholder="主人稱呼" value={owner} onChange={(e) => setOwner(e.target.value)} />
+            <input className="pwd-club-input" type="tel" inputMode="tel" placeholder="聯絡電話" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div className="pwd-club-hint">只需提名合適狗狗 · 主人實際訂閱哪個方案,由店長確認後計算獎金</div>
           <div className="pwd-club-formacts">
@@ -1129,7 +1152,7 @@ function ClubCard({ staff, noms, onSubmit }) {
               <div key={n.id} className="pwd-club-nom">
                 <span className="pwd-club-nom-dot" style={{ background: t ? t.color : 'var(--pw-cream-deep)' }} />
                 <div className="pwd-club-nom-info">
-                  <b>{n.dog}<span className="pwd-club-nom-owner">· {n.owner}</span></b>
+                  <b>{n.dog}{n.phone ? <span className="pwd-club-nom-owner">· {n.phone}</span> : null}</b>
                   <span>{t ? `${t.label} · $${t.fee}/月 · 獎金 $${t.bonus}` : '方案待主人訂閱後由店長確認'}</span>
                 </div>
                 <span className={'pwd-club-status ' + st.cls}>{st.label}{t && n.status === 'subscribed' ? ` +$${t.bonus}` : ''}</span>
@@ -1835,7 +1858,7 @@ function MgrClub({ mgrData }) {
         <span className="pwd-mgr-swap-ava">{initOf(n.staffId)}</span>
         <div className="pwd-mgr-swap-info">
           <b>{n.dog}{t ? <> · {t.label} <span style={{ color: t.color }}>${t.bonus}</span></> : ''}</b>
-          <span>提名人 {nameOf(n.staffId)} · 主人 {n.owner}</span>
+          <span>提名人 {nameOf(n.staffId)}{n.phone ? ` · 電話 ${n.phone}` : ''}</span>
         </div>
       </div>
     );
@@ -1891,7 +1914,7 @@ function MgrClub({ mgrData }) {
               return (
                 <div key={n.id} className="pwd-mgr-swap done">
                   <span className="pwd-mgr-swap-ava">{initOf(n.staffId)}</span>
-                  <div className="pwd-mgr-swap-info"><b>{n.dog}{t ? ` · ${t.label}` : ''}</b><span>{nameOf(n.staffId)} · {n.owner}</span></div>
+                  <div className="pwd-mgr-swap-info"><b>{n.dog}{t ? ` · ${t.label}` : ''}</b><span>{nameOf(n.staffId)}{n.phone ? ` · ${n.phone}` : ''}</span></div>
                   <span className={'pwd-mgr-swap-status ' + (n.status === 'subscribed' ? 'approved' : 'rejected')}>
                     {n.status === 'subscribed' && t ? `已訂閱 +$${t.bonus}` : '已拒絕'}
                   </span>
@@ -1976,7 +1999,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, onLoadData }
 
 // ═══════════ CommissionApp ═══════════
 function CommissionApp() {
-  const month = currentMonth();
+  const [month, setMonth] = useState(currentMonth());
   const [screen, setScreen] = useState('login'); // login | loading | dash | error
   const [errMsg, setErrMsg] = useState('');
   const [staff, setStaff] = useState(null);
@@ -1985,13 +2008,22 @@ function CommissionApp() {
   const [mgrUnlocked, setMgrUnlocked] = useState(false);
   const [mgrData, setMgrData] = useState(null);
 
-  async function loadDashboard(st) {
+  async function loadDashboard(st, m = month) {
     setScreen('loading');
     try {
-      const res = await pwApi('dashboard', { staffId: st.id, month });
+      const res = await pwApi('dashboard', { staffId: st.id, month: m });
       if (!res.ok) { setErrMsg(res.error || '載入失敗'); setScreen('error'); return; }
       setDash(res); setStaff({ ...st, ...res.staff }); setScreen('dash');
     } catch (e) { setErrMsg('連線失敗,請檢查網絡'); setScreen('error'); }
+  }
+  // 切換查看月份
+  async function changeMonth(m) {
+    setMonth(m);
+    if (!staff) return;
+    await loadDashboard(staff, m);
+    if (staff.role === 'manager' && mgrUnlocked) {
+      try { const res = await pwApi('managerData', { month: m }); if (res.ok) setMgrData(res); } catch (e) {}
+    }
   }
   // 自動續登
   useEffect(() => {
@@ -2001,7 +2033,8 @@ function CommissionApp() {
 
   function doLogin(st) {
     sessionStorage.setItem('pw_staff', JSON.stringify(st));
-    setStaff(st); setTab('pay'); setMgrUnlocked(false); setMgrData(null); loadDashboard(st);
+    const cm = currentMonth();
+    setStaff(st); setTab('pay'); setMonth(cm); setMgrUnlocked(false); setMgrData(null); loadDashboard(st, cm);
   }
   function doLogout() {
     sessionStorage.removeItem('pw_staff');
@@ -2009,8 +2042,8 @@ function CommissionApp() {
   }
   async function reloadDash() { if (staff) { const res = await pwApi('dashboard', { staffId: staff.id, month }); if (res.ok) { setDash(res); } } }
 
-  async function submitClub({ dogName, ownerName }) {
-    await pwApi('nominate', { staffId: staff.id, dogName, ownerName });
+  async function submitClub({ dogName, phone }) {
+    await pwApi('nominate', { staffId: staff.id, dogName, phone });
     await reloadDash();
   }
   async function submitSwap({ date, shift }) {
@@ -2051,6 +2084,14 @@ function CommissionApp() {
       </div>
 
       <div className="pwd-body">
+        <div className="pwd-monthbar">
+          <span className="pwd-monthbar-lbl">查看月份</span>
+          <select className="pwd-monthsel" value={month} onChange={(e) => changeMonth(e.target.value)}>
+            {monthOptions().map(m => (
+              <option key={m} value={m}>{monthLabelFull(m)}{m === currentMonth() ? ' · 本月' : ''}</option>
+            ))}
+          </select>
+        </div>
         {tab === 'pay' && (
           <>
             {staff.role !== 'frontdesk' && (
@@ -2072,7 +2113,7 @@ function CommissionApp() {
             leave={dash.leave} leaveRecords={dash.leaveRecords} coworkers={dash.coworkers} onSwap={submitSwap} />
         )}
         {tab === 'mgr' && (
-          <ManagerPanel month={month} unlocked={mgrUnlocked} mgrData={mgrData}
+          <ManagerPanel key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}
             onUnlock={unlockMgr} onLock={() => setMgrUnlocked(false)} />
         )}
       </div>
@@ -2100,4 +2141,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 </script>
 </body>
 </html>
-
