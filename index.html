@@ -708,7 +708,6 @@ function fullResult(staff, team, overrides = {}) {
   let override = false, overrideReason = '';
   if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
   else if (lateLeave > 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (超過 3 次)`; }
-  else if (att < 1 && staff.role !== 'frontdesk' && staff.role !== 'manager') { override = true; overrideReason = '當月缺勤'; }
   const kpi = applyKpi(c, score, { override, overrideReason });
   return { calc: c, items, kpi, lateLeave, dogEscape };
 }
