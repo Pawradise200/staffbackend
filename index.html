@@ -1447,6 +1447,12 @@ function fmtYMD(dt) { return dt.getFullYear() + '-' + String(dt.getMonth() + 1).
 function mondayOf(dt) { const dow = (dt.getDay() + 6) % 7; const m = new Date(dt); m.setDate(dt.getDate() - dow); return m; }
 function shiftWeekStart(ws, deltaWeeks) { const m = parseYMD(ws); m.setDate(m.getDate() + deltaWeeks * 7); return fmtYMD(m); }
 function firstWeekStartOfMonth(month) { const [y, mo] = month.split('-').map(Number); return fmtYMD(mondayOf(new Date(y, mo - 1, 1))); }
+// 該週覆蓋嗀月份(可能跨兩個月,例如 4月底–5月頭)
+function weekMonths(ws) {
+  const b = parseYMD(ws); const out = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(b); d.setDate(b.getDate() + i); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); if (out.indexOf(k) < 0) out.push(k); }
+  return out;
+}
 function weekRangeLabel(ws) {
   const b = parseYMD(ws), e = new Date(b); e.setDate(b.getDate() + 6);
   const bM = b.getMonth() + 1, eM = e.getMonth() + 1;
@@ -1802,13 +1808,14 @@ function MgrLeave({ month, mgrData }) {
 }
 
 // ── 排更 ──
-function MgrRoster({ mgrData, month }) {
+function MgrRoster({ mgrData }) {
   const list = mgrData.staffList;
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const [weekStart, setWeekStart] = useState(() => mgrData.weekStart); // 由本週開始,用左右鍵自由揭週次
   const [shifts, setShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : null);
   const [loading, setLoading] = useState(false);
-  const [monthDays, setMonthDays] = useState(() => (mgrData.allAttendance && mgrData.allAttendance[sel] != null) ? mgrData.allAttendance[sel] : 0);
+  const [days, setDays] = useState({}); // { 'YYYY-MM': 學院日數 }
+  const wMonths = weekMonths(weekStart); // 該週覆蓋嗀月份
   const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
   const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
   const POS_LABEL = { academy: '學院', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位', reception: '前台' };
@@ -1825,14 +1832,16 @@ function MgrRoster({ mgrData, month }) {
     return () => { active = false; };
   }, [sel, weekStart]);
 
-  // 載入所選員工喺所選月份嗀學院日數
-  function refreshMonthDays() {
-    let s = sel;
-    pwApi('academyDays', { staffId: s, month }).then(res => {
-      if (res && res.ok && s === sel) setMonthDays(res.days);
-    }).catch(() => {});
+  // 載入該週覆蓋嗀每個月嗀學院日數
+  function refreshDays() {
+    const s = sel;
+    weekMonths(weekStart).forEach(mth => {
+      pwApi('academyDays', { staffId: s, month: mth }).then(res => {
+        if (res && res.ok && s === sel) setDays(prev => ({ ...prev, [mth]: res.days }));
+      }).catch(() => {});
+    });
   }
-  useEffect(() => { refreshMonthDays(); }, [sel, month]);
+  useEffect(() => { setDays({}); refreshDays(); }, [sel, weekStart]);
 
   const cur = normWeek(shifts || DEFAULT_WEEK());
   const dates = datesFromWeekStart(weekStart);
@@ -1845,7 +1854,7 @@ function MgrRoster({ mgrData, month }) {
   };
   async function save() {
     const r = await pwApi('saveRoster', { weekStart, staffId: sel, shifts: JSON.stringify(cur) });
-    refreshMonthDays();
+    refreshDays();
     return r;
   }
   return (
@@ -1857,10 +1866,17 @@ function MgrRoster({ mgrData, month }) {
           </button>
         ))}
       </div>
-      <div className={'pwd-card pwd-attsum' + (monthDays >= 4 ? ' ok' : '')}>
-        <div><b>{list.find(s => s.id == sel).name}</b> · {monthLabelFull(month)} 學院日數</div>
-        <b className="pwd-attsum-n">{monthDays} 日{monthDays >= 4 ? ' ✓' : ` · 差 ${4 - monthDays} 日`}</b>
-      </div>
+      {wMonths.map(mth => {
+        const n = days[mth];
+        const known = typeof n === 'number';
+        const ok = known && n >= 4;
+        return (
+          <div key={mth} className={'pwd-card pwd-attsum' + (ok ? ' ok' : '')}>
+            <div><b>{list.find(s => s.id == sel).name}</b> · {monthLabelFull(mth)} 學院日數</div>
+            <b className="pwd-attsum-n">{known ? n : '…'} 日{ok ? ' ✓' : (known ? ` · 差 ${4 - n} 日` : '')}</b>
+          </div>
+        );
+      })}
       <div className="pwd-card pwd-block">
         <div className="pwd-roster-weeknav">
           <button className="pwd-weeknav-btn" onClick={() => setWeekStart(w => shiftWeekStart(w, -1))}>◀ 上週</button>
@@ -2031,8 +2047,7 @@ function ManagerGate({ onUnlock }) {
 }
 
 // ── ManagerPanel ──
-function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, onLoadData }) {
-  const [area, setArea] = useState('ops');
+function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
   return (
@@ -2044,7 +2059,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, onLoadData }
       </div>
       <div className="pwd-mgr-nav">
         {MGR_AREAS.map(a => (
-          <button key={a.key} className={'pwd-mgr-navbtn' + (area === a.key ? ' on' : '')} onClick={() => setArea(a.key)}>{a.label}</button>
+          <button key={a.key} className={'pwd-mgr-navbtn' + (area === a.key ? ' on' : '')} onClick={() => onAreaChange(a.key)}>{a.label}</button>
         ))}
       </div>
       {area === 'ops' && <MgrOps month={month} mgrData={mgrData} />}
@@ -2052,7 +2067,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, onLoadData }
       {area === 'club' && <MgrClub mgrData={mgrData} />}
       {area === 'swap' && <MgrSwap mgrData={mgrData} />}
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
-      {area === 'roster' && <MgrRoster mgrData={mgrData} month={month} />}
+      {area === 'roster' && <MgrRoster mgrData={mgrData} />}
     </>
   );
 }
@@ -2067,6 +2082,7 @@ function CommissionApp() {
   const [tab, setTab] = useState('pay');
   const [mgrUnlocked, setMgrUnlocked] = useState(false);
   const [mgrData, setMgrData] = useState(null);
+  const [mgrArea, setMgrArea] = useState('ops'); // 店長後台目前分頁
 
   async function loadDashboard(st, m = month) {
     setScreen('loading');
@@ -2147,14 +2163,16 @@ function CommissionApp() {
       </div>
 
       <div className="pwd-body">
-        <div className="pwd-monthbar">
-          <span className="pwd-monthbar-lbl">查看月份</span>
-          <select className="pwd-monthsel" value={month} onChange={(e) => changeMonth(e.target.value)}>
-            {monthOptions().map(m => (
-              <option key={m} value={m}>{monthLabelFull(m)}{m === currentMonth() ? ' · 本月' : ''}</option>
-            ))}
-          </select>
-        </div>
+        {(tab === 'pay' || (tab === 'mgr' && mgrArea !== 'roster')) && (
+          <div className="pwd-monthbar">
+            <span className="pwd-monthbar-lbl">查看月份</span>
+            <select className="pwd-monthsel" value={month} onChange={(e) => changeMonth(e.target.value)}>
+              {monthOptions().map(m => (
+                <option key={m} value={m}>{monthLabelFull(m)}{m === currentMonth() ? ' · 本月' : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {tab === 'pay' && (
           <>
             {staff.role !== 'frontdesk' && (
@@ -2177,6 +2195,7 @@ function CommissionApp() {
         )}
         {tab === 'mgr' && (
           <ManagerPanel key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}
+            area={mgrArea} onAreaChange={setMgrArea}
             onUnlock={unlockMgr} onLock={() => setMgrUnlocked(false)} />
         )}
       </div>
