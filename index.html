@@ -470,6 +470,14 @@ img { display: block; }
 .pwd-mgr-selwrap::after { content: '⌄'; position: absolute; right: 12px; top: 50%; transform: translateY(-60%); font-size: 13px; font-weight: 700; color: var(--pw-ink-faint); pointer-events: none; }
 .pwd-mgr-sel.pos { color: var(--pw-ink-mute); background: var(--pw-cream-deep); border-color: transparent; }
 .pwd-mgr-sel.pos:disabled { opacity: .5; cursor: default; }
+.pwd-roster-weeknav { display: flex; align-items: center; gap: 8px; }
+.pwd-weeknav-btn { flex-shrink: 0; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); color: var(--pw-navy); font-family: inherit; font-weight: 800; font-size: 12px; padding: 8px 12px; border-radius: var(--pw-r-pill); cursor: pointer; }
+.pwd-weeknav-btn:hover { background: var(--pw-navy); color: #fff; border-color: var(--pw-navy); }
+.pwd-weeknav-label { flex: 1; text-align: center; font-family: var(--pw-font-display); font-weight: 700; font-size: 15px; color: var(--pw-ink); }
+.pwd-attsum { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; font-weight: 700; color: var(--pw-ink-soft); padding: 13px 15px; }
+.pwd-attsum.ok { background: var(--pw-success-bg); }
+.pwd-attsum-n { font-family: var(--pw-font-display); font-weight: 700; font-size: 16px; white-space: nowrap; color: var(--pw-ink-mute); }
+.pwd-attsum.ok .pwd-attsum-n { color: var(--pw-success); }
 .pwd-mgr-sel.pos.sh-academy { background: #FCEFD6; color: var(--pw-gold-deep); }
 .pwd-mgr-sel.pos.sh-hotelA { background: #E4ECF6; color: #2C4A6E; }
 .pwd-mgr-sel.pos.sh-hotelB { background: #F4E2E0; color: #B0544E; }
@@ -578,7 +586,7 @@ function monthLabelFull(m) {
 
 // ═══════════ 業務邏輯 (port from commission-data.js) ═══════════
 const HEADCOUNT = 3;
-const TARGETS = { hotelThreshold: 150000, newStudentTier: 20, packageGoal: 12, attendanceMin: 4 };
+const TARGETS = { hotelThreshold: 200000, newStudentTier: 20, packageGoal: 12, attendanceMin: 4 };
 const ROLE_KPIS = {
   junior: { label: '初級寵物照顧員', items: [
     { id: 'j1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
@@ -628,7 +636,7 @@ function managerTier(revenue) {
 }
 const RATES = [
   { label: '固定獎金', rate: 'HK$2,000', note: '≥ 4 日學院出勤' },
-  { label: '酒店部 (超門檻)', rate: '12% ÷ 3 人', note: '門檻 HK$150,000' },
+  { label: '酒店部 (超門檻)', rate: '12% ÷ 3 人', note: '門檻 HK$200,000' },
   { label: '學院新生 · 首 20 隻', rate: '$150 / 隻 ÷ 3 人', note: '每人 HK$50' },
   { label: '學院新生 · 第 21 隻起', rate: '$300 / 隻 ÷ 3 人', note: '每人 HK$100 (需達 20 隻目標)' },
   { label: '舊生續報', rate: '$600 / 個 ÷ 3 人', note: '每人 HK$200' },
@@ -654,7 +662,7 @@ function scorecardTotal(items) { return items.reduce((a, it) => a + (it.pass ? i
 function calc({ attendance, newStudents, renewals, hotelRevenue, headcount = HEADCOUNT }) {
   const fixedOk = attendance >= 4;
   const fixed = fixedOk ? 2000 : 0;
-  const hotelOver = Math.max(0, hotelRevenue - 150000);
+  const hotelOver = Math.max(0, hotelRevenue - TARGETS.hotelThreshold);
   const hotel = hotelOver * 0.12 / headcount;
   const newPool = newStudents <= 20 ? newStudents * 150 : 20 * 150 + (newStudents - 20) * 300;
   const newcmm = newPool / headcount;
@@ -1433,6 +1441,19 @@ function datesFromWeekStart(weekStart) {
   const base = new Date(y, m - 1, d);
   return WEEKDAYS.map((_, i) => { const dd = new Date(base); dd.setDate(base.getDate() + i); return dd.getDate(); });
 }
+// ── 週次導覽用日期 helper ──
+function parseYMD(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function fmtYMD(dt) { return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); }
+function mondayOf(dt) { const dow = (dt.getDay() + 6) % 7; const m = new Date(dt); m.setDate(dt.getDate() - dow); return m; }
+function shiftWeekStart(ws, deltaWeeks) { const m = parseYMD(ws); m.setDate(m.getDate() + deltaWeeks * 7); return fmtYMD(m); }
+function firstWeekStartOfMonth(month) { const [y, mo] = month.split('-').map(Number); return fmtYMD(mondayOf(new Date(y, mo - 1, 1))); }
+function weekRangeLabel(ws) {
+  const b = parseYMD(ws), e = new Date(b); e.setDate(b.getDate() + 6);
+  const bM = b.getMonth() + 1, eM = e.getMonth() + 1;
+  return bM === eM ? `${bM}月 ${b.getDate()}–${e.getDate()}日` : `${bM}月${b.getDate()}日 – ${eM}月${e.getDate()}日`;
+}
+const DEFAULT_WEEK = () => [['off', null], ['off', null], ['off', null], ['off', null], ['off', null], ['off', null], ['off', null]];
+function normWeek(arr) { const w = (Array.isArray(arr) ? arr : []).map(r => Array.isArray(r) ? r.slice() : ['off', null]); while (w.length < 7) w.push(['off', null]); return w.slice(0, 7); }
 function SaveBtn({ onSave, label = '儲存到 Google Sheet' }) {
   const [state, setState] = useState('idle'); // idle|saving|saved|err
   async function go() {
@@ -1513,7 +1534,7 @@ function MgrOps({ month, mgrData }) {
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">A. 酒店總業績 (含基本美容,計佣)</div>
         <MoneyField label="酒店總業績" value={team.hotelRevenue} onChange={(v) => set('hotelRevenue', v)}
-          note="門檻 HK$150,000 · 超出 12% 為照顧員酒店佣金池" />
+          note="門檻 HK$200,000 · 超出 12% 為照顧員酒店佣金池" />
         <MoneyField label="D. 基本美容總業績" value={team.groomBasic} onChange={(v) => set('groomBasic', v)}
           note="歸納入酒店總業績一齊計佣" />
         <div className="pwd-mgr-storerow">
@@ -1781,28 +1802,52 @@ function MgrLeave({ month, mgrData }) {
 }
 
 // ── 排更 ──
-function MgrRoster({ mgrData }) {
+function MgrRoster({ mgrData, month }) {
   const list = mgrData.staffList;
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
-  const [rosters, setRosters] = useState(() => {
-    const o = {};
-    list.forEach(s => { o[s.id] = (mgrData.allRosters[s.id] || []).map(r => Array.isArray(r) ? r.slice() : ['off', null]); });
-    return o;
-  });
-  const dates = datesFromWeekStart(mgrData.weekStart);
+  const [weekStart, setWeekStart] = useState(() => mgrData.weekStart); // 由本週開始,用左右鍵自由揭週次
+  const [shifts, setShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : null);
+  const [loading, setLoading] = useState(false);
+  const [monthDays, setMonthDays] = useState(() => (mgrData.allAttendance && mgrData.allAttendance[sel] != null) ? mgrData.allAttendance[sel] : 0);
   const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
   const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
   const POS_LABEL = { academy: '學院', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位', reception: '前台' };
-  const cur = rosters[sel] || [];
+
+  // 載入所選員工 + 所選週次嗀更表
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    pwApi('rosterWeek', { staffId: sel, weekStart }).then(res => {
+      if (!active) return;
+      setShifts(res && res.ok ? normWeek(res.shifts) : DEFAULT_WEEK());
+      setLoading(false);
+    }).catch(() => { if (active) { setShifts(DEFAULT_WEEK()); setLoading(false); } });
+    return () => { active = false; };
+  }, [sel, weekStart]);
+
+  // 載入所選員工喺所選月份嗀學院日數
+  function refreshMonthDays() {
+    let s = sel;
+    pwApi('academyDays', { staffId: s, month }).then(res => {
+      if (res && res.ok && s === sel) setMonthDays(res.days);
+    }).catch(() => {});
+  }
+  useEffect(() => { refreshMonthDays(); }, [sel, month]);
+
+  const cur = normWeek(shifts || DEFAULT_WEEK());
+  const dates = datesFromWeekStart(weekStart);
   const setDay = (i, shift, pos) => {
-    setRosters(o => {
-      const next = (o[sel] || []).map(r => r.slice());
-      while (next.length < 7) next.push(['off', null]);
+    setShifts(prev => {
+      const next = normWeek(prev || DEFAULT_WEEK());
       next[i] = [shift, shift === 'off' ? null : pos];
-      return { ...o, [sel]: next };
+      return next;
     });
   };
-  function save() { return pwApi('saveRoster', { weekStart: mgrData.weekStart, staffId: sel, shifts: JSON.stringify(rosters[sel]) }); }
+  async function save() {
+    const r = await pwApi('saveRoster', { weekStart, staffId: sel, shifts: JSON.stringify(cur) });
+    refreshMonthDays();
+    return r;
+  }
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-people">
@@ -1812,8 +1857,17 @@ function MgrRoster({ mgrData }) {
           </button>
         ))}
       </div>
+      <div className={'pwd-card pwd-attsum' + (monthDays >= 4 ? ' ok' : '')}>
+        <div><b>{list.find(s => s.id == sel).name}</b> · {monthLabelFull(month)} 學院日數</div>
+        <b className="pwd-attsum-n">{monthDays} 日{monthDays >= 4 ? ' ✓' : ` · 差 ${4 - monthDays} 日`}</b>
+      </div>
       <div className="pwd-card pwd-block">
-        <div className="pwd-roster-head"><div><div className="pwd-eyebrow">{list.find(s => s.id == sel).name} · 本週排更</div><div className="pwd-roster-week">{mgrData.team.month}</div></div></div>
+        <div className="pwd-roster-weeknav">
+          <button className="pwd-weeknav-btn" onClick={() => setWeekStart(w => shiftWeekStart(w, -1))}>◀ 上週</button>
+          <div className="pwd-weeknav-label">{weekRangeLabel(weekStart)}</div>
+          <button className="pwd-weeknav-btn" onClick={() => setWeekStart(w => shiftWeekStart(w, 1))}>下週 ▶</button>
+        </div>
+        {loading ? <div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)', padding: '20px 0' }}>載入更表…</div> : (
         <div className="pwd-duty" style={{ marginTop: 14 }}>
           {WEEKDAYS.map((wd, i) => {
             const r = cur[i] || ['off', null];
@@ -1838,9 +1892,10 @@ function MgrRoster({ mgrData }) {
             );
           })}
         </div>
+        )}
       </div>
       <SaveBtn onSave={save} label="發佈本週排更" />
-      <div className="pwd-mgr-rostersave">發佈後員工即時看到</div>
+      <div className="pwd-mgr-rostersave">發佈後員工即時看到 · 學院日數會即時更新</div>
     </div>
   );
 }
@@ -1997,7 +2052,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, onLoadData }
       {area === 'club' && <MgrClub mgrData={mgrData} />}
       {area === 'swap' && <MgrSwap mgrData={mgrData} />}
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
-      {area === 'roster' && <MgrRoster mgrData={mgrData} />}
+      {area === 'roster' && <MgrRoster mgrData={mgrData} month={month} />}
     </>
   );
 }
