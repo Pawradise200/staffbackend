@@ -2023,8 +2023,11 @@ function CommissionApp() {
   }
   // 切換查看月份
   async function changeMonth(m) {
+    if (m === month) return;
     setMonth(m);
     if (!staff) return;
+    // 清走舊月份嗀管理數據,避免營運數據表帶住舊月份嗀數字而誤存到新月份
+    if (staff.role === 'manager') setMgrData(null);
     await loadDashboard(staff, m);
     if (staff.role === 'manager' && mgrUnlocked) {
       try { const res = await pwApi('managerData', { month: m }); if (res.ok) setMgrData(res); } catch (e) {}
