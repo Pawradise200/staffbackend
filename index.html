@@ -1453,6 +1453,12 @@ function weekMonths(ws) {
   for (let i = 0; i < 7; i++) { const d = new Date(b); d.setDate(b.getDate() + i); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); if (out.indexOf(k) < 0) out.push(k); }
   return out;
 }
+// 某週入面屬於指定月份嗀學院日數(畀即時統計用)
+function acadInWeekForMonth(weekShifts, ws, month) {
+  const b = parseYMD(ws); let c = 0;
+  for (let i = 0; i < 7; i++) { const d = new Date(b); d.setDate(b.getDate() + i); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); if (k === month && weekShifts[i] && weekShifts[i][1] === 'academy') c++; }
+  return c;
+}
 function weekRangeLabel(ws) {
   const b = parseYMD(ws), e = new Date(b); e.setDate(b.getDate() + 6);
   const bM = b.getMonth() + 1, eM = e.getMonth() + 1;
@@ -1813,6 +1819,7 @@ function MgrRoster({ mgrData }) {
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const [weekStart, setWeekStart] = useState(() => mgrData.weekStart); // 由本週開始,用左右鍵自由揭週次
   const [shifts, setShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : null);
+  const [savedShifts, setSavedShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : DEFAULT_WEEK());
   const [loading, setLoading] = useState(false);
   const [days, setDays] = useState({}); // { 'YYYY-MM': 學院日數 }
   const wMonths = weekMonths(weekStart); // 該週覆蓋嗀月份
@@ -1826,9 +1833,10 @@ function MgrRoster({ mgrData }) {
     setLoading(true);
     pwApi('rosterWeek', { staffId: sel, weekStart }).then(res => {
       if (!active) return;
-      setShifts(res && res.ok ? normWeek(res.shifts) : DEFAULT_WEEK());
+      const w = res && res.ok ? normWeek(res.shifts) : DEFAULT_WEEK();
+      setShifts(w); setSavedShifts(w);
       setLoading(false);
-    }).catch(() => { if (active) { setShifts(DEFAULT_WEEK()); setLoading(false); } });
+    }).catch(() => { if (active) { setShifts(DEFAULT_WEEK()); setSavedShifts(DEFAULT_WEEK()); setLoading(false); } });
     return () => { active = false; };
   }, [sel, weekStart]);
 
@@ -1854,9 +1862,11 @@ function MgrRoster({ mgrData }) {
   };
   async function save() {
     const r = await pwApi('saveRoster', { weekStart, staffId: sel, shifts: JSON.stringify(cur) });
+    setSavedShifts(cur);
     refreshDays();
     return r;
   }
+  const unsaved = JSON.stringify(cur) !== JSON.stringify(savedShifts);
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-people">
@@ -1867,16 +1877,19 @@ function MgrRoster({ mgrData }) {
         ))}
       </div>
       {wMonths.map(mth => {
-        const n = days[mth];
-        const known = typeof n === 'number';
+        const base = days[mth];
+        const known = typeof base === 'number';
+        // 即時計:已存總數 − 本週已存學院 + 本週畫面上嗀學院
+        const n = known ? base - acadInWeekForMonth(savedShifts, weekStart, mth) + acadInWeekForMonth(cur, weekStart, mth) : null;
         const ok = known && n >= 4;
         return (
           <div key={mth} className={'pwd-card pwd-attsum' + (ok ? ' ok' : '')}>
             <div><b>{list.find(s => s.id == sel).name}</b> · {monthLabelFull(mth)} 學院日數</div>
-            <b className="pwd-attsum-n">{known ? n : '…'} 日{ok ? ' ✓' : (known ? ` · 差 ${4 - n} 日` : '')}</b>
+            <b className="pwd-attsum-n">{known ? n : '…'} 日{ok ? ' ✓' : (known ? ` · 差 ${Math.max(0, 4 - n)} 日` : '')}</b>
           </div>
         );
       })}
+      {unsaved && <div className="pwd-mgr-rostersave" style={{ color: 'var(--pw-gold-deep)', fontWeight: 800 }}>⚠ 未發佈 — 記得撳下面「發佈本週排更」先會存入系統</div>}
       <div className="pwd-card pwd-block">
         <div className="pwd-roster-weeknav">
           <button className="pwd-weeknav-btn" onClick={() => setWeekStart(w => shiftWeekStart(w, -1))}>◀ 上週</button>
