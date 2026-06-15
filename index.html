@@ -2201,10 +2201,10 @@ function CommissionApp() {
       </div>
 
       <div className="pwd-tabbar">
-        <button className={'pwd-tabbtn' + (tab === 'pay' ? ' on' : '')} onClick={() => setTab('pay')}>
+        <button className={'pwd-tabbtn' + (tab === 'pay' ? ' on' : '')} onClick={() => { setTab('pay'); reloadDash(); }}>
           <span className="pwd-tabbtn-ico">💰</span><span>我的佣金</span>
         </button>
-        <button className={'pwd-tabbtn' + (tab === 'duty' ? ' on' : '')} onClick={() => setTab('duty')}>
+        <button className={'pwd-tabbtn' + (tab === 'duty' ? ' on' : '')} onClick={() => { setTab('duty'); reloadDash(); }}>
           <span className="pwd-tabbtn-ico">📅</span><span>更表</span>
         </button>
         {isManager && (
