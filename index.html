@@ -586,7 +586,7 @@ function monthLabelFull(m) {
 
 // ═══════════ 業務邏輯 (port from commission-data.js) ═══════════
 const HEADCOUNT = 3;
-const TARGETS = { hotelThreshold: 200000, newStudentTier: 20, packageGoal: 12, attendanceMin: 4 };
+const TARGETS = { hotelThreshold: 200000, renewalTier: 8, packageGoal: 12, attendanceMin: 4 };
 const ROLE_KPIS = {
   junior: { label: '初級寵物照顧員', items: [
     { id: 'j1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
@@ -637,9 +637,9 @@ function managerTier(revenue) {
 const RATES = [
   { label: '固定獎金', rate: 'HK$2,000', note: '≥ 4 日學院出勤' },
   { label: '酒店部 (超門檻)', rate: '12% ÷ 3 人', note: '門檻 HK$200,000' },
-  { label: '學院新生 · 首 20 隻', rate: '$150 / 隻 ÷ 3 人', note: '每人 HK$50' },
-  { label: '學院新生 · 第 21 隻起', rate: '$300 / 隻 ÷ 3 人', note: '每人 HK$100 (需達 20 隻目標)' },
-  { label: '舊生續報', rate: '$600 / 個 ÷ 3 人', note: '每人 HK$200' },
+  { label: '學院新生', rate: '$150 / 隻 ÷ 3 人', note: '每人 HK$50 · 劃一,不設門檻' },
+  { label: '舊生續報 · 頭 8 個', rate: '$300 / 個 ÷ 3 人', note: '每人 HK$100' },
+  { label: '舊生續報 · 第 9 個起', rate: '$450 / 個 ÷ 3 人', note: '每人 HK$150' },
 ];
 const CLUB_TIERS = {
   light:    { key: 'light', label: 'Light', fee: 699, bonus: 100, color: 'var(--pw-cat-sniff)' },
@@ -664,9 +664,10 @@ function calc({ attendance, newStudents, renewals, hotelRevenue, headcount = HEA
   const fixed = fixedOk ? 2000 : 0;
   const hotelOver = Math.max(0, hotelRevenue - TARGETS.hotelThreshold);
   const hotel = hotelOver * 0.12 / headcount;
-  const newPool = newStudents <= 20 ? newStudents * 150 : 20 * 150 + (newStudents - 20) * 300;
+  const newPool = newStudents * 150;                 // 劃一 $150/隻,不設門檻
   const newcmm = newPool / headcount;
-  const renew = renewals * 600 / headcount;
+  const renewPool = renewals <= 8 ? renewals * 300 : 8 * 300 + (renewals - 8) * 450; // 頭8 $300,第9起 $450 (總額,下面÷3)
+  const renew = renewPool / headcount;
   const projectCommission = hotel + newcmm + renew;
   const total = fixed + projectCommission;
   return { fixed, fixedOk, hotel, hotelOver, hotelRevenue, newcmm, newStudents, renew, renewals, projectCommission, total,
@@ -941,8 +942,7 @@ function GoalUnlock({ team, calc, role }) {
   const T = TARGETS;
   const goals = [
     { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$400' },
-    { icon: '🎓', scope: '團隊', label: '學院新生達標', cur: team.newStudents, target: T.newStudentTier, fmt: (n) => n + ' 隻', reward: '第 21 隻起由 $150 → $300', hit: team.newStudents >= T.newStudentTier, hint: '每多 1 隻新生 ≈ 每人 +HK$100' },
-    { icon: '🔄', scope: '團隊', label: '舊生續報', cur: team.renewals, target: Math.max(team.renewals, 10), fmt: (n) => n + ' 個', reward: '$600 / 個 ÷ 3 人', hit: false, noTarget: true, hint: '每多 1 隻舊生續報 ≈ 每人 +HK$200' },
+    { icon: '🔄', scope: '團隊', label: '舊生續報達 8 個', cur: team.renewals, target: T.renewalTier, fmt: (n) => n + ' 個', reward: '第 9 個起由 $300 → $450', hit: team.renewals >= T.renewalTier, hint: '頭8每個≈每人+$100,第9起≈每人+$150' },
     { icon: '📅', scope: '個人', label: '學院出勤達標', cur: calc.attendance, target: T.attendanceMin, fmt: (n) => n + ' 日', reward: '解鎖固定獎金 HK$2,000', hit: calc.fixedOk },
   ];
   if (role === 'manager') {
@@ -1230,8 +1230,9 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const pctOf = (v) => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
   const score = scorecardTotal(items);
   const isMgr = calc.isManager, isFd = calc.isFrontdesk;
-  const newDetail = calc.newStudents <= 20 ? `團隊 ${calc.newStudents} 隻 · 首20費率` : `團隊 ${calc.newStudents} 隻 · 含超額 ${calc.newStudents - 20}`;
-  const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $150k';
+  const newDetail = `團隊 ${calc.newStudents} 隻 · $150/隻 ÷3`;
+  const renewDetail = calc.renewals > 8 ? `團隊 ${calc.renewals} 個 · 含加速 ${calc.renewals - 8} 個 @$450` : `團隊 ${calc.renewals} 個 · $300/個`;
+  const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $200k';
   const compRowsBase = isMgr
     ? [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `學院出勤 ${calc.attendance} 日 ✓` : `學院出勤 ${calc.attendance} 日` },
         { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
@@ -1241,7 +1242,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
     : [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `出勤 ${calc.attendance} 日 ✓` : `出勤 ${calc.attendance} 日` },
         { pk: 'hotel', value: kpi.actualParts[1].value, detail: hotelDetail },
         { pk: 'newcmm', value: kpi.actualParts[2].value, detail: newDetail },
-        { pk: 'renew', value: kpi.actualParts[3].value, detail: `團隊 ${calc.renewals} 個舊生續報` } ];
+        { pk: 'renew', value: kpi.actualParts[3].value, detail: renewDetail } ];
   const subscribedCount = clubNoms.filter(n => n.staffId == staff.id && n.status === 'subscribed').length;
   const compRows = clubBonus > 0 ? [...compRowsBase, { pk: 'club', value: clubBonus, detail: `Calm Explorer Club · ${subscribedCount} 個成功訂閱` }] : compRowsBase;
   return (
@@ -1535,9 +1536,9 @@ function MgrOps({ month, mgrData }) {
         <div className="pwd-eyebrow">數量統計 · 學院新生 / 續報 / 套票</div>
         <div className="pwd-mgr-fieldgrid">
           <div className="pwd-mgr-field"><label>學院新生</label>
-            <Stepper value={team.newStudents} suffix="隻" hint="首20 $150／第21起 $300" onChange={(v) => set('newStudents', v)} /></div>
+            <Stepper value={team.newStudents} suffix="隻" hint="$150／隻 ÷3 · 劃一" onChange={(v) => set('newStudents', v)} /></div>
           <div className="pwd-mgr-field"><label>舊生續報 (繼報)</label>
-            <Stepper value={team.renewals} suffix="個" hint="$600 / 個 ÷ 3" onChange={(v) => set('renewals', v)} /></div>
+            <Stepper value={team.renewals} suffix="個" hint="頭8 $300／9起 $450 ÷3" onChange={(v) => set('renewals', v)} /></div>
           <div className="pwd-mgr-field"><label>套票數量 (店長 KPI)</label>
             <Stepper value={team.packages} suffix="個" hint="目標 ≥ 12" onChange={(v) => set('packages', v)} /></div>
         </div>
