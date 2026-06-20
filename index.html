@@ -637,14 +637,18 @@ function managerTier(revenue) {
 const RATES = [
   { label: '固定獎金', rate: 'HK$2,000', note: '≥ 4 日學院出勤' },
   { label: '酒店部 (超門檻)', rate: '12% ÷ 3 人', note: '門檻 HK$200,000' },
-  { label: '學院新生', rate: '$150 / 隻 ÷ 3 人', note: '每人 HK$50 · 劃一,不設門檻' },
-  { label: '舊生續報 · 頭 5 個', rate: '$300 / 個 ÷ 3 人', note: '每人 HK$100' },
-  { label: '舊生續報 · 第 6 個起', rate: '$600 / 個 ÷ 3 人', note: '每人 HK$200' },
+  { label: '學院新生 · S1', rate: '$500 / 隻', note: '個人歸成交者' },
+  { label: '學院新生 · S2', rate: '$300 / 隻', note: '個人歸成交者' },
+  { label: '學院新生 · S1+S2', rate: '$900 / 隻', note: '個人歸成交者' },
+  { label: '舊生續報', rate: '$600 / 個', note: '團隊池 · 按職級分 · 不設門檻' },
 ];
+// 學院職級權重(只用於舊生續報池):資深 3 / 初級 2 / 助教 1。資深=owner,不抽池(不計入)。
+const ACAD_W = { senior: 3, junior: 2, assistant: 1 };
+// 會籍佣金暫定 0:保留提名功能,先收集 1–2 個月數據再定佣金
 const CLUB_TIERS = {
-  light:    { key: 'light', label: 'Light', fee: 699, bonus: 100, color: 'var(--pw-cat-sniff)' },
-  active:   { key: 'active', label: 'Active', fee: 1699, bonus: 200, color: 'var(--pw-cat-puzzle)' },
-  ultimate: { key: 'ultimate', label: 'Ultimate', fee: 1999, bonus: 250, color: 'var(--pw-gold)' },
+  light:    { key: 'light', label: 'Light', fee: 699, bonus: 0, color: 'var(--pw-cat-sniff)' },
+  active:   { key: 'active', label: 'Active', fee: 1699, bonus: 0, color: 'var(--pw-cat-puzzle)' },
+  ultimate: { key: 'ultimate', label: 'Ultimate', fee: 1999, bonus: 0, color: 'var(--pw-gold)' },
 };
 // 未知崗位一律當前台處理,避免任何手誤令整個面板崩潰變空白
 function roleKpi(role) { return ROLE_KPIS[role] || ROLE_KPIS.frontdesk; }
@@ -659,18 +663,21 @@ function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
   return { ratio: 0, band: '不發放' };
 }
 function scorecardTotal(items) { return items.reduce((a, it) => a + (it.pass ? it.weight : 0), 0); }
-function calc({ attendance, newStudents, renewals, hotelRevenue, headcount = HEADCOUNT }) {
+function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, newStudents, renewals, hotelRevenue, acadWeight = 0, acadWeightTotal = 0, headcount = HEADCOUNT }) {
   const fixedOk = attendance >= 4;
   const fixed = fixedOk ? 2000 : 0;
   const hotelOver = Math.max(0, hotelRevenue - TARGETS.hotelThreshold);
   const hotel = hotelOver * 0.12 / headcount;
-  const newPool = newStudents * 150;                 // 劃一 $150/隻,不設門檻
-  const newcmm = newPool / headcount;
-  const renewPool = renewals <= 5 ? renewals * 300 : 5 * 300 + (renewals - 5) * 600; // 頭5 $300,第6起 $600 (總額,下面÷3)
-  const renew = renewPool / headcount;
+  // 學院新生 = 個人銷售佣,歸成交者(不÷3):S1$500 / S2$300 / S1+S2$900。試堂不設佣(流量功勞)
+  const newcmm = s1New * 500 + s2New * 300 + comboNew * 900;
+  const nStudents = (newStudents != null) ? newStudents : (trialConv + s1New + s2New + comboNew);
+  const renewPool = renewals * 600;                  // 舊生續報 $600/個 團隊池,不設門檻
+  // 按學院職級分(初級2/助教1);冇職級資料時 fallback 平分
+  const renewShare = (acadWeight > 0 && acadWeightTotal > 0) ? (acadWeight / acadWeightTotal) : (1 / headcount);
+  const renew = renewPool * renewShare;
   const projectCommission = hotel + newcmm + renew;
   const total = fixed + projectCommission;
-  return { fixed, fixedOk, hotel, hotelOver, hotelRevenue, newcmm, newStudents, renew, renewals, projectCommission, total,
+  return { fixed, fixedOk, hotel, hotelOver, hotelRevenue, newcmm, newStudents: nStudents, trialConv, s1New, s2New, comboNew, renew, renewals, projectCommission, total,
     attendance, attendanceNeed: Math.max(0, 4 - attendance),
     parts: [ { key: 'fixed', value: fixed }, { key: 'hotel', value: hotel }, { key: 'newcmm', value: newcmm }, { key: 'renew', value: renew } ] };
 }
@@ -711,7 +718,7 @@ function fullResult(staff, team, overrides = {}) {
     ? calcManager({ attendance: att, storeRevenue: storeRevenueOf(team), hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue })
     : staff.role === 'frontdesk'
     ? calcFrontdesk()
-    : calc({ attendance: att, newStudents: team.newStudents, renewals: team.renewals, hotelRevenue: hotelForCommission(team) });
+    : calc({ attendance: att, trialConv: team.trialConv || 0, s1New: (staff.s1New != null ? staff.s1New : (team.s1New || 0)), s2New: (staff.s2New != null ? staff.s2New : (team.s2New || 0)), comboNew: (staff.comboNew != null ? staff.comboNew : (team.comboNew || 0)), renewals: team.renewals, hotelRevenue: hotelForCommission(team), acadWeight: ACAD_W[staff.acadRank] || 0, acadWeightTotal: team.acadWeightTotal || 0, headcount: team.headcount || HEADCOUNT });
   const items = overrides.scorecard || buildScorecard(staff.role, staff.kpiFail || []);
   const score = scorecardTotal(items);
   const lateLeave = overrides.lateLeave != null ? overrides.lateLeave : (staff.lateLeave || 0);
@@ -942,7 +949,6 @@ function GoalUnlock({ team, calc, role }) {
   const T = TARGETS;
   const goals = [
     { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$400' },
-    { icon: '🔄', scope: '團隊', label: '舊生續報達 5 個', cur: team.renewals, target: T.renewalTier, fmt: (n) => n + ' 個', reward: '第 6 個起由 $300 → $600', hit: team.renewals >= T.renewalTier, hint: '頭5每個≈每人+$100,第6起≈每人+$200' },
     { icon: '📅', scope: '個人', label: '學院出勤達標', cur: calc.attendance, target: T.attendanceMin, fmt: (n) => n + ' 日', reward: '解鎖固定獎金 HK$2,000', hit: calc.fixedOk },
   ];
   if (role === 'manager') {
@@ -1126,9 +1132,9 @@ function ClubCard({ staff, noms, onSubmit }) {
       <div className="pwd-club-head">
         <div>
           <div className="pwd-eyebrow">Calm Explorer Club</div>
-          <div className="pwd-club-sub">提名合適狗狗,成功訂閱賺一次性獎金</div>
+          <div className="pwd-club-sub">提名合適狗狗 · 佣金待收集 1–2 個月數據後安排</div>
         </div>
-        <div className="pwd-club-earned">本月已賺 <b>{money(earned)}</b></div>
+        <div className="pwd-club-earned">會籍佣金 <b>待定</b></div>
       </div>
       <div className="pwd-club-tiers">
         {Object.values(CLUB_TIERS).map(t => (
@@ -1136,7 +1142,7 @@ function ClubCard({ staff, noms, onSubmit }) {
             <span className="pwd-club-tier-dot" style={{ background: t.color }} />
             <span className="pwd-club-tier-name">{t.label}</span>
             <span className="pwd-club-tier-fee">${t.fee}/月</span>
-            <span className="pwd-club-tier-bonus">獎金 ${t.bonus}</span>
+            <span className="pwd-club-tier-bonus">獎金 待定</span>
           </div>
         ))}
       </div>
@@ -1165,9 +1171,9 @@ function ClubCard({ staff, noms, onSubmit }) {
                 <span className="pwd-club-nom-dot" style={{ background: t ? t.color : 'var(--pw-cream-deep)' }} />
                 <div className="pwd-club-nom-info">
                   <b>{n.dog}{n.phone ? <span className="pwd-club-nom-owner">· {n.phone}</span> : null}</b>
-                  <span>{t ? `${t.label} · $${t.fee}/月 · 獎金 $${t.bonus}` : '方案待主人訂閱後由店長確認'}</span>
+                  <span>{t ? `${t.label} · $${t.fee}/月 · 獎金待定` : '方案待主人訂閱後由店長確認'}</span>
                 </div>
-                <span className={'pwd-club-status ' + st.cls}>{st.label}{t && n.status === 'subscribed' ? ` +$${t.bonus}` : ''}</span>
+                <span className={'pwd-club-status ' + st.cls}>{st.label}</span>
               </div>
             );
           })}
@@ -1230,8 +1236,8 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const pctOf = (v) => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
   const score = scorecardTotal(items);
   const isMgr = calc.isManager, isFd = calc.isFrontdesk;
-  const newDetail = `團隊 ${calc.newStudents} 隻 · $150/隻 ÷3`;
-  const renewDetail = calc.renewals > 5 ? `團隊 ${calc.renewals} 個 · 含加速 ${calc.renewals - 5} 個 @$600` : `團隊 ${calc.renewals} 個 · $300/個`;
+  const newDetail = `S1 ${calc.s1New||0}·S2 ${calc.s2New||0}·S1+S2 ${calc.comboNew||0}(個人,歸成交者)`;
+  const renewDetail = `團隊 ${calc.renewals} 個 · $600/個 · 按職級分`;
   const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $200k';
   const compRowsBase = isMgr
     ? [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `學院出勤 ${calc.attendance} 日 ✓` : `學院出勤 ${calc.attendance} 日` },
@@ -1436,6 +1442,7 @@ const MGR_AREAS = [
   { key: 'ops', label: '營運數據' }, { key: 'kpi', label: 'KPI 評核' },
   { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
+  { key: 'ownerkpi', label: '評核店長 🔑' },
 ];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
@@ -1512,7 +1519,10 @@ function MgrOps({ month, mgrData }) {
     setTeam(t => ({ ...t, academyItems: next, academyRevenue: sum }));
   };
   const acadTotal = ACAD.reduce((a, it) => a + (acad[it.key] || 0), 0);
-  const teamForCalc = { ...team, academyRevenue: acadTotal };
+  // 舊生續報池按學院職級分(資深=owner不抽池,故排除 manager);冇職級資料時 fallback 平分
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk');
+  const acadWeightTotal = poolStaff.reduce((a, s) => a + (ACAD_W[s.acadRank] || 0), 0);
+  const teamForCalc = { ...team, academyRevenue: acadTotal, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT };
   const storeRev = storeRevenueOf(teamForCalc);
   const previewTotal = mgrData.staffList.reduce((a, s) => {
     const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0 };
@@ -1524,7 +1534,8 @@ function MgrOps({ month, mgrData }) {
     return pwApi('saveOps', {
       month, hotelRevenue: team.hotelRevenue, academyRevenue: acadTotal,
       trial: acad.trial || 0, s1: acad.s1 || 0, s2: acad.s2 || 0, combo: acad.combo || 0, monthlyFee: acad.monthlyFee || 0,
-      newStudents: team.newStudents, renewals: team.renewals,
+      newStudents: (team.s1New||0)+(team.s2New||0)+(team.comboNew||0), renewals: team.renewals,
+      s1New: team.s1New || 0, s2New: team.s2New || 0, comboNew: team.comboNew || 0,
       pickup: team.pickup || 0, groomBasic: team.groomBasic || 0, groomStar: team.groomStar || 0,
       packageRevenue: team.packageRevenue || 0, packages: team.packages, other: team.other || 0,
       dogEscape: team.dogEscape ? 'true' : 'false',
@@ -1532,18 +1543,6 @@ function MgrOps({ month, mgrData }) {
   }
   return (
     <div className="pwd-mgr-stack">
-      <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">數量統計 · 學院新生 / 續報 / 套票</div>
-        <div className="pwd-mgr-fieldgrid">
-          <div className="pwd-mgr-field"><label>學院新生</label>
-            <Stepper value={team.newStudents} suffix="隻" hint="$150／隻 ÷3 · 劃一" onChange={(v) => set('newStudents', v)} /></div>
-          <div className="pwd-mgr-field"><label>舊生續報 (繼報)</label>
-            <Stepper value={team.renewals} suffix="個" hint="頭5 $300／6起 $600 ÷3" onChange={(v) => set('renewals', v)} /></div>
-          <div className="pwd-mgr-field"><label>套票數量 (店長 KPI)</label>
-            <Stepper value={team.packages} suffix="個" hint="目標 ≥ 12" onChange={(v) => set('packages', v)} /></div>
-        </div>
-      </div>
-
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">A. 酒店總業績 (含基本美容,計佣)</div>
         <MoneyField label="酒店總業績" value={team.hotelRevenue} onChange={(v) => set('hotelRevenue', v)}
@@ -1571,6 +1570,9 @@ function MgrOps({ month, mgrData }) {
           ))}
           <div className="pwd-acad-sum"><span>學院總業績合計</span><b>{money(acadTotal)}</b></div>
         </div>
+        <div className="pwd-mgr-field" style={{ marginTop: 14 }}><label>舊生續報 (繼報)</label>
+          <Stepper value={team.renewals} suffix="個" hint="$600／個 · 按職級分 · 不設門檻" onChange={(v) => set('renewals', v)} /></div>
+        <div className="pwd-mgr-storerow" style={{ marginTop: 12 }}><span>學院新生總數(各員工「KPI 評核」自動加總)</span><b>{Object.values(mgrData.allSales || {}).reduce((a, s) => a + (s.s1New || 0) + (s.s2New || 0) + (s.comboNew || 0), 0)} 隻</b></div>
       </div>
 
       <div className="pwd-card pwd-block">
@@ -1578,6 +1580,8 @@ function MgrOps({ month, mgrData }) {
         <MoneyField label="C. 接送總業績" value={team.pickup} onChange={(v) => set('pickup', v)} note="計入店長業績 · 不分員工佣金" />
         <MoneyField label="E. 星級美容總業績" value={team.groomStar} onChange={(v) => set('groomStar', v)} note="計入店長業績 · 不分員工佣金" />
         <MoneyField label="F. 套票總業績" value={team.packageRevenue} onChange={(v) => set('packageRevenue', v)} note="公司現金流 · 不計入任何佣金" />
+        <div className="pwd-mgr-field" style={{ marginTop: 12 }}><label>套票數量 (店長 KPI)</label>
+          <Stepper value={team.packages} suffix="個" hint="目標 ≥ 12" onChange={(v) => set('packages', v)} /></div>
         <MoneyField label="G. 其他" value={team.other} onChange={(v) => set('other', v)} note="只記錄 · 不計入佣金" />
       </div>
 
@@ -1615,18 +1619,27 @@ function MgrKpi({ month, mgrData }) {
   const k0 = mgrData.allKpi[sel] || { kpiFail: [], lateLeave: 0 };
   const [fail, setFail] = useState(() => k0.kpiFail.slice());
   const [lateLeave, setLate] = useState(k0.lateLeave || 0);
+  const sl0 = (mgrData.allSales && mgrData.allSales[sel]) || {};
+  const [sales, setSales] = useState(() => ({ s1New: sl0.s1New || 0, s2New: sl0.s2New || 0, comboNew: sl0.comboNew || 0 }));
+  const [acadRank, setAcadRank] = useState(staff.acadRank || 'junior');
   // 學院出勤由更表自動計,唯讀
   const att = (mgrData.allAttendance && mgrData.allAttendance[sel] != null) ? mgrData.allAttendance[sel] : 0;
   function reseed(id) {
     const k = mgrData.allKpi[id] || { kpiFail: [], lateLeave: 0 };
+    const sl = (mgrData.allSales && mgrData.allSales[id]) || {};
+    const st = list.find(s => s.id == id) || {};
     setSel(id); setFail(k.kpiFail.slice()); setLate(k.lateLeave || 0);
+    setSales({ s1New: sl.s1New || 0, s2New: sl.s2New || 0, comboNew: sl.comboNew || 0 });
+    setAcadRank(st.acadRank || 'junior');
   }
   const items = buildScorecard(staff.role, fail);
-  const { calc, kpi } = fullResult({ ...staff, attendance: att, kpiFail: fail, lateLeave }, mgrData.team, { scorecard: items, lateLeave });
+  const poolStaff = list.filter(s => s.role !== 'frontdesk');
+  const acadWeightTotal = poolStaff.reduce((a, s) => a + (ACAD_W[s.id == sel ? acadRank : s.acadRank] || 0), 0);
+  const { calc, kpi } = fullResult({ ...staff, ...sales, acadRank, attendance: att, kpiFail: fail, lateLeave }, { ...mgrData.team, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT }, { scorecard: items, lateLeave });
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
-  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(',') }); }
+  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(','), s1New: sales.s1New, s2New: sales.s2New, comboNew: sales.comboNew, acadRank }); }
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-people">
@@ -1669,6 +1682,25 @@ function MgrKpi({ month, mgrData }) {
         </div>
         {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {staff.name} 本月 KPI 將為 0</div>}
       </div>
+      {staff.role !== 'frontdesk' && (
+        <div className="pwd-card pwd-block">
+          <div className="pwd-eyebrow">{staff.name} · 學院新生銷售(個人歸成交者)</div>
+          <div className="pwd-mgr-fieldgrid">
+            <div className="pwd-mgr-field"><label>S1</label>
+              <Stepper value={sales.s1New} suffix="隻" hint="$500" onChange={(v) => setSales(s => ({ ...s, s1New: v }))} /></div>
+            <div className="pwd-mgr-field"><label>S2</label>
+              <Stepper value={sales.s2New} suffix="隻" hint="$300" onChange={(v) => setSales(s => ({ ...s, s2New: v }))} /></div>
+            <div className="pwd-mgr-field"><label>S1+S2</label>
+              <Stepper value={sales.comboNew} suffix="隻" hint="$900" onChange={(v) => setSales(s => ({ ...s, comboNew: v }))} /></div>
+          </div>
+          <div className="pwd-eyebrow" style={{ marginTop: 14 }}>學院職級(舊生續報池按職級分)</div>
+          <div className="pwd-club-tierconfirm">
+            {[['assistant','助教'],['junior','初級導師'],['senior','資深導師']].map(([v, l]) => (
+              <button key={v} className="pwd-club-tierconfirm-btn" style={acadRank === v ? { background: 'var(--pw-navy)', color: '#fff' } : {}} onClick={() => setAcadRank(v)}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="pwd-card pwd-mgr-result">
         <div className="pwd-eyebrow">{staff.name} 本月實際領取</div>
         <div className="pwd-mgr-result-num">{money(kpi.actualTotal)}</div>
@@ -1742,10 +1774,14 @@ function MgrLeave({ month, mgrData }) {
   const [recs, setRecs] = useState(() => (mgrData.allLeaveRec[sel] || []).slice());
   const [type, setType] = useState('年假');
   const [date, setDate] = useState('');
+  const [phs, setPhs] = useState(() => ((mgrData.allPH && mgrData.allPH[sel]) || []).slice());
+  const [phName, setPhName] = useState('');
+  const [phDate, setPhDate] = useState('');
   function reseed(id) {
     const b = mgrData.allLeaveBal[id] || { annual: 0, statutory: 0, sick: 0 };
     setSel(id); setBal({ annual: b.annual, statutory: b.statutory, sick: b.sick });
     setRecs((mgrData.allLeaveRec[id] || []).slice()); setDate('');
+    setPhs(((mgrData.allPH && mgrData.allPH[id]) || []).slice()); setPhName(''); setPhDate('');
   }
   const adj = (k, d) => setBal(b => ({ ...b, [k]: Math.max(0, +(b[k] + d).toFixed(1)) }));
   const fmtDate = (iso) => { const [, m, d] = iso.split('-'); return `${+m}月${+d}日`; };
@@ -1760,6 +1796,17 @@ function MgrLeave({ month, mgrData }) {
   async function delRec(rec, i) {
     setRecs(r => r.filter((_, j) => j !== i));
     await pwApi('deleteLeaveRec', { month, staffId: sel, date: rec.date, type: rec.type });
+  }
+  async function addPH() {
+    if (!phName.trim() || !phDate) return;
+    const ds = fmtDate(phDate);
+    setPhs(p => [...p, { name: phName.trim(), date: ds }]);
+    setPhName(''); setPhDate('');
+    await pwApi('addPH', { month, staffId: sel, name: phName.trim(), date: ds });
+  }
+  async function delPH(p, i) {
+    setPhs(arr => arr.filter((_, j) => j !== i));
+    await pwApi('deletePH', { month, staffId: sel, name: p.name, date: p.date });
   }
   return (
     <div className="pwd-mgr-stack">
@@ -1808,6 +1855,26 @@ function MgrLeave({ month, mgrData }) {
               <button className="pwd-larec-del" onClick={() => delRec(rec, i)}>✕</button>
             </div>
           ))}
+        </div>
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">待放公眾假期 (員工頁顯示)</div>
+        <div className="pwd-club-frow" style={{ marginTop: 12 }}>
+          <input className="pwd-club-input" placeholder="假期名稱(例:勞動節)" value={phName} onChange={(e) => setPhName(e.target.value)} />
+          <input className="pwd-la-date" type="date" value={phDate} onChange={(e) => setPhDate(e.target.value)} />
+        </div>
+        <button className="pwd-la-confirm" style={{ marginTop: 12, width: '100%' }} disabled={!phName.trim() || !phDate} onClick={addPH}>
+          ＋ 為 {staff.name} 登記待放公眾假期
+        </button>
+        <div className="pwd-larec" style={{ marginTop: 14 }}>
+          {phs.map((p, i) => (
+            <div key={i} className="pwd-larec-row">
+              <span className="pwd-larec-type">🎌 {p.name}</span>
+              <span className="pwd-larec-date">{p.date}</span>
+              <button className="pwd-larec-del" onClick={() => delPH(p, i)}>✕</button>
+            </div>
+          ))}
+          {phs.length === 0 && <div className="pwd-ph-empty">未有登記待放公眾假期</div>}
         </div>
       </div>
     </div>
@@ -1947,7 +2014,7 @@ function MgrClub({ mgrData }) {
       <div className="pwd-mgr-swap-top">
         <span className="pwd-mgr-swap-ava">{initOf(n.staffId)}</span>
         <div className="pwd-mgr-swap-info">
-          <b>{n.dog}{t ? <> · {t.label} <span style={{ color: t.color }}>${t.bonus}</span></> : ''}</b>
+          <b>{n.dog}{t ? <> · {t.label}</> : ''}</b>
           <span>提名人 {nameOf(n.staffId)}{n.phone ? ` · 電話 ${n.phone}` : ''}</span>
         </div>
       </div>
@@ -1956,9 +2023,9 @@ function MgrClub({ mgrData }) {
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-card pwd-mgr-preview">
-        <div className="pwd-eyebrow">本月會籍獎金已發放合計</div>
-        <div className="pwd-mgr-preview-num">{money(totalBonus)}</div>
-        <div className="pwd-mgr-preview-sub">已成功訂閱 {noms.filter(n => n.status === 'subscribed').length} 個會籍</div>
+        <div className="pwd-eyebrow">本月會籍佣金</div>
+        <div className="pwd-mgr-preview-num">待定</div>
+        <div className="pwd-mgr-preview-sub">已成功訂閱 {noms.filter(n => n.status === 'subscribed').length} 個 · 佣金待收集 1–2 個月數據後安排</div>
       </div>
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">待審批提名 ({pending.length})</div>
@@ -1979,14 +2046,14 @@ function MgrClub({ mgrData }) {
       {approved.length > 0 && (
         <div className="pwd-card pwd-block">
           <div className="pwd-eyebrow">已批准 · 待客戶訂閱 ({approved.length})</div>
-          <div className="pwd-club-mgr-hint">主人實際訂閱後,揀選對應方案即發放獎金給提名員工</div>
+          <div className="pwd-club-mgr-hint">主人訂閱後揀選對應方案記錄；會籍佣金待收集 1–2 個月數據後安排</div>
           <div className="pwd-mgr-swaps">
             {approved.map(n => (
               <div key={n.id} className="pwd-mgr-swap">
                 <NomLine n={n} />
                 <div className="pwd-club-tierconfirm">
                   {Object.values(CLUB_TIERS).map(t => (
-                    <button key={t.key} className="pwd-club-tierconfirm-btn" onClick={() => setTier(n.id, t.key)}>{t.label}<i>+${t.bonus}</i></button>
+                    <button key={t.key} className="pwd-club-tierconfirm-btn" onClick={() => setTier(n.id, t.key)}>{t.label}<i>${t.fee}/月</i></button>
                   ))}
                 </div>
                 <button className="pwd-club-mgr-cancel" onClick={() => set(n.id, 'rejected')}>取消提名</button>
@@ -2006,7 +2073,7 @@ function MgrClub({ mgrData }) {
                   <span className="pwd-mgr-swap-ava">{initOf(n.staffId)}</span>
                   <div className="pwd-mgr-swap-info"><b>{n.dog}{t ? ` · ${t.label}` : ''}</b><span>{nameOf(n.staffId)}{n.phone ? ` · ${n.phone}` : ''}</span></div>
                   <span className={'pwd-mgr-swap-status ' + (n.status === 'subscribed' ? 'approved' : 'rejected')}>
-                    {n.status === 'subscribed' && t ? `已訂閱 +$${t.bonus}` : '已拒絕'}
+                    {n.status === 'subscribed' && t ? `已訂閱 · ${t.label}` : '已拒絕'}
                   </span>
                 </div>
               );
@@ -2019,7 +2086,7 @@ function MgrClub({ mgrData }) {
 }
 
 // ── ManagerGate ──
-function ManagerGate({ onUnlock }) {
+function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 需要管理密碼', sub = '高敏感操作 · 請輸入只有店長 / 老闆知道的管理密碼' }) {
   const [pin, setPin] = useState('');
   const [err, setErr] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -2027,7 +2094,7 @@ function ManagerGate({ onUnlock }) {
   async function check(code) {
     setBusy(true);
     try {
-      const res = await pwApi('verifyMgr', { passcode: code });
+      const res = await pwApi(action, { passcode: code });
       if (res.ok) onUnlock();
       else { setErr(true); setPin(''); }
     } catch (e) { setErr(true); setPin(''); }
@@ -2045,8 +2112,8 @@ function ManagerGate({ onUnlock }) {
   return (
     <div className="pwd-mgrgate">
       <div className="pwd-mgrgate-lock">🔒</div>
-      <div className="pwd-mgrgate-title">團隊管理 · 需要管理密碼</div>
-      <div className="pwd-mgrgate-sub">高敏感操作 · 請輸入只有店長 / 老闆知道的管理密碼</div>
+      <div className="pwd-mgrgate-title">{title}</div>
+      <div className="pwd-mgrgate-sub">{sub}</div>
       <div className={'pwd-mgrgate-dots' + (err ? ' err' : '')}>
         {Array.from({ length: LEN }).map((_, i) => <span key={i} className={'pwd-mgrgate-dot' + (pin.length > i ? ' on' : '')} />)}
       </div>
@@ -2058,6 +2125,63 @@ function ManagerGate({ onUnlock }) {
       </div>
     </div>
   );
+}
+
+// ── 老闆評核店長 KPI ──
+function OwnerKpiEditor({ month, mgrData, mgr }) {
+  const k0 = mgrData.allKpi[mgr.id] || { kpiFail: [], lateLeave: 0 };
+  const [fail, setFail] = useState(() => k0.kpiFail.slice());
+  const [lateLeave, setLate] = useState(k0.lateLeave || 0);
+  const att = (mgrData.allAttendance && mgrData.allAttendance[mgr.id] != null) ? mgrData.allAttendance[mgr.id] : 0;
+  const items = buildScorecard('manager', fail);
+  const { calc, kpi } = fullResult({ ...mgr, attendance: att, kpiFail: fail, lateLeave }, mgrData.team, { scorecard: items, lateLeave });
+  const score = scorecardTotal(items);
+  const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
+  const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
+  function save() { return pwApi('saveKpi', { month, staffId: mgr.id, lateLeave, kpiFail: fail.join(',') }); }
+  return (
+    <div className="pwd-mgr-stack">
+      <div className="pwd-mgr-banner"><span className="pwd-mgr-banner-ico">🔑</span><div><b>老闆評核店長</b><span>{mgr.name} · 店長 KPI</span></div></div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-kpi-head">
+          <div>
+            <div className="pwd-eyebrow">店長 KPI 評核</div>
+            <div className="pwd-kpi-band">發放比例 <b className={'r-' + tone}>{Math.round(kpi.ratio * 100)}%</b> · {kpi.band}</div>
+          </div>
+          <div className={'pwd-kpi-score r-' + tone}><span className="n">{score}</span><span className="d">分</span></div>
+        </div>
+        <div className="pwd-kpi-items">
+          {items.map(it => (
+            <button key={it.id} className={'pwd-kpi-item edit' + (it.pass ? ' pass' : ' fail')} onClick={() => toggle(it.id)}>
+              <span className="pwd-kpi-check">{it.pass ? '✓' : '✕'}</span>
+              <span className="pwd-kpi-text">{it.text}{it.team && <em className="pwd-kpi-team">團隊</em>}</span>
+              <span className="pwd-kpi-w">{it.weight}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="pwd-card pwd-mgr-late">
+        <div className="pwd-mgr-late-row">
+          <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
+          <Stepper value={lateLeave} suffix="次" onChange={setLate} />
+        </div>
+        {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {mgr.name} 本月 KPI 將為 0</div>}
+      </div>
+      <div className="pwd-card pwd-mgr-result">
+        <div className="pwd-eyebrow">{mgr.name} 本月實際領取</div>
+        <div className="pwd-mgr-result-num">{money(kpi.actualTotal)}</div>
+        <div className="pwd-mgr-result-sub">店長佣金 {money(calc.total)} × {Math.round(kpi.ratio * 100)}% 發放</div>
+      </div>
+      <SaveBtn onSave={save} label={`儲存 ${mgr.name} 的評核`} />
+    </div>
+  );
+}
+function MgrOwnerKpi({ month, mgrData }) {
+  const [unlocked, setUnlocked] = useState(false);
+  const mgr = mgrData.staffList.find(s => s.role === 'manager');
+  if (!mgr) return <div className="pwd-ph-empty" style={{ marginTop: 20 }}>未有店長資料</div>;
+  if (!unlocked) return <ManagerGate action="verifyOwner" title="評核店長 · 需要老闆密碼" sub="只有老闆可評核店長 KPI · 請輸入老闆密碼" onUnlock={() => setUnlocked(true)} />;
+  return <OwnerKpiEditor month={month} mgrData={mgrData} mgr={mgr} />;
 }
 
 // ── ManagerPanel ──
@@ -2082,6 +2206,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
       {area === 'swap' && <MgrSwap mgrData={mgrData} />}
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
       {area === 'roster' && <MgrRoster mgrData={mgrData} />}
+      {area === 'ownerkpi' && <MgrOwnerKpi month={month} mgrData={mgrData} />}
     </>
   );
 }
@@ -2194,7 +2319,7 @@ function CommissionApp() {
                 <span className="pwd-readout-tag">本月實際</span>
                 {isManager
                   ? <span>門店總業績 <b>{money(storeRevenueOf(team))}</b></span>
-                  : <span>學院新生 <b>{team.newStudents}</b> · 續報 <b>{team.renewals}</b> · 酒店 <b>{money(hotelForCommission(team))}</b></span>}
+                  : <span>新生 S1<b>{team.s1New||0}</b>/S2<b>{team.s2New||0}</b>/雙<b>{team.comboNew||0}</b> · 續報 <b>{team.renewals}</b> · 酒店 <b>{money(hotelForCommission(team))}</b></span>}
               </div>
             )}
             <IndividualView staff={staff} calc={calc} items={items} kpi={kpi} team={team}
