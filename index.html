@@ -640,10 +640,13 @@ const RATES = [
   { label: '學院新生 · S1', rate: '$500 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
   { label: '學院新生 · S2', rate: '$300 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
   { label: '學院新生 · S1+S2', rate: '$900 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
-  { label: '舊生續報', rate: '$600 / 個', note: '團隊池 · 按職級分 · 學院月收入 ≥ $50k 先派' },
+  { label: '舊生續報', rate: '$900 / 個', note: '團隊池 · 按職級固定分母分 · 學院月收入 ≥ $50k 先派' },
 ];
-// 學院職級權重(只用於舊生續報池):資深 3 / 初級 2 / 助教 1。資深=owner,不抽池(不計入)。
+// 學院職級權重(只用於舊生續報池):資深 3 / 初級 2 / 助教 1。資深=owner,退出日常,不抽池。
 const ACAD_W = { senior: 3, junior: 2, assistant: 1 };
+// 固定分母 = end-state 學院編制 2 初級導師(各 2)+ 1 full-time 助教(1)= 5。
+// 預留未填職級份額(暫不發,留作將來請人);兼職助教 = 時薪,不設 acadRank → 0 份額,不入池。
+const ACAD_WEIGHT_TOTAL = 5;
 // 會籍佣金暫定 0:保留提名功能,先收集 1–2 個月數據再定佣金
 const CLUB_TIERS = {
   light:    { key: 'light', label: 'Light', fee: 699, bonus: 0, color: 'var(--pw-cat-sniff)' },
@@ -674,9 +677,9 @@ function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, n
   const rawNewcmm = s1New * 500 + s2New * 300 + comboNew * 900;
   const newcmm = acadGateOk ? rawNewcmm : 0;
   const nStudents = (newStudents != null) ? newStudents : (trialConv + s1New + s2New + comboNew);
-  const renewPool = renewals * 600;                  // 舊生續報 $600/個 團隊池
-  // 按學院職級分(初級2/助教1);冇職級資料時 fallback 平分
-  const renewShare = (acadWeight > 0 && acadWeightTotal > 0) ? (acadWeight / acadWeightTotal) : (1 / headcount);
+  const renewPool = renewals * 900;                  // 舊生續報 $900/個 團隊池(由 $600 上調,推動跟進)
+  // 按學院職級 / 固定分母分(初級2/助教1,分母=5);無職級(兼職/未填)→ 0 份額,預留唔發
+  const renewShare = (acadWeight > 0 && acadWeightTotal > 0) ? (acadWeight / acadWeightTotal) : 0;
   const rawRenew = renewPool * renewShare;
   const renew = acadGateOk ? rawRenew : 0;           // 學院 $50k 門檻同樣 gate 舊生續報(整個學院佣金)
   const projectCommission = hotel + newcmm + renew;
@@ -1246,7 +1249,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
     : `S1 ${calc.s1New||0}·S2 ${calc.s2New||0}·S1+S2 ${calc.comboNew||0}(個人,歸成交者)`;
   const renewDetail = (calc.acadGateOk === false)
     ? `學院總業績 < $50k 門檻 · 暫不計`
-    : `團隊 ${calc.renewals} 個 · $600/個 · 按職級分`;
+    : `團隊 ${calc.renewals} 個 · $900/個 · 按職級固定分母分`;
   const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $200k';
   const compRowsBase = isMgr
     ? [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `學院出勤 ${calc.attendance} 日 ✓` : `學院出勤 ${calc.attendance} 日` },
@@ -1530,7 +1533,7 @@ function MgrOps({ month, mgrData }) {
   const acadTotal = ACAD.reduce((a, it) => a + (acad[it.key] || 0), 0);
   // 舊生續報池按學院職級分(資深=owner不抽池,故排除 manager);冇職級資料時 fallback 平分
   const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk');
-  const acadWeightTotal = poolStaff.reduce((a, s) => a + (ACAD_W[s.acadRank] || 0), 0);
+  const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const teamForCalc = { ...team, academyRevenue: acadTotal, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT };
   const storeRev = storeRevenueOf(teamForCalc);
   const previewTotal = mgrData.staffList.reduce((a, s) => {
@@ -1649,7 +1652,7 @@ function MgrKpi({ month, mgrData }) {
   }
   const items = buildScorecard(staff.role, fail);
   const poolStaff = list.filter(s => s.role !== 'frontdesk');
-  const acadWeightTotal = poolStaff.reduce((a, s) => a + (ACAD_W[s.id == sel ? acadRank : s.acadRank] || 0), 0);
+  const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const { calc, kpi } = fullResult({ ...staff, ...sales, acadRank, attendance: att, kpiFail: fail, lateLeave }, { ...mgrData.team, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT }, { scorecard: items, lateLeave });
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
