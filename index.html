@@ -678,8 +678,8 @@ function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, n
   const newcmm = acadGateOk ? rawNewcmm : 0;
   const nStudents = (newStudents != null) ? newStudents : (trialConv + s1New + s2New + comboNew);
   const renewPool = renewals * 900;                  // 舊生續報 $900/個 團隊池(由 $600 上調,推動跟進)
-  // 按學院職級 / 固定分母分(初級2/助教1,分母=5);無職級(兼職/未填)→ 0 份額,預留唔發
-  const renewShare = (acadWeight > 0 && acadWeightTotal > 0) ? (acadWeight / acadWeightTotal) : 0;
+  // 按學院職級 / 固定分母分(初級2/助教1,分母=ACAD_WEIGHT_TOTAL=5);無職級(兼職/未填)→ 0 份額,預留唔發
+  const renewShare = acadWeight > 0 ? (acadWeight / ACAD_WEIGHT_TOTAL) : 0;
   const rawRenew = renewPool * renewShare;
   const renew = acadGateOk ? rawRenew : 0;           // 學院 $50k 門檻同樣 gate 舊生續報(整個學院佣金)
   const projectCommission = hotel + newcmm + renew;
@@ -956,7 +956,7 @@ function GoalUnlock({ team, calc, role }) {
   const T = TARGETS;
   const goals = [
     { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$400' },
-    { icon: '🎓', scope: '團隊', label: '學院業績達門檻', cur: team.academyRevenue || 0, target: T.academyThreshold, fmt: money, reward: '解鎖學院佣金 (新生 + 舊生續報)', hit: (team.academyRevenue || 0) >= T.academyThreshold, hint: '達標後:新生每隻 S1 $500 / S2 $300 / S1+S2 $900;舊生續報 $600/個' },
+    { icon: '🎓', scope: '團隊', label: '學院業績達門檻', cur: team.academyRevenue || 0, target: T.academyThreshold, fmt: money, reward: '解鎖學院佣金 (新生 + 舊生續報)', hit: (team.academyRevenue || 0) >= T.academyThreshold, hint: '達標後:新生每隻 S1 $500 / S2 $300 / S1+S2 $900;舊生續報 $900/個' },
     { icon: '📅', scope: '個人', label: '學院出勤達標', cur: calc.attendance, target: T.attendanceMin, fmt: (n) => n + ' 日', reward: '解鎖固定獎金 HK$2,000', hit: calc.fixedOk },
   ];
   if (role === 'manager') {
@@ -1589,7 +1589,7 @@ function MgrOps({ month, mgrData }) {
           </div>
         </div>
         <div className="pwd-mgr-field" style={{ marginTop: 14 }}><label>舊生續報 (繼報)</label>
-          <Stepper value={team.renewals} suffix="個" hint="$600／個 · 按職級分 · 不設門檻" onChange={(v) => set('renewals', v)} /></div>
+          <Stepper value={team.renewals} suffix="個" hint="$900／個 · 按職級固定分母分" onChange={(v) => set('renewals', v)} /></div>
         <div className="pwd-mgr-storerow" style={{ marginTop: 12 }}><span>學院新生總數(各員工「KPI 評核」自動加總)</span><b>{Object.values(mgrData.allSales || {}).reduce((a, s) => a + (s.s1New || 0) + (s.s2New || 0) + (s.comboNew || 0), 0)} 隻</b></div>
       </div>
 
