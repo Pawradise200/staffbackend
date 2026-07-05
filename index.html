@@ -1658,7 +1658,7 @@ function MgrOps({ month, mgrData }) {
       <div className="pwd-card pwd-mgr-preview">
         <div className="pwd-eyebrow">團隊本月實際領取合計 (預覽)</div>
         <div className="pwd-mgr-preview-num">{money(previewTotal)}</div>
-        <div className="pwd-mgr-preview-sub">已計入各人 KPI 發放 · 出勤未設者以達標估算</div>
+        <div className="pwd-mgr-preview-sub">已計入各人 KPI 發放</div>
       </div>
       <SaveBtn onSave={save} />
     </div>
@@ -1721,14 +1721,6 @@ function MgrKpi({ month, mgrData }) {
           ))}
         </div>
       </div>
-      {staff.role !== 'frontdesk' && (
-        <div className="pwd-card pwd-mgr-late">
-          <div className="pwd-mgr-late-row">
-            <div><b>本月學院出勤日數</b><span>由「排更」崗位＝學院自動計（參考用,$2,000 出勤獎已取消）</span></div>
-            <b style={{ fontFamily: 'var(--pw-font-display)', fontSize: 18, whiteSpace: 'nowrap', color: att >= 4 ? 'var(--pw-success)' : 'var(--pw-ink-mute)' }}>{att} 日{att >= 4 ? ' ✓' : ''}</b>
-          </div>
-        </div>
-      )}
       <div className="pwd-card pwd-mgr-late">
         <div className="pwd-mgr-late-row">
           <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
