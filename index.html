@@ -610,7 +610,7 @@ const ROLE_KPIS = {
     { id: 't3', text: '漏斗跟進:線上查詢即日回覆率 ≥ 90% 且逾期跟進 = 0 (含被派續報/升班名單;Leads 追蹤表自動計)', weight: 15, team: false },
     { id: 't4', text: '試堂報告於試堂後 24 小時內交齊 (報告 + 行為評級)', weight: 15, team: false },
     { id: 't5', text: '學員記錄每堂更新 (出席 / 進度 / 評級),錯漏 ≤ 2', weight: 10, team: false },
-    { id: 't6', text: '家長溝通:篩選助教影片並指導拍攝質素,每學員每堂發送 ≥ 5 條 + 手冊填寫', weight: 10, team: false },
+    { id: 't6', text: '家長溝通:每學員每堂發送 ≥ 5 條影片 + 手冊填寫 (有助教時由助教拍攝、導師篩選指導質素)', weight: 10, team: false },
     { id: 't7', text: '場地器材清潔:完成指定清潔流程;突擊巡查不合格 ≤ 1 (標準checklist+相片為準)', weight: 10, team: false },
   ] },
   assistant: { label: '學院部助教', items: [
@@ -1127,8 +1127,8 @@ function Login({ onLogin }) {
             onChange={(e) => { setName(e.target.value); setError(''); }} />
         </label>
         <label className="pwd-field">
-          <span className="pwd-field-lbl">身份證號碼後 4 位</span>
-          <input className="pwd-input" type="password" autoComplete="off" placeholder="例如 A1234567(首字母 + 7 位數字)" value={id}
+          <span className="pwd-field-lbl">身份證英文字＋頭 4 位數字</span>
+          <input className="pwd-input" type="password" autoComplete="off" placeholder="例如 A1234" value={id}
             onChange={(e) => { setId(e.target.value); setError(''); }} />
         </label>
         {error && <div className="pwd-login-err">{error}</div>}
