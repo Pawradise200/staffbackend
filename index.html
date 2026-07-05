@@ -549,9 +549,11 @@ img { display: block; }
 const { useState, useEffect, useRef } = React;
 
 // ═══════════ API ═══════════
+let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
 async function pwApi(action, params = {}) {
   const qs = new URLSearchParams();
   qs.set('action', action);
+  if (PW_KEY) qs.set('key', PW_KEY);
   Object.keys(params).forEach(k => {
     if (params[k] !== undefined && params[k] !== null) qs.set(k, params[k]);
   });
@@ -592,15 +594,32 @@ const ROLE_KPIS = {
     { id: 'j1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
     { id: 'j2', text: '操作錯誤:混亂食物藥物、錯誤執拾 / 遺漏物品、CCTV 邀請遺留 / 錯誤 ≤ 3 次 (以團隊計算)', weight: 20, team: true },
     { id: 'j3', text: '每日每位客戶收到 > 5 條相片 / 影片 (以團隊計算)', weight: 20, team: true },
-    { id: 'j4', text: '完成指定環境及犬隻清潔流程;衛生投訴 ≤ 2 次', weight: 20, team: false },
+    { id: 'j4', text: '完成指定環境及犬隻清潔流程;客戶衛生投訴 ≤ 2 且 突擊巡查不合格 ≤ 1 (標準checklist+相片為準,3項以上唔妥先算1次)', weight: 20, team: false },
     { id: 'j5', text: '保持儀容整潔、穿着整齊制服', weight: 10, team: false },
   ] },
   senior: { label: '高級寵物照顧員', items: [
     { id: 's1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
     { id: 's2', text: '操作錯誤:混亂食物藥物、錯誤執拾 / 遺漏物品、CCTV 邀請遺留 / 錯誤 ≤ 3 次 (以團隊計算)', weight: 20, team: true },
     { id: 's3', text: '每日每位客戶收到 > 5 條相片 / 影片 (以團隊計算)', weight: 20, team: true },
-    { id: 's4', text: '完成指定環境及犬隻清潔流程;衛生投訴 ≤ 2 次', weight: 20, team: false },
+    { id: 's4', text: '完成指定環境及犬隻清潔流程;客戶衛生投訴 ≤ 2 且 突擊巡查不合格 ≤ 1 (標準checklist+相片為準,3項以上唔妥先算1次)', weight: 20, team: false },
     { id: 's5', text: '培訓團隊,確保團隊中初級寵物照顧員 KPI 達 80 分以上', weight: 10, team: false },
+  ] },
+  tutor: { label: '學院部初級導師', items: [
+    { id: 't1', text: '客戶有效投訴 ≤ 1 次 (對應到負責人=個人計;指向課堂整體=團隊計;以書面客訴記錄為準)', weight: 20, team: false },
+    { id: 't2', text: '課堂安全零事故 (狗隻受傷 / 走失 / 分組不當致衝突,以事故記錄為準)', weight: 20, team: false },
+    { id: 't3', text: '漏斗跟進:線上查詢即日回覆率 ≥ 90% 且逾期跟進 = 0 (含被派續報/升班名單;Leads 追蹤表自動計)', weight: 15, team: false },
+    { id: 't4', text: '試堂報告於試堂後 24 小時內交齊 (報告 + 行為評級)', weight: 15, team: false },
+    { id: 't5', text: '學員記錄每堂更新 (出席 / 進度 / 評級),錯漏 ≤ 2', weight: 10, team: false },
+    { id: 't6', text: '家長溝通:篩選助教影片並指導拍攝質素,每學員每堂發送 ≥ 5 條 + 手冊填寫', weight: 10, team: false },
+    { id: 't7', text: '場地器材清潔:完成指定清潔流程;突擊巡查不合格 ≤ 1 (標準checklist+相片為準)', weight: 10, team: false },
+  ] },
+  assistant: { label: '學院部助教', items: [
+    { id: 'a1', text: '客戶有效投訴 ≤ 1 次 (對應到負責人=個人計;指向課堂整體=團隊計)', weight: 20, team: false },
+    { id: 'a2', text: '課堂安全零事故 (協助控場、狗隻交接無錯漏)', weight: 25, team: false },
+    { id: 'a3', text: '課堂執行:器材 / 場地預備 100% 完成 (課前 checklist 為準),錯漏 ≤ 2', weight: 15, team: false },
+    { id: 'a4', text: '影片拍攝:每學員每堂 ≥ 5 條影片交齊畀導師篩選 + 出席記錄齊', weight: 20, team: false },
+    { id: 'a5', text: '場地器材清潔:完成指定清潔流程;突擊巡查不合格 ≤ 1 (標準checklist+相片為準)', weight: 15, team: false },
+    { id: 'a6', text: '保持儀容整潔、穿着整齊制服', weight: 5, team: false },
   ] },
   frontdesk: { label: '前台', items: [
     { id: 'f1', text: '招待客戶有效投訴 ≤ 1 人', weight: 30, team: false },
@@ -610,11 +629,12 @@ const ROLE_KPIS = {
     { id: 'f5', text: '保持儀容整潔、穿着制服', weight: 10, team: false },
   ] },
   manager: { label: '店長', items: [
-    { id: 'm1', text: '每月完成團隊保底業績 (寵物酒店 ≥ 20 萬 ＋ 社交學院 ≥ 10 萬)', weight: 30, team: true },
-    { id: 'm2', text: '客戶有效投訴 ≤ 1 人', weight: 20, team: true },
-    { id: 'm3', text: '每月加入的新客戶 ≥ 20 個', weight: 20, team: true },
-    { id: 'm4', text: '每月購買的套票 ≥ 12 個', weight: 20, team: true },
-    { id: 'm5', text: '管理體系:按實際運作調整崗位 SOP、流程標準、接單銷售 FAQ 並推行使用', weight: 10, team: false },
+    { id: 'm1', text: '每月完成團隊保底業績 (寵物酒店 ≥ $200,000 ＋ 社交學院 ≥ $50,000)', weight: 25, team: true },
+    { id: 'm2', text: '客戶有效投訴 ≤ 1 人 (全店)', weight: 15, team: true },
+    { id: 'm3', text: '每月加入的新客戶 ≥ 20 個', weight: 15, team: true },
+    { id: 'm4', text: '每月購買的套票 ≥ 12 個', weight: 15, team: true },
+    { id: 'm5', text: '漏斗入口:返工日查詢即日入表;輪流派單公平 (月結接單數差 ≤ 2);督導導師逾期跟進清零;學期尾派續報/升班跟進名單', weight: 15, team: false },
+    { id: 'm6', text: '數據準確:CRM 收入記錄返工日當日入齊、假期收款返工首日補齊 (日期填實際收款日;人手項目:接送/美容/套票/學期費/試堂/差額;服務類型標準字眼+電話正確);成交即日入 KPI 評核;月度數據 3 號前 (假期順延);對數差異 >15% 能解釋;15 號同員工過 KPI 進度', weight: 15, team: false },
   ] },
 };
 const PARTS_META = {
@@ -627,7 +647,7 @@ const PARTS_META = {
   kpibonus:{ label: 'KPI 獎金', icon: '⭐', color: 'var(--pw-gold)' },
   club:   { label: '會籍獎金', icon: '🐾', color: 'var(--pw-cat-sniff)' },
 };
-const MGR_TIERS = [ { min: 320000, amt: 3800 }, { min: 420000, amt: 5800 }, { min: 520000, amt: 7800 }, { min: 620000, amt: 9800 } ];
+const MGR_TIERS = [ { min: 320000, amt: 5800 }, { min: 420000, amt: 7800 }, { min: 520000, amt: 9800 }, { min: 620000, amt: 11800 } ];  // 各級已含原 $2,000 學院交付獎(2026-07 併入)
 function managerTier(revenue) {
   let cur = { min: 0, amt: 0, index: -1 };
   MGR_TIERS.forEach((t, i) => { if (revenue >= t.min) cur = { ...t, index: i }; });
@@ -635,8 +655,7 @@ function managerTier(revenue) {
   return { amt: cur.amt, tierMin: cur.min, next, index: cur.index };
 }
 const RATES = [
-  { label: '固定獎金', rate: 'HK$2,000', note: '≥ 4 日學院出勤' },
-  { label: '酒店部 (超門檻)', rate: '12% ÷ 3 人', note: '門檻 HK$200,000' },
+  { label: '酒店部 (超門檻)', rate: '12% ÷ 酒店部人數', note: '門檻 HK$200,000 · 學院部不參與' },
   { label: '學院新生 · S1', rate: '$500 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
   { label: '學院新生 · S2', rate: '$300 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
   { label: '學院新生 · S1+S2', rate: '$900 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
@@ -658,6 +677,13 @@ function roleKpi(role) { return ROLE_KPIS[role] || ROLE_KPIS.frontdesk; }
 function buildScorecard(role, failIds = []) {
   return roleKpi(role).items.map(it => ({ ...it, pass: !failIds.includes(it.id) }));
 }
+// 分部門後:學院部用導師/助教 KPI,酒店部照舊;部門欄未填 = 照舊(相容)
+function kpiRoleOf(staff) {
+  if (!staff) return 'frontdesk';
+  if (staff.role === 'manager') return 'manager';
+  if (staff.dept === 'academy') return staff.acadRank === 'assistant' ? 'assistant' : 'tutor';
+  return staff.role;
+}
 function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
   if (override) return { ratio: 0, band: '失格', reason: overrideReason || '缺勤 / 紀律 / 安全事故' };
   if (score >= 91) return { ratio: 1, band: '滿額' };
@@ -666,11 +692,11 @@ function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
   return { ratio: 0, band: '不發放' };
 }
 function scorecardTotal(items) { return items.reduce((a, it) => a + (it.pass ? it.weight : 0), 0); }
-function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, newStudents, renewals, hotelRevenue, academyRevenue = null, acadWeight = 0, acadWeightTotal = 0, headcount = HEADCOUNT }) {
-  const fixedOk = attendance >= 4;
-  const fixed = fixedOk ? 2000 : 0;
+function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, newStudents, renewals, hotelRevenue, academyRevenue = null, acadWeight = 0, acadWeightTotal = 0, headcount = HEADCOUNT, dept = '' }) {
+  const fixedOk = true;   // 分部門後取消 $2,000 出勤獎(摺入底薪;店長併入階梯)
+  const fixed = 0;
   const hotelOver = Math.max(0, hotelRevenue - TARGETS.hotelThreshold);
-  const hotel = hotelOver * 0.12 / headcount;
+  const hotel = dept === 'academy' ? 0 : hotelOver * 0.12 / headcount;   // 學院部唔分酒店池
   // 學院新生 = 個人銷售佣,歸成交者(不÷3):S1$500 / S2$300 / S1+S2$900。試堂不設佣(流量功勞)
   // 學院 $50,000 收入門檻:該月學院總業績未達 → 新生佣 $0(事前可見,不追扣);academyRevenue 為 null 時(冇團隊數據)當已達,避免破壞
   const acadGateOk = (academyRevenue == null) ? true : (academyRevenue >= TARGETS.academyThreshold);
@@ -689,8 +715,8 @@ function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, n
     parts: [ { key: 'fixed', value: fixed }, { key: 'hotel', value: hotel }, { key: 'newcmm', value: newcmm }, { key: 'renew', value: renew } ] };
 }
 function calcManager({ attendance, storeRevenue, hotelRevenue, academyRevenue }) {
-  const fixedOk = attendance >= 4;
-  const fixed = fixedOk ? 2000 : 0;
+  const fixedOk = true;   // $2,000 已併入 MGR_TIERS,唔再獨立計
+  const fixed = 0;
   const tier = managerTier(storeRevenue);
   const tierAmt = tier.amt;
   const projectCommission = tierAmt;
@@ -725,8 +751,8 @@ function fullResult(staff, team, overrides = {}) {
     ? calcManager({ attendance: att, storeRevenue: storeRevenueOf(team), hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue })
     : staff.role === 'frontdesk'
     ? calcFrontdesk()
-    : calc({ attendance: att, trialConv: team.trialConv || 0, s1New: (staff.s1New != null ? staff.s1New : (team.s1New || 0)), s2New: (staff.s2New != null ? staff.s2New : (team.s2New || 0)), comboNew: (staff.comboNew != null ? staff.comboNew : (team.comboNew || 0)), renewals: team.renewals, hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue, acadWeight: ACAD_W[staff.acadRank] || 0, acadWeightTotal: team.acadWeightTotal || 0, headcount: team.headcount || HEADCOUNT });
-  const items = overrides.scorecard || buildScorecard(staff.role, staff.kpiFail || []);
+    : calc({ attendance: att, trialConv: team.trialConv || 0, s1New: (staff.s1New != null ? staff.s1New : (team.s1New || 0)), s2New: (staff.s2New != null ? staff.s2New : (team.s2New || 0)), comboNew: (staff.comboNew != null ? staff.comboNew : (team.comboNew || 0)), renewals: team.renewals, hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue, acadWeight: ACAD_W[staff.acadRank] || 0, acadWeightTotal: team.acadWeightTotal || 0, headcount: team.headcount || HEADCOUNT, dept: staff.dept || '' });
+  const items = overrides.scorecard || buildScorecard(kpiRoleOf(staff), staff.kpiFail || []);
   const score = scorecardTotal(items);
   const lateLeave = overrides.lateLeave != null ? overrides.lateLeave : (staff.lateLeave || 0);
   const dogEscape = overrides.dogEscape != null ? overrides.dogEscape : (team.dogEscape || false);
@@ -948,7 +974,7 @@ function ManagerGoal({ calc }) {
           );
         })}
       </div>
-      <div className="pwd-mgrgoal-foot">另：當月完成 4 日學院工作 → 額外固定獎金 HK$2,000</div>
+      <div className="pwd-mgrgoal-foot">學院交付獎金 HK$2,000 已併入各級階梯金額</div>
     </div>
   );
 }
@@ -957,7 +983,6 @@ function GoalUnlock({ team, calc, role }) {
   const goals = [
     { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$400' },
     { icon: '🎓', scope: '團隊', label: '學院業績達門檻', cur: team.academyRevenue || 0, target: T.academyThreshold, fmt: money, reward: '解鎖學院佣金 (新生 + 舊生續報)', hit: (team.academyRevenue || 0) >= T.academyThreshold, hint: '達標後:新生每隻 S1 $500 / S2 $300 / S1+S2 $900;舊生續報 $900/個' },
-    { icon: '📅', scope: '個人', label: '學院出勤達標', cur: calc.attendance, target: T.attendanceMin, fmt: (n) => n + ' 日', reward: '解鎖固定獎金 HK$2,000', hit: calc.fixedOk },
   ];
   if (role === 'manager') {
     goals.push({ icon: '🔄', scope: '店長', label: '套票銷售目標', cur: team.packages, target: T.packageGoal, fmt: (n) => n + ' 個', reward: '店長 KPI 項目 (套票不另計佣)', hit: team.packages >= T.packageGoal });
@@ -991,11 +1016,10 @@ function RateTable({ role }) {
   const [open, setOpen] = useState(false);
   const isMgr = role === 'manager', isFd = role === 'frontdesk';
   const rows = isMgr
-    ? [ { label: '門店業績 ≥ $320,000', rate: 'HK$3,800', note: '酒店 + 學院 總業績' },
-        { label: '門店業績 ≥ $420,000', rate: 'HK$5,800', note: '' },
-        { label: '門店業績 ≥ $520,000', rate: 'HK$7,800', note: '' },
-        { label: '門店業績 ≥ $620,000', rate: 'HK$9,800', note: '' },
-        { label: '固定獎金', rate: 'HK$2,000', note: '當月完成 4 日學院工作' } ]
+    ? [ { label: '門店業績 ≥ $320,000', rate: 'HK$5,800', note: '酒店 + 學院 總業績 · 已含學院交付獎' },
+        { label: '門店業績 ≥ $420,000', rate: 'HK$7,800', note: '' },
+        { label: '門店業績 ≥ $520,000', rate: 'HK$9,800', note: '' },
+        { label: '門店業績 ≥ $620,000', rate: 'HK$11,800', note: '' } ]
     : isFd
     ? [ { label: '固定底薪', rate: 'HK$16,000', note: '每月固定,不受 KPI 影響' },
         { label: 'KPI 獎金 · 91 分以上', rate: 'HK$2,000', note: '全額發放' },
@@ -1103,7 +1127,7 @@ function Login({ onLogin }) {
             onChange={(e) => { setName(e.target.value); setError(''); }} />
         </label>
         <label className="pwd-field">
-          <span className="pwd-field-lbl">身份證號碼</span>
+          <span className="pwd-field-lbl">身份證號碼後 4 位</span>
           <input className="pwd-input" type="password" autoComplete="off" placeholder="例如 A1234567(首字母 + 7 位數字)" value={id}
             onChange={(e) => { setId(e.target.value); setError(''); }} />
         </label>
@@ -1267,14 +1291,14 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
     <>
       {kpi.ratio === 0 && <div className="pwd-warn">KPI {kpi.reason ? kpi.reason : '未達 71 分'} — {isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'}</div>}
       <div className="pwd-card pwd-heroA">
-        <div className="pwd-eyebrow">{staff.name} · {roleKpi(staff.role).label} · 本月實際{isFd ? '收入' : '領取'}</div>
+        <div className="pwd-eyebrow">{staff.name} · {roleKpi(kpiRoleOf(staff)).label} · 本月實際{isFd ? '收入' : '領取'}</div>
         <DonutChart parts={actualParts} total={actualTotal}>
           <div className="pwd-ring-num"><span className="cur">HK$</span>{moneyPlain(actualTotal)}</div>
           <div className="pwd-ring-sub">本月預計</div>
         </DonutChart>
         {isFd
           ? <div className={'pwd-fixed ' + (kpi.ratio >= 1 ? 'on' : 'off')}><span className="pwd-fixed-dot" />{kpi.ratio >= 1 ? 'KPI 獎金 HK$2,000 全額發放' : `KPI ${score} 分 · 獎金發放 ${Math.round(kpi.ratio * 100)}%`}</div>
-          : <FixedBadge ok={calc.fixedOk} need={calc.attendanceNeed} />}
+          : null}
         <div className="pwd-comp">
           {compRows.map(r => {
             const meta = PARTS_META[r.pk];
@@ -1299,7 +1323,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
       <ClubCard staff={staff} noms={clubNoms} onSubmit={onClubSubmit} />
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
-      <KpiCard role={staff.role} items={items} score={score} kpi={kpi} editable={false} />
+      <KpiCard role={kpiRoleOf(staff)} items={items} score={score} kpi={kpi} editable={false} />
       <KpiClauses lateLeave={lateLeave} dogEscape={dogEscape} />
       <YearEndPool deducted={kpi.deducted} />
       <div className="pwd-card pwd-block">
@@ -1532,7 +1556,7 @@ function MgrOps({ month, mgrData }) {
   };
   const acadTotal = ACAD.reduce((a, it) => a + (acad[it.key] || 0), 0);
   // 舊生續報池按學院職級分(資深=owner不抽池,故排除 manager);冇職級資料時 fallback 平分
-  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk');
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.dept !== 'academy');
   const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const teamForCalc = { ...team, academyRevenue: acadTotal, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT };
   const storeRev = storeRevenueOf(teamForCalc);
@@ -1650,8 +1674,8 @@ function MgrKpi({ month, mgrData }) {
     setSales({ s1New: sl.s1New || 0, s2New: sl.s2New || 0, comboNew: sl.comboNew || 0 });
     setAcadRank(st.acadRank || 'junior');
   }
-  const items = buildScorecard(staff.role, fail);
-  const poolStaff = list.filter(s => s.role !== 'frontdesk');
+  const items = buildScorecard(kpiRoleOf(staff), fail);
+  const poolStaff = list.filter(s => s.role !== 'frontdesk' && s.dept !== 'academy');
   const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const { calc, kpi } = fullResult({ ...staff, ...sales, acadRank, attendance: att, kpiFail: fail, lateLeave }, { ...mgrData.team, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT }, { scorecard: items, lateLeave });
   const score = scorecardTotal(items);
@@ -1670,7 +1694,7 @@ function MgrKpi({ month, mgrData }) {
       <div className="pwd-card pwd-block">
         <div className="pwd-kpi-head">
           <div>
-            <div className="pwd-eyebrow">{roleKpi(staff.role).label} · KPI 評核</div>
+            <div className="pwd-eyebrow">{roleKpi(kpiRoleOf(staff)).label} · KPI 評核</div>
             <div className="pwd-kpi-band">發放比例 <b className={'r-' + tone}>{Math.round(kpi.ratio * 100)}%</b> · {kpi.band}</div>
           </div>
           <div className={'pwd-kpi-score r-' + tone}><span className="n">{score}</span><span className="d">分</span></div>
@@ -1688,7 +1712,7 @@ function MgrKpi({ month, mgrData }) {
       {staff.role !== 'frontdesk' && (
         <div className="pwd-card pwd-mgr-late">
           <div className="pwd-mgr-late-row">
-            <div><b>本月學院出勤日數</b><span>由「排更」崗位＝學院自動計 · ≥ 4 日 → 固定獎金 HK$2,000</span></div>
+            <div><b>本月學院出勤日數</b><span>由「排更」崗位＝學院自動計（參考用,$2,000 出勤獎已取消）</span></div>
             <b style={{ fontFamily: 'var(--pw-font-display)', fontSize: 18, whiteSpace: 'nowrap', color: att >= 4 ? 'var(--pw-success)' : 'var(--pw-ink-mute)' }}>{att} 日{att >= 4 ? ' ✓' : ''}</b>
           </div>
         </div>
@@ -2113,7 +2137,7 @@ function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 
     setBusy(true);
     try {
       const res = await pwApi(action, { passcode: code });
-      if (res.ok) onUnlock();
+      if (res.ok) { PW_KEY = code; onUnlock(); }
       else { setErr(true); setPin(''); }
     } catch (e) { setErr(true); setPin(''); }
     setBusy(false);
