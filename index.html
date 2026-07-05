@@ -654,18 +654,28 @@ function managerTier(revenue) {
   const next = MGR_TIERS[cur.index + 1] || null;
   return { amt: cur.amt, tierMin: cur.min, next, index: cur.index };
 }
-const RATES = [
-  { label: '酒店部 (超門檻)', rate: '12% ÷ 酒店部人數', note: '門檻 HK$200,000 · 學院部不參與' },
+const RATES_ACADEMY = [
   { label: '學院新生 · S1', rate: '$500 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
   { label: '學院新生 · S2', rate: '$300 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
-  { label: '學院新生 · S1+S2', rate: '$900 / 隻', note: '個人歸成交者 · 學院月收入 ≥ $50k 先派' },
-  { label: '舊生續報', rate: '$900 / 個', note: '團隊池 · 按職級固定分母分 · 學院月收入 ≥ $50k 先派' },
+  { label: '學院新生 · S1+S2', rate: '$900 / 隻', note: '個人歸成交者 · 鼓勵 upsell' },
+  { label: '舊生續報 / 升班', rate: '$900 / 個入池', note: '按職級分:初級導師 2/5 · 助教 1/5 · 升班(S1→S2)屬此項,不設個人佣' },
+  { label: '試堂', rate: '不設佣金', note: '屬流量功勞' },
+  { label: 'Calm Explorer Club 會員招募', rate: '獎金待定', note: '提名合適狗狗入會 · 正收集數據,金額公佈後生效' },
+];
+const RATES_HOTEL = [
+  { label: '酒店部佣金池', rate: '12% ÷ 3 (編制)', note: '超出 $200,000 門檻部分 · 業績 = 寄宿 + 日托 + 基本美容(不含星級美容) · 空缺位份額預留' },
+  { label: '轉介學院課程', rate: '獎金待定', note: '成功轉介酒店狗狗報讀學院 · 而家開始記錄轉介人,金額公佈後生效' },
+  { label: 'Calm Explorer Club 會員招募', rate: '獎金待定', note: '提名合適狗狗入會 · 正收集數據,金額公佈後生效' },
+  { label: '全部佣金', rate: '× KPI 完成率', note: '91分↑ 100% · 81–90 按分數 · 71–80 半數 · 70↓ 不發' },
 ];
 // 學院職級權重(只用於舊生續報池):資深 3 / 初級 2 / 助教 1。資深=owner,退出日常,不抽池。
 const ACAD_W = { senior: 3, junior: 2, assistant: 1 };
 // 固定分母 = end-state 學院編制 2 初級導師(各 2)+ 1 full-time 助教(1)= 5。
 // 預留未填職級份額(暫不發,留作將來請人);兼職助教 = 時薪,不設 acadRank → 0 份額,不入池。
 const ACAD_WEIGHT_TOTAL = 5;
+// 酒店池固定分母 = 酒店部編制 3 位;空缺份額預留唔發(淡季店長頂更亦不入池,佢行階梯)。
+// 請滿第 3 位 / 擴編時改呢度一個數即可。
+const HOTEL_SEATS = 3;
 // 會籍佣金暫定 0:保留提名功能,先收集 1–2 個月數據再定佣金
 const CLUB_TIERS = {
   light:    { key: 'light', label: 'Light', fee: 699, bonus: 0, color: 'var(--pw-cat-sniff)' },
@@ -696,7 +706,7 @@ function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, n
   const fixedOk = true;   // 分部門後取消 $2,000 出勤獎(摺入底薪;店長併入階梯)
   const fixed = 0;
   const hotelOver = Math.max(0, hotelRevenue - TARGETS.hotelThreshold);
-  const hotel = dept === 'academy' ? 0 : hotelOver * 0.12 / headcount;   // 學院部唔分酒店池
+  const hotel = dept === 'academy' ? 0 : hotelOver * 0.12 / HOTEL_SEATS;   // 學院部唔分池;分母=編制3,空缺預留
   // 學院新生 = 個人銷售佣,歸成交者(不÷3):S1$500 / S2$300 / S1+S2$900。試堂不設佣(流量功勞)
   // 學院 $50,000 收入門檻:該月學院總業績未達 → 新生佣 $0(事前可見,不追扣);academyRevenue 為 null 時(冇團隊數據)當已達,避免破壞
   const acadGateOk = (academyRevenue == null) ? true : (academyRevenue >= TARGETS.academyThreshold);
@@ -978,12 +988,15 @@ function ManagerGoal({ calc }) {
     </div>
   );
 }
-function GoalUnlock({ team, calc, role }) {
+function GoalUnlock({ team, calc, role, dept }) {
   const T = TARGETS;
-  const goals = [
-    { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$400' },
-    { icon: '🎓', scope: '團隊', label: '學院業績達門檻', cur: team.academyRevenue || 0, target: T.academyThreshold, fmt: money, reward: '解鎖學院佣金 (新生 + 舊生續報)', hit: (team.academyRevenue || 0) >= T.academyThreshold, hint: '達標後:新生每隻 S1 $500 / S2 $300 / S1+S2 $900;舊生續報 $900/個' },
-  ];
+  const perTen = Math.round(1200 / HOTEL_SEATS);
+  const isAcad = dept === 'academy';
+  const goals = [];
+  if (role === 'manager' || !isAcad) goals.push(
+    { icon: '🏨', scope: '團隊', label: '酒店業績達門檻 (含基本美容)', cur: calc.hotelRevenue, target: T.hotelThreshold, fmt: money, reward: '解鎖酒店 12% 佣金池', hit: calc.hotelRevenue >= T.hotelThreshold, hint: '每多 HK$10,000 業績 ≈ 每人 +HK$' + perTen });
+  if (role === 'manager' || isAcad) goals.push(
+    { icon: '🎓', scope: '團隊', label: '學院業績達門檻', cur: team.academyRevenue || 0, target: T.academyThreshold, fmt: money, reward: '解鎖學院佣金 (新生 + 舊生續報)', hit: (team.academyRevenue || 0) >= T.academyThreshold, hint: '達標後:新生每隻 S1 $500 / S2 $300 / S1+S2 $900;舊生續報 $900/個' });
   if (role === 'manager') {
     goals.push({ icon: '🔄', scope: '店長', label: '套票銷售目標', cur: team.packages, target: T.packageGoal, fmt: (n) => n + ' 個', reward: '店長 KPI 項目 (套票不另計佣)', hit: team.packages >= T.packageGoal });
   }
@@ -1012,7 +1025,7 @@ function GoalUnlock({ team, calc, role }) {
     </div>
   );
 }
-function RateTable({ role }) {
+function RateTable({ role, dept }) {
   const [open, setOpen] = useState(false);
   const isMgr = role === 'manager', isFd = role === 'frontdesk';
   const rows = isMgr
@@ -1026,7 +1039,7 @@ function RateTable({ role }) {
         { label: 'KPI 獎金 · 81–90 分', rate: '按完成率', note: '獎金 × KPI %' },
         { label: 'KPI 獎金 · 71–80 分', rate: 'HK$1,000', note: '半額' },
         { label: 'KPI 獎金 · 70 分以下', rate: 'HK$0', note: '不發放' } ]
-    : RATES;
+    : (dept === 'academy' ? RATES_ACADEMY : RATES_HOTEL);
   return (
     <div className="pwd-rate">
       <button className="pwd-rate-head" onClick={() => setOpen(o => !o)}>
@@ -1276,15 +1289,14 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
     : `團隊 ${calc.renewals} 個 · $900/個 · 按職級固定分母分`;
   const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $200k';
   const compRowsBase = isMgr
-    ? [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `學院出勤 ${calc.attendance} 日 ✓` : `學院出勤 ${calc.attendance} 日` },
-        { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
+    ? [ { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級 (已含學院交付獎)` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
     : isFd
     ? [ { pk: 'base', value: kpi.actualParts[0].value, detail: '每月固定底薪 · 不受 KPI 影響' },
         { pk: 'kpibonus', value: kpi.actualParts[1].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
-    : [ { pk: 'fixed', value: kpi.actualParts[0].value, detail: calc.fixedOk ? `出勤 ${calc.attendance} 日 ✓` : `出勤 ${calc.attendance} 日` },
-        { pk: 'hotel', value: kpi.actualParts[1].value, detail: hotelDetail },
-        { pk: 'newcmm', value: kpi.actualParts[2].value, detail: newDetail },
-        { pk: 'renew', value: kpi.actualParts[3].value, detail: renewDetail } ];
+    : staff.dept === 'academy'
+    ? [ { pk: 'newcmm', value: kpi.actualParts[2].value, detail: staff.acadRank === 'assistant' ? '個人銷售佣 · 升初級導師後解鎖' : newDetail },
+        { pk: 'renew', value: kpi.actualParts[3].value, detail: renewDetail } ]
+    : [ { pk: 'hotel', value: kpi.actualParts[1].value, detail: hotelDetail } ];
   const subscribedCount = clubNoms.filter(n => n.staffId == staff.id && n.status === 'subscribed').length;
   const compRows = clubBonus > 0 ? [...compRowsBase, { pk: 'club', value: clubBonus, detail: `Calm Explorer Club · ${subscribedCount} 個成功訂閱` }] : compRowsBase;
   return (
@@ -1318,7 +1330,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
       </div>
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">{isFd ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'}</div>
-        {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} />}
+        {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} dept={staff.dept} />}
       </div>
       <ClubCard staff={staff} noms={clubNoms} onSubmit={onClubSubmit} />
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
@@ -1330,7 +1342,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         <div className="pwd-eyebrow">計算 → KPI → 實際領取</div>
         <PayoutLedger calc={calc} kpi={kpi} />
       </div>
-      <RateTable role={staff.role} />
+      <RateTable role={staff.role} dept={staff.dept} />
     </>
   );
 }
