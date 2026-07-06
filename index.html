@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>Pawradise 員工系統</title>
 <link rel="icon" href="pawradise-logo.jpg">
 <style>
@@ -1524,17 +1526,32 @@ const DEFAULT_WEEK = () => [['off', null], ['off', null], ['off', null], ['off',
 function normWeek(arr) { const w = (Array.isArray(arr) ? arr : []).map(r => Array.isArray(r) ? r.slice() : ['off', null]); while (w.length < 7) w.push(['off', null]); return w.slice(0, 7); }
 function SaveBtn({ onSave, label = '儲存到 Google Sheet' }) {
   const [state, setState] = useState('idle'); // idle|saving|saved|err
+  const [errMsg, setErrMsg] = useState('');
   async function go() {
     setState('saving');
-    try { const r = await onSave(); setState(r && r.ok === false ? 'err' : 'saved'); setTimeout(() => setState('idle'), 2500); }
-    catch (e) { setState('err'); setTimeout(() => setState('idle'), 2500); }
+    try {
+      const r = await onSave();
+      if (r && r.ok === false) {
+        // 顯示後端真實原因；授權過期就教用戶點自救（唔好齋話「失敗」）
+        const raw = r.error || '';
+        setErrMsg(/未授權/.test(raw)
+          ? '授權過期:請撳右上「🔒 鎖定」後重新輸入管理密碼,再儲存一次'
+          : ('儲存失敗:' + (raw || '請重試')));
+        setState('err'); setTimeout(() => setState('idle'), 6000);
+      } else {
+        setState('saved'); setTimeout(() => setState('idle'), 2500);
+      }
+    } catch (e) {
+      setErrMsg('網絡錯誤,請檢查連線後重試');
+      setState('err'); setTimeout(() => setState('idle'), 6000);
+    }
   }
   return (
     <>
       <button className="pwd-mgr-savebtn" disabled={state === 'saving'} onClick={go}>
         {state === 'saving' ? '儲存中…' : state === 'saved' ? '✓ 已儲存' : label}
       </button>
-      {state === 'err' && <div className="pwd-mgr-saved" style={{ color: 'var(--pw-danger)' }}>儲存失敗,請重試</div>}
+      {state === 'err' && <div className="pwd-mgr-saved" style={{ color: 'var(--pw-danger)' }}>{errMsg}</div>}
     </>
   );
 }
