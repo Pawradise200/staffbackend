@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pawradise 學期進度報告卡</title>
+<link rel="icon" href="pawradise-logo.jpg">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka:wght@500;600;700&display=swap');
+:root{
+  --navy:#2C4A6E; --navy-deep:#1F3552; --gold:#F4B860; --gold-deep:#E08850;
+  --cream:#F5F0E8; --paper:#FDFBF7; --ink-mute:#8B97A8; --line:#EAE2D3;
+  --good:#DFF2E1; --good-ink:#2E7D32;
+  --blue:#5B8FD9; --orange:#E8944A; --green:#7BA05B; --green-deep:#5C7F3D;
+  --bar-bg:#EFE7D8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5;color:var(--navy);
+  display:flex;flex-direction:column;align-items:center;padding:18px 12px 60px;}
+
+/* ── 工具列（截圖/列印時唔會出現）── */
+.toolbar{width:100%;max-width:560px;background:#fff;border:1.5px solid var(--line);border-radius:14px;
+  padding:12px 16px;margin-bottom:14px;font-size:13px;box-shadow:0 3px 10px rgba(92,62,39,.12);}
+.toolbar b{color:var(--gold-deep);}
+.toolbar .btns{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+.toolbar button{font-family:inherit;font-weight:800;font-size:13px;border:none;border-radius:999px;
+  padding:8px 18px;cursor:pointer;}
+#btnPng{background:var(--navy);color:#fff;}
+#btnReset{background:var(--cream);color:var(--navy);}
+.toolbar .tip{color:var(--ink-mute);font-size:11.5px;margin-top:7px;line-height:1.5;}
+
+/* ── 卡片本體 ── */
+.card{width:100%;max-width:560px;background:#fff;border-radius:24px;overflow:hidden;
+  box-shadow:0 10px 30px rgba(92,62,39,.22);}
+
+.hd{background:var(--navy);color:var(--cream);padding:22px 24px;display:flex;align-items:center;gap:14px;
+  border-bottom:4px solid var(--gold);}
+.hd .crest{width:52px;height:52px;border-radius:50%;background:#fff;flex-shrink:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;border:2px solid var(--gold);}
+.hd .crest img{width:100%;height:100%;object-fit:cover;}
+.hd .t1{font-size:19px;font-weight:900;letter-spacing:.5px;}
+.hd .t2{font-size:12px;color:#C9D4E2;margin-top:2px;}
+.hd .season{margin-left:auto;background:rgba(244,184,96,.18);border:1.5px solid var(--gold);
+  color:var(--gold);font-weight:800;font-size:13px;border-radius:999px;padding:5px 14px;white-space:nowrap;}
+
+.student{display:flex;align-items:center;gap:16px;padding:22px 24px 20px;background:var(--paper);
+  border-bottom:1px solid var(--line);}
+.student .lab{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold-deep);}
+.student .name{font-size:28px;font-weight:900;margin:3px 0 6px;line-height:1.15;}
+.student .meta{font-size:13.5px;color:var(--ink-mute);font-weight:600;line-height:1.55;}
+.gradeWrap{margin-left:auto;flex-shrink:0;text-align:center;}
+.grade{width:96px;height:96px;border-radius:50%;background:var(--gold);border:3px solid var(--navy);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(224,136,80,.4);}
+.grade .g{font-size:40px;font-weight:900;color:var(--navy);line-height:1;font-family:'Fredoka','Nunito',sans-serif;}
+.grade .gl{font-size:10.5px;font-weight:800;color:var(--navy-deep);margin-top:3px;letter-spacing:1px;}
+
+.sec-lab{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--gold-deep);
+  padding:20px 24px 4px;}
+.metric{padding:14px 24px 18px;border-bottom:1px solid var(--line);}
+.metric:last-of-type{border-bottom:none;}
+.metric .row1{display:flex;align-items:center;}
+.metric .mt{font-size:18px;font-weight:900;}
+.metric .badge{margin-left:auto;background:var(--good);color:var(--good-ink);font-weight:900;
+  font-size:14px;border-radius:10px;padding:4px 12px;}
+.metric .msub{font-size:12px;color:var(--ink-mute);font-weight:600;margin:2px 0 12px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-top:9px;}
+.bar-row .bl{font-size:12px;font-weight:800;color:var(--ink-mute);width:44px;flex-shrink:0;}
+.bar-track{flex:1;height:12px;border-radius:999px;background:var(--bar-bg);overflow:hidden;}
+.bar-fill{height:100%;border-radius:999px;transition:width .25s;}
+.bar-row .bv{font-size:14px;font-weight:900;width:74px;text-align:right;flex-shrink:0;white-space:nowrap;}
+.m-start .bar-fill{opacity:.45;}
+.metric .foot{font-size:11px;color:var(--ink-mute);margin-top:9px;}
+
+.hw{background:var(--cream);padding:18px 24px 20px;}
+.hw .sec-lab{padding:0 0 10px;}
+.hw .hw-line{font-size:14.5px;font-weight:700;line-height:1.6;margin-bottom:8px;display:flex;gap:8px;}
+.hw .hw-line .paw{flex-shrink:0;}
+.cta{background:var(--navy);color:var(--cream);border-radius:14px;padding:14px 18px;margin-top:12px;}
+.cta .c1{font-size:15.5px;font-weight:900;color:var(--gold);}
+.cta .c2{font-size:12.5px;color:#C9D4E2;margin-top:3px;}
+
+.ft{display:flex;align-items:center;padding:16px 24px;background:var(--paper);border-top:1px solid var(--line);}
+.ft .tutor{font-size:13.5px;font-weight:800;}
+.ft .date{font-size:11.5px;color:var(--ink-mute);margin-top:2px;}
+.ft .wordmark{margin-left:auto;font-family:'Fredoka',sans-serif;font-weight:700;letter-spacing:3px;
+  font-size:14px;color:var(--navy);}
+
+/* ── 可編輯提示：實線框喺 hover/focus 先出，截圖前會熄 ── */
+[contenteditable]{outline:none;border-radius:4px;transition:box-shadow .15s;cursor:text;}
+body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
+[contenteditable]:focus{box-shadow:0 0 0 2px var(--gold-deep) !important;background:rgba(244,184,96,.08);}
+@media print{.toolbar{display:none;} body{background:#fff;padding:0;} .card{box-shadow:none;max-width:100%;}}
+</style>
+</head>
+<body class="hints">
+
+<div class="toolbar">
+  <b>📋 進度報告卡 · 員工使用</b>
+  <div class="tip">直接<b>點住卡上任何文字</b>就可以改（狗名／數字／建議全部得）。三大指標淨係改「學期初／學期末」啲數字，<b>條 bar 同百分比會自動計</b>。改完撳「下載 PNG」直接 WhatsApp 發畀家長。</div>
+  <div class="btns">
+    <button id="btnPng">⬇️ 下載 PNG</button>
+    <button id="btnReset">↺ 重設做範例</button>
+  </div>
+</div>
+
+<div class="card" id="card">
+
+  <div class="hd">
+    <div class="crest"><img src="pawradise-logo.jpg" alt=""></div>
+    <div>
+      <div class="t1" contenteditable>毛孩社交學院 PAWRADISE</div>
+      <div class="t2" contenteditable>反應行為改善班 · 學期進度報告</div>
+    </div>
+    <div class="season" contenteditable>2026 夏季</div>
+  </div>
+
+  <div class="student">
+    <div>
+      <div class="lab">學員 STUDENT</div>
+      <div class="name" contenteditable>Mochi 糯米</div>
+      <div class="meta"><span contenteditable>長毛臘腸犬 · 3 歲</span><br><span contenteditable>S2 班 · 全期 12 堂</span></div>
+    </div>
+    <div class="gradeWrap">
+      <div class="grade"><div class="g" contenteditable>A</div><div class="gl">行為評級</div></div>
+    </div>
+  </div>
+
+  <div class="sec-lab">🐾 三大核心指標 · CORE PROGRESS</div>
+
+  <div class="metric" data-better="down">
+    <div class="row1"><div class="mt" contenteditable>情緒恢復時間</div><div class="badge">▼ 76%</div></div>
+    <div class="msub" contenteditable>越短越好 · Recovery</div>
+    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>8.5 分鐘</div></div>
+    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>2 分鐘</div></div>
+  </div>
+
+  <div class="metric" data-better="down">
+    <div class="row1"><div class="mt" contenteditable>爆發距離</div><div class="badge">▼ 62%</div></div>
+    <div class="msub" contenteditable>越近越好 · Threshold</div>
+    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>8 米</div></div>
+    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>3 米</div></div>
+  </div>
+
+  <div class="metric" data-better="up">
+    <div class="row1"><div class="mt" contenteditable>自主轉頭能力</div><div class="badge">▲ 4.5×</div></div>
+    <div class="msub" contenteditable>越多越好 · Disengagement</div>
+    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--green);"></div></div><div class="bv" contenteditable>2 次</div></div>
+    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--green-deep);"></div></div><div class="bv" contenteditable>9 次</div></div>
+    <div class="foot" contenteditable>每 10 分鐘主動將視線由刺激物移開的次數</div>
+  </div>
+
+  <div class="hw">
+    <div class="sec-lab">🏠 下學期建議 · 家課</div>
+    <div class="hw-line"><span class="paw">🐾</span><span contenteditable>每日 5 分鐘「望住我」眼神接觸練習</span></div>
+    <div class="hw-line"><span class="paw">🐾</span><span contenteditable>低刺激環境維持減敏散步，逐步縮短距離</span></div>
+    <div class="hw-line"><span class="paw">🐾</span><span contenteditable>保持平靜後可獎勵，強化自主轉頭反應</span></div>
+    <div class="cta">
+      <div class="c1" contenteditable>🎓 建議續報 S2 情緒重建小組班</div>
+      <div class="c2" contenteditable>鞏固本學期成果，延伸至真實社交場景</div>
+    </div>
+  </div>
+
+  <div class="ft">
+    <div>
+      <div class="tutor" contenteditable>導師 陳 Karen</div>
+      <div class="date" contenteditable>2026.07.07 發出</div>
+    </div>
+    <div class="wordmark">PAWRADISE 🐾</div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+// ── 三大指標自動計：改「學期初/學期末」數字 → bar 闊度＋百分比 badge 自動更新 ──
+function numOf(el){
+  const m = String(el.textContent || '').replace(/,/g,'').match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+function recalc(){
+  document.querySelectorAll('.metric').forEach(m => {
+    const s = numOf(m.querySelector('.m-start .bv'));
+    const e = numOf(m.querySelector('.m-end .bv'));
+    if (s == null || e == null) return;
+    const max = Math.max(s, e) || 1;
+    m.querySelector('.m-start .bar-fill').style.width = Math.max(4, s / max * 100) + '%';
+    m.querySelector('.m-end .bar-fill').style.width   = Math.max(4, e / max * 100) + '%';
+    const badge = m.querySelector('.badge');
+    if (m.dataset.better === 'down') {
+      if (s > 0) {
+        const pct = Math.round((s - e) / s * 100);
+        badge.textContent = (pct >= 0 ? '▼ ' : '▲ ') + Math.abs(pct) + '%';
+      }
+    } else {
+      if (s > 0) {
+        const ratio = e / s;
+        badge.textContent = (ratio >= 1 ? '▲ ' : '▼ ') + (Math.round(ratio * 10) / 10) + '×';
+      }
+    }
+  });
+}
+document.querySelectorAll('.metric .bv').forEach(el => el.addEventListener('input', recalc));
+recalc();
+
+// ── 下載 PNG（隱藏編輯提示先影相）──
+document.getElementById('btnPng').addEventListener('click', async () => {
+  const btn = document.getElementById('btnPng');
+  btn.disabled = true; btn.textContent = '生成中…';
+  document.body.classList.remove('hints');
+  document.activeElement && document.activeElement.blur();
+  try {
+    const canvas = await html2canvas(document.getElementById('card'), { scale: 2, useCORS: true, backgroundColor: null });
+    const a = document.createElement('a');
+    const dog = (document.querySelector('.name').textContent || 'card').trim().replace(/\s+/g, '-');
+    a.download = 'Pawradise進度報告-' + dog + '.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } catch (e) {
+    alert('生成失敗，請直接截圖使用。');
+  }
+  document.body.classList.add('hints');
+  btn.disabled = false; btn.textContent = '⬇️ 下載 PNG';
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (confirm('重設會清走已輸入嘅資料，還原做範例，確定？')) location.reload();
+});
+</script>
+</body>
+</html>
