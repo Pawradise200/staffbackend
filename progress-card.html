@@ -30,76 +30,77 @@ body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5
 .toolbar .tip{color:var(--ink-mute);font-size:11.5px;margin-top:7px;line-height:1.5;}
 
 /* ── 卡片本體 ── */
-/* 電話螢幕比例：430px＝標準手機闊度，下載 PNG 輸出 1080px 闊（IG story/WhatsApp 全屏啱睇） */
-.card{width:100%;max-width:430px;background:#fff;border-radius:24px;overflow:hidden;
-  box-shadow:0 10px 30px rgba(92,62,39,.22);}
+/* 電話螢幕 9:16 鎖比例：430×764，下載 PNG 輸出 1080×1920——一屏完整睇晒 */
+.card{width:100%;max-width:430px;height:764px;background:#fff;border-radius:24px;overflow:hidden;
+  box-shadow:0 10px 30px rgba(92,62,39,.22);display:flex;flex-direction:column;}
+.card .hw{flex:1;}
 
-.hd{background:var(--navy);color:var(--cream);padding:22px 24px;display:flex;align-items:center;gap:14px;
+.hd{background:var(--navy);color:var(--cream);padding:12px 20px;display:flex;align-items:center;gap:12px;
   border-bottom:4px solid var(--gold);}
-.hd .crest{width:68px;height:68px;border-radius:50%;background:#fff;flex-shrink:0;overflow:hidden;
+.hd .crest{width:52px;height:52px;border-radius:50%;background:#fff;flex-shrink:0;overflow:hidden;
   display:flex;align-items:center;justify-content:center;border:2.5px solid var(--gold);}
 .hd .crest img{width:100%;height:100%;object-fit:cover;}
-.hd .t1{font-size:19px;font-weight:900;letter-spacing:.5px;}
-.hd .t2{font-size:12px;color:#C9D4E2;margin-top:2px;}
+.hd .t1{font-size:16.5px;font-weight:900;letter-spacing:.5px;}
+.hd .t2{font-size:11px;color:#C9D4E2;margin-top:2px;}
 .hd .season{margin-left:auto;background:rgba(244,184,96,.18);border:1.5px solid var(--gold);
-  color:var(--gold);font-weight:800;font-size:13px;border-radius:999px;padding:5px 14px;white-space:nowrap;}
+  color:var(--gold);font-weight:800;font-size:12px;border-radius:999px;padding:4px 11px;white-space:nowrap;}
 
-.student{display:flex;align-items:center;gap:16px;padding:22px 24px 20px;background:var(--paper);
+.student{display:flex;align-items:center;gap:13px;padding:12px 20px 11px;background:var(--paper);
   border-bottom:1px solid var(--line);}
 /* 狗狗大頭相：導師點擊上載；未揀相時出虛線佔位（下載 PNG 會自動隱藏空佔位） */
-.photo{width:84px;height:84px;border-radius:50%;flex-shrink:0;cursor:pointer;overflow:hidden;
+.photo{width:68px;height:68px;border-radius:50%;flex-shrink:0;cursor:pointer;overflow:hidden;
   border:3px solid var(--gold);background:var(--cream);display:flex;flex-direction:column;
   align-items:center;justify-content:center;position:relative;}
 .photo.empty{border-style:dashed;border-color:#CBB27F;}
 .photo img{width:100%;height:100%;object-fit:cover;display:none;}
 .photo.hasimg img{display:block;}
 .photo.hasimg .ph-hint{display:none;}
-.photo .ph-hint{font-size:10.5px;font-weight:800;color:#B49B6C;text-align:center;line-height:1.4;}
-.photo .ph-hint .emoji{font-size:22px;display:block;margin-bottom:2px;}
+.photo .ph-hint{font-size:8.5px;font-weight:800;color:#B49B6C;text-align:center;line-height:1.35;}
+.photo .ph-hint .emoji{font-size:15px;display:block;margin-bottom:1px;}
 body.exporting .photo.empty{display:none;}
 .student .lab{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold-deep);}
-.student .name{font-size:24px;font-weight:900;margin:3px 0 6px;line-height:1.15;}
+.student .name{font-size:21px;font-weight:900;margin:2px 0 3px;line-height:1.15;}
 .student > div:nth-of-type(2){min-width:0;}
-.student .meta{font-size:13.5px;color:var(--ink-mute);font-weight:600;line-height:1.55;}
+.student .meta{font-size:12px;color:var(--ink-mute);font-weight:600;line-height:1.55;}
 .gradeWrap{margin-left:auto;flex-shrink:0;text-align:center;}
-.grade{width:84px;height:84px;border-radius:50%;background:var(--gold);border:3px solid var(--navy);
+.grade{width:68px;height:68px;border-radius:50%;background:var(--gold);border:3px solid var(--navy);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   box-shadow:0 4px 12px rgba(224,136,80,.4);}
-.grade .g{font-size:34px;font-weight:900;color:var(--navy);line-height:1;font-family:'Fredoka','Nunito',sans-serif;}
-.grade .gl{font-size:10.5px;font-weight:800;color:var(--navy-deep);margin-top:3px;letter-spacing:1px;}
+.grade .g{font-size:27px;font-weight:900;color:var(--navy);line-height:1;font-family:'Fredoka','Nunito',sans-serif;}
+.grade .gl{font-size:9px;font-weight:800;color:var(--navy-deep);margin-top:3px;letter-spacing:1px;}
 
-.sec-lab{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--gold-deep);
-  padding:20px 24px 4px;}
-.metric{padding:14px 24px 18px;border-bottom:1px solid var(--line);}
+.sec-lab{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--gold-deep);
+  padding:10px 20px 0;}
+.metric{padding:8px 20px 9px;border-bottom:1px solid var(--line);}
 .metric:last-of-type{border-bottom:none;}
 .metric .row1{display:flex;align-items:center;}
-.metric .mt{font-size:18px;font-weight:900;}
+.metric .mt{font-size:15.5px;font-weight:900;}
 .metric .badge{margin-left:auto;background:var(--good);color:var(--good-ink);font-weight:900;
-  font-size:14px;border-radius:10px;padding:4px 12px;}
-.metric .msub{font-size:12px;color:var(--ink-mute);font-weight:600;margin:2px 0 12px;}
-.bar-row{display:flex;align-items:center;gap:10px;margin-top:9px;}
-.bar-row .bl{font-size:12px;font-weight:800;color:var(--ink-mute);width:44px;flex-shrink:0;}
-.bar-track{flex:1;height:12px;border-radius:999px;background:var(--bar-bg);overflow:hidden;}
+  font-size:12.5px;border-radius:9px;padding:2px 10px;}
+.metric .msub{font-size:11px;color:var(--ink-mute);font-weight:600;margin:1px 0 6px;}
+.bar-row{display:flex;align-items:center;gap:9px;margin-top:5px;}
+.bar-row .bl{font-size:11px;font-weight:800;color:var(--ink-mute);width:40px;flex-shrink:0;}
+.bar-track{flex:1;height:9px;border-radius:999px;background:var(--bar-bg);overflow:hidden;}
 .bar-fill{height:100%;border-radius:999px;transition:width .25s;}
-.bar-row .bv{font-size:14px;font-weight:900;width:74px;text-align:right;flex-shrink:0;white-space:nowrap;}
+.bar-row .bv{font-size:12.5px;font-weight:900;width:66px;text-align:right;flex-shrink:0;white-space:nowrap;}
 .m-start .bar-fill{opacity:.45;}
-.metric .foot{font-size:11px;color:var(--ink-mute);margin-top:9px;}
+.metric .foot{font-size:10px;color:var(--ink-mute);margin-top:5px;}
 
-.hw{background:var(--cream);padding:18px 24px 20px;position:relative;}
-.hw .sec-lab{padding:0 0 10px;}
-.hw .daki{position:absolute;top:4px;right:14px;width:84px;transform:rotate(3deg);}
-.hw .hw-lines .hw-line:nth-child(-n+2){padding-right:88px;}
-.hw .hw-line{font-size:14.5px;font-weight:700;line-height:1.6;margin-bottom:8px;display:flex;gap:8px;}
-.hw .hw-line .paw{flex-shrink:0;}
-.cta{background:var(--navy);color:var(--cream);border-radius:14px;padding:14px 18px;margin-top:12px;}
-.cta .c1{font-size:15.5px;font-weight:900;color:var(--gold);}
-.cta .c2{font-size:12.5px;color:#C9D4E2;margin-top:3px;}
+.hw{background:var(--cream);padding:10px 20px 12px;position:relative;}
+.hw .sec-lab{padding:0 0 6px;}
+.hw .daki{position:absolute;top:2px;right:12px;width:64px;transform:rotate(3deg);}
+.hw .hw-lines .hw-line:nth-child(-n+2){padding-right:66px;}
+.hw .hw-line{font-size:12.5px;font-weight:700;line-height:1.5;margin-bottom:5px;display:flex;gap:8px;}
+.hw .hw-line .paw{flex-shrink:0;color:var(--gold-deep);font-weight:900;}
+.cta{background:var(--navy);color:var(--cream);border-radius:12px;padding:9px 14px;margin-top:7px;}
+.cta .c1{font-size:13.5px;font-weight:900;color:var(--gold);}
+.cta .c2{font-size:11px;color:#C9D4E2;margin-top:2px;}
 
-.ft{display:flex;align-items:center;padding:16px 24px;background:var(--paper);border-top:1px solid var(--line);}
-.ft .tutor{font-size:13.5px;font-weight:800;}
-.ft .date{font-size:11.5px;color:var(--ink-mute);margin-top:2px;}
-.ft .wordmark{margin-left:auto;font-family:'Fredoka','Nunito',sans-serif;font-weight:700;letter-spacing:1px;
-  font-size:12px;color:var(--navy);text-align:right;line-height:1.5;}
+.ft{display:flex;align-items:center;padding:9px 20px;background:var(--paper);border-top:1px solid var(--line);}
+.ft .tutor{font-size:12px;font-weight:800;}
+.ft .date{font-size:10px;color:var(--ink-mute);margin-top:1px;}
+.ft .wordmark{margin-left:auto;font-family:'Fredoka','Nunito',sans-serif;font-weight:700;letter-spacing:.5px;
+  font-size:10.5px;color:var(--navy);text-align:right;line-height:1.5;}
 
 /* ── 可編輯提示：實線框喺 hover/focus 先出，截圖前會熄 ── */
 [contenteditable]{outline:none;border-radius:4px;transition:box-shadow .15s;cursor:text;}
@@ -125,7 +126,7 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
     <div class="crest"><img src="pawradise-logo.jpg" alt=""></div>
     <div>
       <div class="t1" contenteditable>毛孩社交學院 PAWRADISE</div>
-      <div class="t2" contenteditable>反應行為改善班 · 學期進度報告</div>
+      <div class="t2" contenteditable>S1・狗狗幼稚園 · 學期進度報告</div>
     </div>
     <div class="season" contenteditable>2026 年 7 月</div>
   </div>
@@ -139,48 +140,47 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
     <div>
       <div class="lab">學員 STUDENT</div>
       <div class="name" contenteditable>Mochi 糯米</div>
-      <div class="meta"><span contenteditable>長毛臘腸犬 · 3 歲</span><br><span contenteditable>S2 班 · 全期 12 堂</span></div>
+      <div class="meta"><span contenteditable>長毛臘腸犬 · 3 歲</span></div>
     </div>
     <div class="gradeWrap">
       <div class="grade"><div class="g" contenteditable>A</div><div class="gl">行為評級</div></div>
     </div>
   </div>
 
-  <div class="sec-lab">🐾 三大核心指標 · CORE PROGRESS</div>
+  <div class="sec-lab">三大核心指標 · CORE PROGRESS</div>
 
   <div class="metric" data-better="down">
-    <div class="row1"><div class="mt" contenteditable>情緒恢復時間</div><div class="badge">▼ 76%</div></div>
-    <div class="msub" contenteditable>越短越好 · Recovery</div>
-    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>8.5 分鐘</div></div>
-    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>2 分鐘</div></div>
+    <div class="row1"><div class="mt" contenteditable>環境適應時間</div><div class="badge">▼ 80%</div></div>
+    <div class="msub" contenteditable>越短越好 · Settling — 到校後安定所需時間</div>
+    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>15 分鐘</div></div>
+    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>3 分鐘</div></div>
   </div>
 
   <div class="metric" data-better="down">
-    <div class="row1"><div class="mt" contenteditable>爆發距離</div><div class="badge">▼ 62%</div></div>
-    <div class="msub" contenteditable>越近越好 · Threshold</div>
-    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>8 米</div></div>
-    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>3 米</div></div>
+    <div class="row1"><div class="mt" contenteditable>緊張吠叫次數</div><div class="badge">▼ 70%</div></div>
+    <div class="msub" contenteditable>越少越好 · Calmness — 每堂平均</div>
+    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>10 次</div></div>
+    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>3 次</div></div>
   </div>
 
   <div class="metric" data-better="up">
-    <div class="row1"><div class="mt" contenteditable>自主轉頭能力</div><div class="badge">▲ 4.5×</div></div>
-    <div class="msub" contenteditable>越多越好 · Disengagement</div>
-    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--green);"></div></div><div class="bv" contenteditable>2 次</div></div>
-    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--green-deep);"></div></div><div class="bv" contenteditable>9 次</div></div>
-    <div class="foot" contenteditable>每 10 分鐘主動將視線由刺激物移開的次數</div>
+    <div class="row1"><div class="mt" contenteditable>主動社交互動</div><div class="badge">▲ 6×</div></div>
+    <div class="msub" contenteditable>越多越好 · Social Play</div>
+    <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--green);"></div></div><div class="bv" contenteditable>1 次</div></div>
+    <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--green-deep);"></div></div><div class="bv" contenteditable>6 次</div></div>
   </div>
 
   <div class="hw">
     <img class="daki" src="daki-cert.png" alt="">
-    <div class="sec-lab">🏠 下學期建議 · 家課</div>
+    <div class="sec-lab">下學期建議 · 家課</div>
     <div class="hw-lines">
-    <div class="hw-line"><span class="paw">🐾</span><span contenteditable>每日 5 分鐘「望住我」眼神接觸練習</span></div>
-    <div class="hw-line"><span class="paw">🐾</span><span contenteditable>低刺激環境維持減敏散步，逐步縮短距離</span></div>
-    <div class="hw-line"><span class="paw">🐾</span><span contenteditable>保持平靜後可獎勵，強化自主轉頭反應</span></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日 10 分鐘嗅聞遊戲，釋放壓力建立安全感</span></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>散步遇到其他狗狗時保持冷靜即獎勵</span></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日「坐低等待」練習，鞏固基本禮儀</span></div>
     </div>
     <div class="cta">
-      <div class="c1" contenteditable>🎓 建議續報 S2 情緒重建小組班</div>
-      <div class="c2" contenteditable>鞏固本學期成果，延伸至真實社交場景</div>
+      <div class="c1" contenteditable>建議續報 S1・狗狗幼稚園 新學期</div>
+      <div class="c2" contenteditable>鞏固社交基礎，向 A+ 穩定社交犬進發</div>
     </div>
   </div>
 
@@ -189,7 +189,7 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
       <div class="tutor" contenteditable>導師 陳 Karen</div>
       <div class="date" contenteditable>2026.07.07 發出</div>
     </div>
-    <div class="wordmark">PAWRADISE 毛孩社交學院 🐾</div>
+    <div class="wordmark">PAWRADISE 毛孩社交學院</div>
   </div>
 
 </div>
