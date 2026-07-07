@@ -31,7 +31,7 @@ body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5
 
 /* ── 卡片本體 ── */
 /* 電話螢幕 9:16 鎖比例：430×764，下載 PNG 輸出 1080×1920——一屏完整睇晒 */
-.card{width:100%;max-width:430px;height:764px;background:#fff;border-radius:24px;overflow:hidden;
+.card{width:430px;height:764px;background:#fff;border-radius:24px;overflow:hidden;
   box-shadow:0 10px 30px rgba(92,62,39,.22);display:flex;flex-direction:column;}
 .card .hw{flex:1;}
 
@@ -124,7 +124,7 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
 </head>
 <body class="hints">
 
-<div class="card" id="card">
+<div id="fitWrap"><div class="card" id="card">
 
   <div class="hd">
     <div class="crest"><img src="pawradise-logo.jpg" alt=""></div>
@@ -196,7 +196,7 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
     <div class="wordmark">PAWRADISE 毛孩社交學院</div>
   </div>
 
-</div>
+</div></div>
 
 <div class="toolbar">
   <b>📋 進度報告卡 · 員工使用</b>
@@ -248,9 +248,19 @@ function fitCard() {
   const vh = Math.min(window.innerHeight || 1e9, document.documentElement.clientHeight || 1e9,
     (window.visualViewport && window.visualViewport.height) || 1e9);
   const k = Math.min(1, (vh - 14) / CARD_H, (vw - 14) / CARD_W);
-  document.getElementById('card').style.zoom = k;
+  // transform:scale 全瀏覽器通用（zoom 喺部分 iPhone Safari 唔生效）；
+  // fitWrap 收窄返佔位，等下面工具列貼實
+  const card = document.getElementById('card');
+  const wrap = document.getElementById('fitWrap');
+  card.style.transform = 'scale(' + k + ')';
+  card.style.transformOrigin = 'top left';
+  card.style.width = CARD_W + 'px';
+  wrap.style.width = (CARD_W * k) + 'px';
+  wrap.style.height = (CARD_H * k) + 'px';
+  wrap.style.overflow = 'visible';
 }
 window.addEventListener('resize', fitCard);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fitCard);
 fitCard();
 
 // ── 句庫：導師撳「▾」揀現成句，揀完仲可以再改字 ──
@@ -341,7 +351,7 @@ document.getElementById('btnPng').addEventListener('click', async () => {
   document.activeElement && document.activeElement.blur();
   try {
     const cardEl = document.getElementById('card');
-    cardEl.style.zoom = 1;   // 影相用原尺寸，輸出穩定 1080×1920
+    cardEl.style.transform = 'none';   // 影相用原尺寸，輸出穩定 1080×1920
     const canvas = await html2canvas(cardEl, { scale: 1080 / CARD_W, useCORS: true, backgroundColor: null });
     const a = document.createElement('a');
     const dog = (document.querySelector('.name').textContent || 'card').trim().replace(/\s+/g, '-');
