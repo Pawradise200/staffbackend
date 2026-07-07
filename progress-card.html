@@ -47,8 +47,11 @@ body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5
 
 .student{display:flex;align-items:center;gap:13px;padding:12px 20px 11px;background:var(--paper);
   border-bottom:1px solid var(--line);}
+.stu-txt{flex:1;min-width:0;}
+/* 相片喺右、評級小徽章疊喺相左下角 */
+.photoWrap{position:relative;flex-shrink:0;margin-right:6px;}
 /* 狗狗大頭相：導師點擊上載；未揀相時出虛線佔位（下載 PNG 會自動隱藏空佔位） */
-.photo{width:68px;height:68px;border-radius:50%;flex-shrink:0;cursor:pointer;overflow:hidden;
+.photo{width:74px;height:74px;border-radius:50%;flex-shrink:0;cursor:pointer;overflow:hidden;
   border:3px solid var(--gold);background:var(--cream);display:flex;flex-direction:column;
   align-items:center;justify-content:center;position:relative;}
 .photo.empty{border-style:dashed;border-color:#CBB27F;}
@@ -57,17 +60,16 @@ body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5
 .photo.hasimg .ph-hint{display:none;}
 .photo .ph-hint{font-size:8.5px;font-weight:800;color:#B49B6C;text-align:center;line-height:1.35;}
 .photo .ph-hint .emoji{font-size:15px;display:block;margin-bottom:1px;}
-body.exporting .photo.empty{display:none;}
-.student .lab{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold-deep);}
-.student .name{font-size:21px;font-weight:900;margin:2px 0 3px;line-height:1.15;}
-.student > div:nth-of-type(2){min-width:0;}
-.student .meta{font-size:12px;color:var(--ink-mute);font-weight:600;line-height:1.55;}
-.gradeWrap{margin-left:auto;flex-shrink:0;text-align:center;}
-.grade{width:68px;height:68px;border-radius:50%;background:var(--gold);border:3px solid var(--navy);
+body.exporting .photo.empty{visibility:hidden;}   /* 冇相都保留位，評級徽章照出 */
+.stu-txt .lab{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold-deep);}
+.stu-txt .name{font-size:22px;font-weight:900;margin:2px 0 3px;line-height:1.15;}
+.stu-txt .meta{font-size:12px;color:var(--ink-mute);font-weight:600;line-height:1.55;}
+.grade{position:absolute;left:-12px;bottom:-6px;width:38px;height:38px;border-radius:50%;
+  background:var(--gold);border:2px solid var(--navy);z-index:2;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  box-shadow:0 4px 12px rgba(224,136,80,.4);}
-.grade .g{font-size:27px;font-weight:900;color:var(--navy);line-height:1;font-family:'Fredoka','Nunito',sans-serif;}
-.grade .gl{font-size:9px;font-weight:800;color:var(--navy-deep);margin-top:3px;letter-spacing:1px;}
+  box-shadow:0 3px 8px rgba(224,136,80,.45);}
+.grade .g{font-size:16px;font-weight:900;color:var(--navy);line-height:1;font-family:'Fredoka','Nunito',sans-serif;}
+.grade .gl{font-size:6.5px;font-weight:800;color:var(--navy-deep);margin-top:1px;letter-spacing:0;}
 
 .sec-lab{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--gold-deep);
   padding:10px 20px 0;}
@@ -143,19 +145,19 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
   </div>
 
   <div class="student">
-    <div class="photo empty" id="photoBox" title="點擊上載狗狗大頭相">
-      <img id="photoImg" alt="">
-      <div class="ph-hint"><span class="emoji">📷</span>點擊加<br>狗狗大頭相</div>
-    </div>
-    <input type="file" id="photoInput" accept="image/*" style="display:none">
-    <div>
+    <div class="stu-txt">
       <div class="lab">學員 STUDENT</div>
       <div class="name" contenteditable>Mochi 糯米</div>
       <div class="meta"><span contenteditable>長毛臘腸犬 · 3 歲</span></div>
     </div>
-    <div class="gradeWrap">
-      <div class="grade"><div class="g" contenteditable>A</div><div class="gl">行為評級</div></div>
+    <div class="photoWrap">
+      <div class="photo empty" id="photoBox" title="點擊上載狗狗大頭相">
+        <img id="photoImg" alt="">
+        <div class="ph-hint"><span class="emoji">📷</span>點擊加<br>狗狗大頭相</div>
+      </div>
+      <div class="grade" title="行為評級"><div class="g" contenteditable>A</div><div class="gl">評級</div></div>
     </div>
+    <input type="file" id="photoInput" accept="image/*" style="display:none">
   </div>
 
   <div class="sec-lab">三大核心指標 · CORE PROGRESS</div>
