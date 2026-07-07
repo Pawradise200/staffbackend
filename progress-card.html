@@ -16,11 +16,11 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5;color:var(--navy);
-  display:flex;flex-direction:column;align-items:center;padding:18px 12px 60px;}
+  display:flex;flex-direction:column;align-items:center;padding:8px 8px 60px;}
 
 /* ── 工具列（截圖/列印時唔會出現）── */
 .toolbar{width:100%;max-width:430px;background:#fff;border:1.5px solid var(--line);border-radius:14px;
-  padding:12px 16px;margin-bottom:14px;font-size:13px;box-shadow:0 3px 10px rgba(92,62,39,.12);}
+  padding:12px 16px;margin-top:14px;font-size:13px;box-shadow:0 3px 10px rgba(92,62,39,.12);}
 .toolbar b{color:var(--gold-deep);}
 .toolbar .btns{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
 .toolbar button{font-family:inherit;font-weight:800;font-size:13px;border:none;border-radius:999px;
@@ -124,15 +124,6 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
 </head>
 <body class="hints">
 
-<div class="toolbar">
-  <b>📋 進度報告卡 · 員工使用</b>
-  <div class="tip">直接<b>點住卡上任何文字</b>就可以改（狗名／數字／建議全部得）。三大指標淨係改「學期初／學期末」啲數字，<b>條 bar 同百分比會自動計</b>。改完撳「下載 PNG」直接 WhatsApp 發畀家長。</div>
-  <div class="btns">
-    <button id="btnPng">⬇️ 下載 PNG</button>
-    <button id="btnReset">↺ 重設做範例</button>
-  </div>
-</div>
-
 <div class="card" id="card">
 
   <div class="hd">
@@ -207,6 +198,15 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
 
 </div>
 
+<div class="toolbar">
+  <b>📋 進度報告卡 · 員工使用</b>
+  <div class="tip">直接<b>點住卡上任何文字</b>就可以改（狗名／數字／建議全部得）。三大指標淨係改「學期初／學期末」啲數字，<b>條 bar 同百分比會自動計</b>。改完撳「下載 PNG」直接 WhatsApp 發畀家長。</div>
+  <div class="btns">
+    <button id="btnPng">⬇️ 下載 PNG</button>
+    <button id="btnReset">↺ 重設做範例</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 // ── 三大指標自動計：改「學期初/學期末」數字 → bar 闊度＋百分比 badge 自動更新 ──
@@ -238,6 +238,20 @@ function recalc(){
 }
 document.querySelectorAll('.metric .bv').forEach(el => el.addEventListener('input', recalc));
 recalc();
+
+// ── 一屏適配：卡按屏幕等比縮放（zoom），任何電話開頁即見全卡 ──
+const CARD_W = 430, CARD_H = 764;
+function fitCard() {
+  // clientWidth/visualViewport 比 innerWidth 可靠（唔計 scrollbar、有啲瀏覽器 innerWidth 報錯數）
+  const vw = Math.min(window.innerWidth || 1e9, document.documentElement.clientWidth || 1e9,
+    (window.visualViewport && window.visualViewport.width) || 1e9);
+  const vh = Math.min(window.innerHeight || 1e9, document.documentElement.clientHeight || 1e9,
+    (window.visualViewport && window.visualViewport.height) || 1e9);
+  const k = Math.min(1, (vh - 14) / CARD_H, (vw - 14) / CARD_W);
+  document.getElementById('card').style.zoom = k;
+}
+window.addEventListener('resize', fitCard);
+fitCard();
 
 // ── 句庫：導師撳「▾」揀現成句，揀完仲可以再改字 ──
 const HW_BANK = {
@@ -326,7 +340,8 @@ document.getElementById('btnPng').addEventListener('click', async () => {
   document.activeElement && document.activeElement.blur();
   try {
     const cardEl = document.getElementById('card');
-    const canvas = await html2canvas(cardEl, { scale: 1080 / cardEl.offsetWidth, useCORS: true, backgroundColor: null });
+    cardEl.style.zoom = 1;   // 影相用原尺寸，輸出穩定 1080×1920
+    const canvas = await html2canvas(cardEl, { scale: 1080 / CARD_W, useCORS: true, backgroundColor: null });
     const a = document.createElement('a');
     const dog = (document.querySelector('.name').textContent || 'card').trim().replace(/\s+/g, '-');
     a.download = 'Pawradise進度報告-' + dog + '.png';
@@ -337,6 +352,7 @@ document.getElementById('btnPng').addEventListener('click', async () => {
   }
   document.body.classList.add('hints');
   document.body.classList.remove('exporting');
+  fitCard();   // 影完縮返啱屏幕
   btn.disabled = false; btn.textContent = '⬇️ 下載 PNG';
 });
 
