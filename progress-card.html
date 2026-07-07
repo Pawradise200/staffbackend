@@ -154,33 +154,33 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
   <div class="sec-lab">三大核心指標 · CORE PROGRESS</div>
 
   <div class="metric" data-better="down">
-    <div class="row1"><div class="mt" contenteditable>情緒恢復時間</div><div class="badge">▼ 76%</div></div>
-    <div class="msub" contenteditable>越短越好 · Recovery</div>
+    <div class="row1"><div class="mt">情緒恢復時間</div><div class="badge">▼ 76%</div></div>
+    <div class="msub">越短越好 · Recovery</div>
     <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>8.5 分鐘</div></div>
     <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--blue);"></div></div><div class="bv" contenteditable>2 分鐘</div></div>
   </div>
 
   <div class="metric" data-better="down">
-    <div class="row1"><div class="mt" contenteditable>爆發距離</div><div class="badge">▼ 62%</div></div>
-    <div class="msub" contenteditable>越近越好 · Threshold</div>
+    <div class="row1"><div class="mt">爆發距離</div><div class="badge">▼ 62%</div></div>
+    <div class="msub">越近越好 · Threshold</div>
     <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>8 米</div></div>
     <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--orange);"></div></div><div class="bv" contenteditable>3 米</div></div>
   </div>
 
   <div class="metric" data-better="up">
-    <div class="row1"><div class="mt" contenteditable>自主轉頭能力</div><div class="badge">▲ 4.5×</div></div>
-    <div class="msub" contenteditable>越多越好 · Disengagement</div>
+    <div class="row1"><div class="mt">自主轉頭能力</div><div class="badge">▲ 4.5×</div></div>
+    <div class="msub">越多越好 · Disengagement</div>
     <div class="bar-row m-start"><div class="bl">學期初</div><div class="bar-track"><div class="bar-fill" style="background:var(--green);"></div></div><div class="bv" contenteditable>2 次</div></div>
     <div class="bar-row m-end"><div class="bl">學期末</div><div class="bar-track"><div class="bar-fill" style="background:var(--green-deep);"></div></div><div class="bv" contenteditable>9 次</div></div>
   </div>
 
   <div class="hw">
     <img class="daki" src="daki-cert.png" alt="">
-    <div class="sec-lab">下學期建議 · 家課</div>
+    <div class="sec-lab">下學期建議練習方向</div>
     <div class="hw-lines">
-    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日 10 分鐘嗅聞遊戲，釋放壓力建立安全感</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
-    <div class="hw-line"><span class="paw">·</span><span contenteditable>散步遇到其他狗狗時保持冷靜即獎勵</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
-    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日「坐低等待」練習，鞏固基本禮儀</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日 10 分鐘嗅聞遊戲</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>遠距離見狗，冷靜即獎勵</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日「坐低等待」練習</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
     </div>
     <div class="cta">
       <div style="display:flex;align-items:center;"><div class="c1" contenteditable style="flex:1;">建議續報 S1・狗狗幼稚園 新學期</div><button class="pickbtn" data-bank="cta" title="揀方案">▾</button></div>
@@ -256,24 +256,24 @@ fitCard();
 // ── 句庫：導師撳「▾」揀現成句，揀完仲可以再改字 ──
 const HW_BANK = {
   '安全感・減壓': [
-    '每日 10 分鐘嗅聞遊戲，釋放壓力建立安全感',
-    '在家中設固定休息區，讓狗狗學會自主休息充電',
-    '外出前後保持平靜儀式，減少興奮波動',
+    '每日 10 分鐘嗅聞遊戲',
+    '設固定休息角落，自主充電',
+    '外出前後保持平靜儀式',
   ],
-  '社交': [
-    '散步遇到其他狗狗時保持冷靜即獎勵',
-    '每週安排一次與熟悉狗朋友的輕鬆聚會',
-    '由遠距離開始觀察其他狗狗，冷靜即給予獎勵',
+  '社交自信': [
+    '遠距離見狗，冷靜即獎勵',
+    '與熟悉狗友輕鬆聚會',
+    '讓狗狗自主選擇互動節奏',
   ],
-  '禮儀・冷靜': [
-    '每日「坐低等待」練習，鞏固基本禮儀',
-    '開門或門鈴響前先坐下等待，強化冷靜反應',
-    '進食前短暫等待，建立耐心與規則感',
+  '冷靜・禮儀': [
+    '每日「坐低等待」練習',
+    '開門前先坐下等待',
+    '進食前短暫等待',
   ],
   '連結・分離': [
-    '每日 5 分鐘「望住我」眼神接觸練習',
-    '呼喚名字回望即獎勵，加強與主人連結',
-    '分離練習由 1 分鐘開始，逐步延長獨處時間',
+    '每日 5 分鐘眼神接觸練習',
+    '呼喚名字回望即獎勵',
+    '分離練習由 1 分鐘開始',
   ],
 };
 const CTA_BANK = [
