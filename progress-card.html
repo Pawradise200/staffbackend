@@ -29,6 +29,22 @@ body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5
 #btnReset{background:var(--cream);color:var(--navy);}
 .toolbar .tip{color:var(--ink-mute);font-size:11.5px;margin-top:7px;line-height:1.5;}
 
+/* ── 生成結果視窗（下載 PNG 之後彈出）── */
+#pngResult{display:none;position:fixed;inset:0;z-index:200;background:rgba(31,53,82,.72);
+  align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
+#pngResult .pr-box{background:#fff;border-radius:18px;padding:16px;max-width:360px;width:100%;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);text-align:center;}
+#pngResult .pr-title{font-size:15px;font-weight:900;color:var(--navy);margin-bottom:10px;}
+#pngResult img{width:100%;border-radius:12px;border:1.5px solid var(--line);display:block;}
+#pngResult .pr-tip{font-size:11.5px;color:var(--ink-mute);line-height:1.55;margin:10px 0 12px;}
+#pngResult .pr-tip b{color:var(--gold-deep);}
+#pngResult .pr-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+#pngResult button{font-family:inherit;font-weight:800;font-size:13px;border:none;border-radius:999px;
+  padding:9px 16px;cursor:pointer;}
+#btnShare{background:var(--gold);color:var(--navy);}
+#btnSaveAs{background:var(--navy);color:#fff;}
+#btnPngClose{background:var(--cream);color:var(--navy);}
+
 /* ── 卡片本體 ── */
 /* 電話螢幕 9:16 鎖比例：430×764，下載 PNG 輸出 1080×1920——一屏完整睇晒 */
 .card{width:430px;height:764px;background:#fff;border-radius:24px;overflow:hidden;
@@ -207,6 +223,19 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
   </div>
 </div>
 
+<div id="pngResult">
+  <div class="pr-box">
+    <div class="pr-title">✅ 報告卡已生成</div>
+    <img id="pngResultImg" alt="進度報告卡">
+    <div class="pr-tip">手機：撳「分享／儲存」直接揀 WhatsApp 發，或<b>長按上面張相</b>儲存落相簿。</div>
+    <div class="pr-btns">
+      <button id="btnShare">📤 分享／儲存</button>
+      <button id="btnSaveAs">⬇️ 存做檔案</button>
+      <button id="btnPngClose">✕ 關閉</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 // ── 三大指標自動計：改「學期初/學期末」數字 → bar 闊度＋百分比 badge 自動更新 ──
@@ -344,23 +373,62 @@ photoInput.addEventListener('change', () => {
 });
 
 // ── 下載 PNG（隱藏編輯提示先影相；輸出 1080px 闊＝電話螢幕標準）──
+// 手機 Safari 唔支援 <a download> 配 data: URL，所以生成後一律開結果視窗：
+// 有「分享／儲存」掣（新一次點擊＝重新取得 user gesture，navigator.share 先會彈到）
+// 冇分享 API 就長按張相儲存；電腦仍然照自動下載。
+function canvasToBlob(canvas){
+  return new Promise(res => {
+    if (canvas.toBlob) canvas.toBlob(res, 'image/png');
+    else res(null);
+  });
+}
+function showResult(dataUrl, blob, filename){
+  const ov = document.getElementById('pngResult');
+  document.getElementById('pngResultImg').src = dataUrl;
+  const shareBtn = document.getElementById('btnShare');
+  const saveBtn  = document.getElementById('btnSaveAs');
+  const canShare = !!(blob && navigator.canShare &&
+    navigator.canShare({ files: [new File([blob], filename, { type: 'image/png' })] }));
+  shareBtn.style.display = canShare ? '' : 'none';
+  shareBtn.onclick = () => {
+    navigator.share({ files: [new File([blob], filename, { type: 'image/png' })] })
+      .catch(() => {});
+  };
+  saveBtn.onclick = () => {
+    const a = document.createElement('a');
+    a.download = filename;
+    a.href = blob ? URL.createObjectURL(blob) : dataUrl;
+    document.body.appendChild(a); a.click(); a.remove();
+    if (blob) setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  };
+  ov.style.display = 'flex';
+}
+document.getElementById('btnPngClose').addEventListener('click', () => {
+  document.getElementById('pngResult').style.display = 'none';
+  document.getElementById('pngResultImg').src = '';
+});
+
 document.getElementById('btnPng').addEventListener('click', async () => {
   const btn = document.getElementById('btnPng');
+  if (typeof html2canvas !== 'function') {
+    alert('圖片工具載入唔到（可能網絡擋咗 cdn.jsdelivr.net）。請換網絡再試，或直接截圖使用。');
+    return;
+  }
   btn.disabled = true; btn.textContent = '生成中…';
   document.body.classList.remove('hints');
   document.body.classList.add('exporting');
   document.activeElement && document.activeElement.blur();
+  const cardEl = document.getElementById('card');
   try {
-    const cardEl = document.getElementById('card');
     cardEl.style.transform = 'none';   // 影相用原尺寸，輸出穩定 1080×1920
-    const canvas = await html2canvas(cardEl, { scale: 1080 / CARD_W, useCORS: true, backgroundColor: null });
-    const a = document.createElement('a');
+    const canvas = await html2canvas(cardEl, { scale: 1080 / CARD_W, useCORS: true, backgroundColor: '#ffffff' });
     const dog = (document.querySelector('.name').textContent || 'card').trim().replace(/\s+/g, '-');
-    a.download = 'Pawradise進度報告-' + dog + '.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
+    const filename = 'Pawradise進度報告-' + dog + '.png';
+    const blob = await canvasToBlob(canvas);
+    const dataUrl = canvas.toDataURL('image/png');   // iOS 長按儲存用 data: 最穩陣
+    showResult(dataUrl, blob, filename);
   } catch (e) {
-    alert('生成失敗，請直接截圖使用。');
+    alert('生成失敗：' + (e && e.message ? e.message : e) + '\n請直接截圖使用。');
   }
   document.body.classList.add('hints');
   document.body.classList.remove('exporting');
