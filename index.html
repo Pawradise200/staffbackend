@@ -590,7 +590,7 @@ function monthLabelFull(m) {
 
 // ═══════════ 業務邏輯 (port from commission-data.js) ═══════════
 const HEADCOUNT = 3;
-const TARGETS = { hotelThreshold: 200000, academyThreshold: 50000, renewalTier: 5, packageGoal: 12, attendanceMin: 4 };
+const TARGETS = { hotelThreshold: 200000, academyThreshold: 50000, renewalTier: 5, packageGoal: 12 };
 const ROLE_KPIS = {
   junior: { label: '初級寵物照顧員', items: [
     { id: 'j1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
@@ -789,11 +789,14 @@ const SHIFTS = {
   off:   { label: '休息', time: '', hrs: 0 },
 };
 const POSITIONS = {
-  academy: { label: '學院', cls: 'academy' },
+  academyA: { label: '學院A位', cls: 'academy' },   // 初級導師
+  academyB: { label: '學院B位', cls: 'academy' },   // 初級導師
+  assist:   { label: '助教', cls: 'academy' },
   hotelA:  { label: '酒店A位', cls: 'hotelA' },
   hotelB:  { label: '酒店B位', cls: 'hotelB' },
   hotelC:  { label: '酒店C位', cls: 'hotelC' },
-  reception: { label: '前台', cls: 'reception' },
+  academy: { label: '學院', cls: 'academy' },        // 舊資料(未細分前)相容顯示
+  reception: { label: '前台', cls: 'reception' },     // 舊資料相容,已不再喺選單
 };
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 function buildWeekDays(week, wi, currentWeekIdx, todayDow) {
@@ -814,21 +817,12 @@ function buildWeekDays(week, wi, currentWeekIdx, todayDow) {
 function weekSummary(week) {
   const shifts = (week && week.shifts) || [];
   return {
-    academyDays: shifts.filter(r => r && r[1] === 'academy').length,
     workDays: shifts.filter(r => r && r[0] && r[0] !== 'off').length,
     weekHours: shifts.reduce((a, r) => a + ((r && SHIFTS[r[0]] ? SHIFTS[r[0]].hrs : 0) || 0), 0),
   };
 }
 
 // ═══════════ UI atoms ═══════════
-function FixedBadge({ ok, need }) {
-  return (
-    <div className={'pwd-fixed ' + (ok ? 'on' : 'off')}>
-      <span className="pwd-fixed-dot" />
-      {ok ? '固定獎金 HK$2,000 已解鎖' : `再 ${need} 日學院出勤即解鎖固定獎金`}
-    </div>
-  );
-}
 function DonutChart({ parts, total, size = 188, stroke = 24, children }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -1386,8 +1380,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
         </div>
         <div className="pwd-roster-sum">
           <span><b>{sum.workDays}</b> 更</span><span className="dot">·</span>
-          <span><b>{sum.weekHours}</b> 時</span><span className="dot">·</span>
-          <span>學院 <b>{sum.academyDays}</b> 日</span>
+          <span><b>{sum.weekHours}</b> 時</span>
         </div>
         <div className="pwd-duty">
           {days.map((d, i) => (
@@ -1505,18 +1498,6 @@ function fmtYMD(dt) { return dt.getFullYear() + '-' + String(dt.getMonth() + 1).
 function mondayOf(dt) { const dow = (dt.getDay() + 6) % 7; const m = new Date(dt); m.setDate(dt.getDate() - dow); return m; }
 function shiftWeekStart(ws, deltaWeeks) { const m = parseYMD(ws); m.setDate(m.getDate() + deltaWeeks * 7); return fmtYMD(m); }
 function firstWeekStartOfMonth(month) { const [y, mo] = month.split('-').map(Number); return fmtYMD(mondayOf(new Date(y, mo - 1, 1))); }
-// 該週覆蓋嗀月份(可能跨兩個月,例如 4月底–5月頭)
-function weekMonths(ws) {
-  const b = parseYMD(ws); const out = [];
-  for (let i = 0; i < 7; i++) { const d = new Date(b); d.setDate(b.getDate() + i); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); if (out.indexOf(k) < 0) out.push(k); }
-  return out;
-}
-// 某週入面屬於指定月份嗀學院日數(畀即時統計用)
-function acadInWeekForMonth(weekShifts, ws, month) {
-  const b = parseYMD(ws); let c = 0;
-  for (let i = 0; i < 7; i++) { const d = new Date(b); d.setDate(b.getDate() + i); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); if (k === month && weekShifts[i] && weekShifts[i][1] === 'academy') c++; }
-  return c;
-}
 function weekRangeLabel(ws) {
   const b = parseYMD(ws), e = new Date(b); e.setDate(b.getDate() + 6);
   const bM = b.getMonth() + 1, eM = e.getMonth() + 1;
@@ -1952,11 +1933,9 @@ function MgrRoster({ mgrData }) {
   const [shifts, setShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : null);
   const [savedShifts, setSavedShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : DEFAULT_WEEK());
   const [loading, setLoading] = useState(false);
-  const [days, setDays] = useState({}); // { 'YYYY-MM': 學院日數 }
-  const wMonths = weekMonths(weekStart); // 該週覆蓋嗀月份
   const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
   const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
-  const POS_LABEL = { academy: '學院', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位', reception: '前台' };
+  const POS_LABEL = { academyA: '學院A位', academyB: '學院B位', assist: '助教', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位', academy: '學院', reception: '前台' };
 
   // 載入所選員工 + 所選週次嗀更表
   useEffect(() => {
@@ -1971,17 +1950,6 @@ function MgrRoster({ mgrData }) {
     return () => { active = false; };
   }, [sel, weekStart]);
 
-  // 載入該週覆蓋嗀每個月嗀學院日數
-  function refreshDays() {
-    const s = sel;
-    weekMonths(weekStart).forEach(mth => {
-      pwApi('academyDays', { staffId: s, month: mth }).then(res => {
-        if (res && res.ok && s === sel) setDays(prev => ({ ...prev, [mth]: res.days }));
-      }).catch(() => {});
-    });
-  }
-  useEffect(() => { setDays({}); refreshDays(); }, [sel, weekStart]);
-
   const cur = normWeek(shifts || DEFAULT_WEEK());
   const dates = datesFromWeekStart(weekStart);
   const setDay = (i, shift, pos) => {
@@ -1994,7 +1962,6 @@ function MgrRoster({ mgrData }) {
   async function save() {
     const r = await pwApi('saveRoster', { weekStart, staffId: sel, shifts: JSON.stringify(cur) });
     setSavedShifts(cur);
-    refreshDays();
     return r;
   }
   const unsaved = JSON.stringify(cur) !== JSON.stringify(savedShifts);
@@ -2007,19 +1974,6 @@ function MgrRoster({ mgrData }) {
           </button>
         ))}
       </div>
-      {wMonths.map(mth => {
-        const base = days[mth];
-        const known = typeof base === 'number';
-        // 即時計:已存總數 − 本週已存學院 + 本週畫面上嗀學院
-        const n = known ? base - acadInWeekForMonth(savedShifts, weekStart, mth) + acadInWeekForMonth(cur, weekStart, mth) : null;
-        const ok = known && n >= 4;
-        return (
-          <div key={mth} className={'pwd-card pwd-attsum' + (ok ? ' ok' : '')}>
-            <div><b>{list.find(s => s.id == sel).name}</b> · {monthLabelFull(mth)} 學院日數</div>
-            <b className="pwd-attsum-n">{known ? n : '…'} 日{ok ? ' ✓' : (known ? ` · 差 ${Math.max(0, 4 - n)} 日` : '')}</b>
-          </div>
-        );
-      })}
       {unsaved && <div className="pwd-mgr-rostersave" style={{ color: 'var(--pw-gold-deep)', fontWeight: 800 }}>⚠ 未發佈 — 記得撳下面「發佈本週排更」先會存入系統</div>}
       <div className="pwd-card pwd-block">
         <div className="pwd-roster-weeknav">
@@ -2041,10 +1995,10 @@ function MgrRoster({ mgrData }) {
                   </select>
                 </div>
                 <div className="pwd-mgr-selwrap">
-                  <select className={'pwd-mgr-sel pos' + (r[1] ? ' sh-' + r[1] : '')} value={r[1] || ''} disabled={off} onChange={(e) => setDay(i, r[0], e.target.value || null)}>
+                  <select className={'pwd-mgr-sel pos' + (r[1] ? ' sh-' + ((POSITIONS[r[1]] && POSITIONS[r[1]].cls) || r[1]) : '')} value={r[1] || ''} disabled={off} onChange={(e) => setDay(i, r[0], e.target.value || null)}>
                     {off ? <option value="">—</option> : [
                       <option key="none" value="">未定崗</option>,
-                      ...['academy', 'hotelA', 'hotelB', 'hotelC', 'reception'].map(k => <option key={k} value={k}>{POS_LABEL[k]}</option>),
+                      ...['academyA', 'academyB', 'assist', 'hotelA', 'hotelB', 'hotelC'].map(k => <option key={k} value={k}>{POS_LABEL[k]}</option>),
                     ]}
                   </select>
                 </div>
@@ -2055,7 +2009,7 @@ function MgrRoster({ mgrData }) {
         )}
       </div>
       <SaveBtn onSave={save} label="發佈本週排更" />
-      <div className="pwd-mgr-rostersave">發佈後員工即時看到 · 學院日數會即時更新</div>
+      <div className="pwd-mgr-rostersave">發佈後員工即時看到</div>
     </div>
   );
 }
