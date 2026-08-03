@@ -717,7 +717,8 @@ function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, n
   const nStudents = (newStudents != null) ? newStudents : (trialConv + s1New + s2New + comboNew);
   const renewPool = renewals * 900;                  // 舊生續報 $900/個 團隊池(由 $600 上調,推動跟進)
   // 按學院職級 / 固定分母分(初級2/助教1,分母=ACAD_WEIGHT_TOTAL=5);無職級(兼職/未填)→ 0 份額,預留唔發
-  const renewShare = acadWeight > 0 ? (acadWeight / ACAD_WEIGHT_TOTAL) : 0;
+  // 酒店部唔分學院池(同 hotel 那行對稱:學院部唔分酒店池)
+  const renewShare = (dept === 'hotel' || acadWeight <= 0) ? 0 : (acadWeight / ACAD_WEIGHT_TOTAL);
   const rawRenew = renewPool * renewShare;
   const renew = acadGateOk ? rawRenew : 0;           // 學院 $50k 門檻同樣 gate 舊生續報(整個學院佣金)
   const projectCommission = hotel + newcmm + renew;
@@ -1691,7 +1692,8 @@ function MgrKpi({ month, mgrData }) {
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
-  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(','), s1New: sales.s1New, s2New: sales.s2New, comboNew: sales.comboNew, acadRank }); }
+  // 酒店部冇職級選單 → 唔准送 acadRank(後端見空字串會跳過寫入),避免無意中標成學院初級導師
+  function save() { return pwApi('saveKpi', { month, staffId: sel, lateLeave, kpiFail: fail.join(','), s1New: sales.s1New, s2New: sales.s2New, comboNew: sales.comboNew, acadRank: staff.dept === 'hotel' ? '' : acadRank }); }
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-people">
@@ -1737,12 +1739,16 @@ function MgrKpi({ month, mgrData }) {
             <div className="pwd-mgr-field"><label>S1+S2</label>
               <Stepper value={sales.comboNew} suffix="隻" hint="$900" onChange={(v) => setSales(s => ({ ...s, comboNew: v }))} /></div>
           </div>
-          <div className="pwd-eyebrow" style={{ marginTop: 14 }}>學院職級(舊生續報池按職級分)</div>
-          <div className="pwd-club-tierconfirm">
-            {[['assistant','助教'],['junior','初級導師'],['senior','資深導師']].map(([v, l]) => (
-              <button key={v} className="pwd-club-tierconfirm-btn" style={acadRank === v ? { background: 'var(--pw-navy)', color: '#fff' } : {}} onClick={() => setAcadRank(v)}>{l}</button>
-            ))}
-          </div>
+          {staff.dept !== 'hotel' && (
+            <>
+              <div className="pwd-eyebrow" style={{ marginTop: 14 }}>學院職級(舊生續報池按職級分)</div>
+              <div className="pwd-club-tierconfirm">
+                {[['assistant','助教'],['junior','初級導師'],['senior','資深導師']].map(([v, l]) => (
+                  <button key={v} className="pwd-club-tierconfirm-btn" style={acadRank === v ? { background: 'var(--pw-navy)', color: '#fff' } : {}} onClick={() => setAcadRank(v)}>{l}</button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
       <div className="pwd-card pwd-mgr-result">
