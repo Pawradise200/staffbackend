@@ -349,6 +349,34 @@ img { display: block; }
 .pwd-club-input:focus { outline: none; border-color: var(--pw-navy-light); }
 .pwd-club-formacts { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .pwd-club-hint { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-sm); padding: 8px 11px; line-height: 1.45; }
+.pwd-tr-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.pwd-tr-sub { font-size:11px; font-weight:700; color:var(--pw-ink-mute); margin-top:3px; }
+.pwd-tr-days { display:flex; flex-wrap:wrap; gap:7px; margin-top:14px; }
+.pwd-tr-day { flex:1 1 92px; min-width:92px; background:var(--pw-cream-soft); border:1.5px solid transparent;
+  border-radius:var(--pw-r-md); padding:9px 6px; text-align:center; cursor:pointer; }
+.pwd-tr-day.sel { border-color:var(--pw-navy); background:var(--pw-paper); }
+.pwd-tr-day.full { opacity:.45; cursor:not-allowed; }
+.pwd-tr-day-d { font-weight:900; font-size:13px; color:var(--pw-ink); }
+.pwd-tr-day-w { font-size:10px; font-weight:700; color:var(--pw-ink-faint); margin-top:1px; }
+.pwd-tr-day-r { font-size:10.5px; font-weight:800; margin-top:4px; }
+.pwd-tr-day-r.ok { color:var(--pw-navy-deep); }
+.pwd-tr-day-r.no { color:var(--pw-ink-faint); }
+.pwd-tr-form { margin-top:12px; display:flex; flex-direction:column; gap:9px; }
+.pwd-tr-row { display:flex; gap:8px; }
+.pwd-tr-input { flex:1; min-width:0; border:1.5px solid var(--pw-cream-deep); background:var(--pw-paper);
+  border-radius:var(--pw-r-md); padding:10px 12px; font-family:inherit; font-size:13px; font-weight:700; color:var(--pw-ink); }
+.pwd-tr-input::placeholder { color:var(--pw-ink-faint); font-weight:600; }
+.pwd-tr-hint { font-size:10.5px; font-weight:700; color:var(--pw-ink-mute); background:var(--pw-cream-soft);
+  border-radius:var(--pw-r-sm); padding:8px 11px; line-height:1.45; }
+.pwd-tr-list { margin-top:14px; padding-top:14px; border-top:1.5px solid var(--pw-cream-soft);
+  display:flex; flex-direction:column; gap:8px; }
+.pwd-tr-item { display:flex; align-items:center; gap:10px; background:var(--pw-cream-soft);
+  border-radius:var(--pw-r-md); padding:10px 12px; }
+.pwd-tr-item-i { flex:1; min-width:0; }
+.pwd-tr-item-i b { display:block; font-size:13px; font-weight:900; color:var(--pw-ink); }
+.pwd-tr-item-i span { font-size:10.5px; font-weight:700; color:var(--pw-ink-mute); }
+.pwd-tr-x { flex-shrink:0; background:none; border:1.5px solid var(--pw-cream-deep); color:var(--pw-ink-mute);
+  border-radius:var(--pw-r-pill); padding:5px 11px; font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; }
 .pwd-club-list { margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--pw-cream-soft); display: flex; flex-direction: column; gap: 8px; }
 .pwd-club-list-lbl { font-size: 11px; font-weight: 900; color: var(--pw-ink-mute); }
 .pwd-club-nom { display: flex; align-items: center; gap: 10px; background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 10px 12px; }
@@ -1186,6 +1214,89 @@ function Login({ onLogin }) {
   );
 }
 
+// ═══════════ TrialCard ═══════════
+// 試堂登記：酒店部 check out 當場幫家長留位。名額同正常入學位分開計（每個幼稚園日 2 個）。
+function TrialCard({ staff, slots, bookings, onBook, onCancel }) {
+  const [sel, setSel] = useState('');
+  const [dog, setDog] = useState('');
+  const [phone, setPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const list = (slots || []).slice(0, 12);
+  const totalLeft = (slots || []).reduce((a, s) => a + s.remaining, 0);
+  const mine = (bookings || []);
+  async function submit() {
+    if (!sel || !dog.trim() || busy) return;
+    setBusy(true); setMsg('');
+    const r = await onBook({ classId: sel, dogName: dog.trim(), phone: phone.trim() });
+    setBusy(false);
+    if (r && r.ok === false) { setMsg(r.error || '登記失敗'); return; }
+    setSel(''); setDog(''); setPhone('');
+    setMsg('已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
+  }
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-tr-head">
+        <div>
+          <div className="pwd-eyebrow">試堂登記</div>
+          <div className="pwd-tr-sub">住宿客人專享一日體驗 · 每個幼稚園日 2 個位</div>
+        </div>
+        <div className="pwd-club-earned">未來仲有<b>{totalLeft}</b></div>
+      </div>
+      {list.length === 0 && <div className="pwd-tr-hint" style={{ marginTop: 12 }}>未來 45 日暫時未有幼稚園日，或課堂名額表未更新。</div>}
+      {list.length > 0 && (
+        <>
+          <div className="pwd-tr-days">
+            {list.map(s => {
+              const full = s.remaining <= 0;
+              return (
+                <div key={s.id}
+                     className={'pwd-tr-day' + (sel === s.id ? ' sel' : '') + (full ? ' full' : '')}
+                     onClick={() => { if (!full) setSel(sel === s.id ? '' : s.id); }}>
+                  <div className="pwd-tr-day-d">{s.date.slice(5).replace('-', '/')}</div>
+                  <div className="pwd-tr-day-w">{s.time || ''}</div>
+                  <div className={'pwd-tr-day-r ' + (full ? 'no' : 'ok')}>{full ? '已滿' : '尚餘 ' + s.remaining}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="pwd-tr-form">
+            <div className="pwd-tr-row">
+              <input className="pwd-tr-input" placeholder="狗狗名稱" value={dog} onChange={e => setDog(e.target.value)} />
+              <input className="pwd-tr-input" type="tel" inputMode="tel" placeholder="家長電話" value={phone} onChange={e => setPhone(e.target.value)} />
+            </div>
+            <div className="pwd-tr-hint">
+              揀好日子 → 入名 → 提交，<b>然後即刻 WhatsApp 發確認訊息</b>（見《體驗邀請與確認訊息範本》訊息二）。
+              口頭講完唔入呢度，等於冇留位。
+            </div>
+            {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
+            <div className="pwd-club-formacts">
+              <span className="pwd-tr-sub">{sel ? '已揀 ' + (list.find(x => x.id === sel) || {}).label : '請先揀一日'}</span>
+              <button className="pwd-la-confirm" disabled={!sel || !dog.trim() || busy} onClick={submit}>
+                {busy ? '登記中…' : '確認留位'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      {mine.length > 0 && (
+        <div className="pwd-tr-list">
+          <div className="pwd-club-list-lbl">即將到來嘅試堂 ({mine.length})</div>
+          {mine.map(b => (
+            <div key={b.id} className="pwd-tr-item">
+              <div className="pwd-tr-item-i">
+                <b>{b.dog}{b.phone ? <span className="pwd-club-nom-owner"> · {b.phone}</span> : null}</b>
+                <span>{b.label}</span>
+              </div>
+              <button className="pwd-tr-x" onClick={() => onCancel(b.id)}>取消</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════ ClubCard ═══════════
 function ClubCard({ staff, noms, month, bonus, onSubmit }) {
   const mine = noms.filter(n => n.staffId == staff.id);
@@ -1309,7 +1420,7 @@ function CommissionHistory({ history, current, monthLabel }) {
 }
 
 // ═══════════ IndividualView ═══════════
-function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, clubNoms, history, month, monthLabel, onClubSubmit }) {
+function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, clubNoms, trialSlots, trialBookings, history, month, monthLabel, onClubSubmit, onTrialBook, onTrialCancel }) {
   const clubBonus = clubBonusFor(staff, clubNoms, month);
   const actualTotal = kpi.actualTotal + clubBonus;
   const actualParts = clubBonus > 0 ? [...kpi.actualParts, { key: 'club', value: clubBonus }] : kpi.actualParts;
@@ -1371,6 +1482,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         <div className="pwd-eyebrow">{isFd ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'}</div>
         {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} dept={staff.dept} />}
       </div>
+      <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} onBook={onTrialBook} onCancel={onTrialCancel} />
       <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
@@ -2332,6 +2444,15 @@ function CommissionApp() {
     await pwApi('nominate', { staffId: staff.id, dogName, phone });
     await reloadDash();
   }
+  async function submitTrial({ classId, dogName, phone }) {
+    const r = await pwApi('trialBook', { staffId: staff.id, classId, dogName, phone });
+    await reloadDash();
+    return r;
+  }
+  async function cancelTrial(trialId) {
+    await pwApi('trialCancel', { trialId });
+    await reloadDash();
+  }
   async function submitSwap({ date, shift }) {
     await pwApi('swap', { staffId: staff.id, date, shift });
   }
@@ -2392,7 +2513,9 @@ function CommissionApp() {
             )}
             <IndividualView staff={staff} calc={calc} items={items} kpi={kpi} team={team}
               lateLeave={lateLeave} dogEscape={dogEscape} clubNoms={dash.clubNoms} history={dash.history}
-              month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub} />
+              trialSlots={dash.trialSlots} trialBookings={dash.trialBookings}
+              month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
+              onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
             <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt}</div>
           </>
         )}
