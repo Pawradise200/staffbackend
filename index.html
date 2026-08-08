@@ -696,7 +696,7 @@ const RATES_ACADEMY = [
 ];
 const RATES_HOTEL = [
   { label: '酒店部佣金池', rate: '12% ÷ 3 (編制)', note: '超出 $200,000 門檻部分 · 業績 = 寄宿 + 日托 + 基本美容(不含星級美容) · 空缺位份額預留' },
-  { label: '轉介學院課程', rate: '$180 / 隻入池', note: '入酒店轉介池,按編制分母 3 分(空缺預留) · 按轉化計唔按派券計 · 一隻狗一次為限 · 受學院 $50k 門檻' },
+  { label: '轉介學院課程', rate: '$180 / 隻入池', note: '入酒店轉介池,按編制分母 3 分(空缺預留) · 按轉化計唔按派券計 · 一隻狗一次為限 · 受學院 $50k 門檻 · 2026 年 8–9 月 ×1.5($270)' },
   { label: '全部佣金', rate: '× KPI 完成率', note: '91分↑ 100% · 81–90 按分數 · 71–80 半數 · 70↓ 不發' },
 ];
 // 學院職級權重(只用於舊生續報池):資深 3 / 初級 2 / 助教 1。資深=owner,退出日常,不抽池。
@@ -721,10 +721,11 @@ function monthsBetween(a, b) {
   const [y1, m1] = a.split('-').map(Number), [y2, m2] = b.split('-').map(Number);
   return (y2 - y1) * 12 + (m2 - m1);
 }
-// 限期加碼:2026 年 8–9 月入會獎金 ×1.5(清存量用,10 月起回復標準金額)
-const CLUB_BOOST_MONTHS = ['2026-08', '2026-09'];
-const CLUB_BOOST_RATE = 1.5;
-function clubBoost(month) { return CLUB_BOOST_MONTHS.includes(month) ? CLUB_BOOST_RATE : 1; }
+// 限期加碼:2026 年 8–9 月 ×1.5,10 月起回復標準金額。
+// 兩項一齊行:①Calm Explorer Club 入會獎金(清存量) ②酒店轉介學院獎金(推動漏斗開頭)
+const PROMO_MONTHS = ['2026-08', '2026-09'];
+const PROMO_RATE = 1.5;
+function promoBoost(month) { return PROMO_MONTHS.includes(month) ? PROMO_RATE : 1; }
 // 未知崗位一律當前台處理,避免任何手誤令整個面板崩潰變空白
 function roleKpi(role) { return ROLE_KPIS[role] || ROLE_KPIS.frontdesk; }
 function buildScorecard(role, failIds = []) {
@@ -745,7 +746,7 @@ function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
   return { ratio: 0, band: '不發放' };
 }
 function scorecardTotal(items) { return items.reduce((a, it) => a + (it.pass ? it.weight : 0), 0); }
-function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, newStudents, renewals, hotelRevenue, academyRevenue = null, acadWeight = 0, acadWeightTotal = 0, headcount = HEADCOUNT, dept = '', hotelReferrals = 0 }) {
+function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, newStudents, renewals, hotelRevenue, academyRevenue = null, acadWeight = 0, acadWeightTotal = 0, headcount = HEADCOUNT, dept = '', hotelReferrals = 0, monthKey = '' }) {
   const fixedOk = true;   // 分部門後取消 $2,000 出勤獎(摺入底薪;店長併入階梯)
   const fixed = 0;
   const hotelOver = Math.max(0, hotelRevenue - TARGETS.hotelThreshold);
@@ -764,11 +765,13 @@ function calc({ attendance, trialConv = 0, s1New = 0, s2New = 0, comboNew = 0, n
   const renew = acadGateOk ? rawRenew : 0;           // 學院 $50k 門檻同樣 gate 舊生續報(整個學院佣金)
   // 酒店轉介學院 $180/隻 入酒店轉介池,按酒店編制分母 3 分(空缺預留唔發)。
   // 收入來源係學院,所以受學院 $50k 門檻,唔受酒店 $200k 門檻;學院部唔分呢個池。
-  const rawReferral = dept === 'academy' ? 0 : (hotelReferrals * 180 / HOTEL_SEATS);
+  // 2026 年 8–9 月同樣 ×1.5（$180 → $270），同 Club 入會獎金一齊行
+  const referralUnit = 180 * promoBoost(monthKey);
+  const rawReferral = dept === 'academy' ? 0 : (hotelReferrals * referralUnit / HOTEL_SEATS);
   const referral = acadGateOk ? rawReferral : 0;
   const projectCommission = hotel + newcmm + renew + referral;
   const total = fixed + projectCommission;
-  return { fixed, fixedOk, hotel, hotelOver, hotelRevenue, newcmm, rawNewcmm, acadGateOk, academyRevenue, newStudents: nStudents, trialConv, s1New, s2New, comboNew, renew, rawRenew, renewals, referral, rawReferral, hotelReferrals, projectCommission, total,
+  return { fixed, fixedOk, hotel, hotelOver, hotelRevenue, newcmm, rawNewcmm, acadGateOk, academyRevenue, newStudents: nStudents, trialConv, s1New, s2New, comboNew, renew, rawRenew, renewals, referral, rawReferral, hotelReferrals, referralUnit, projectCommission, total,
     attendance, attendanceNeed: Math.max(0, 4 - attendance),
     parts: [ { key: 'fixed', value: fixed }, { key: 'hotel', value: hotel }, { key: 'newcmm', value: newcmm }, { key: 'renew', value: renew }, { key: 'referral', value: referral } ] };
 }
@@ -809,7 +812,7 @@ function fullResult(staff, team, overrides = {}) {
     ? calcManager({ attendance: att, storeRevenue: storeRevenueOf(team), hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue })
     : staff.role === 'frontdesk'
     ? calcFrontdesk()
-    : calc({ attendance: att, trialConv: team.trialConv || 0, s1New: (staff.s1New != null ? staff.s1New : (team.s1New || 0)), s2New: (staff.s2New != null ? staff.s2New : (team.s2New || 0)), comboNew: (staff.comboNew != null ? staff.comboNew : (team.comboNew || 0)), renewals: team.renewals, hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue, acadWeight: ACAD_W[staff.acadRank] || 0, acadWeightTotal: team.acadWeightTotal || 0, headcount: team.headcount || HEADCOUNT, dept: staff.dept || '', hotelReferrals: team.hotelReferrals || 0 });
+    : calc({ attendance: att, trialConv: team.trialConv || 0, s1New: (staff.s1New != null ? staff.s1New : (team.s1New || 0)), s2New: (staff.s2New != null ? staff.s2New : (team.s2New || 0)), comboNew: (staff.comboNew != null ? staff.comboNew : (team.comboNew || 0)), renewals: team.renewals, hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue, acadWeight: ACAD_W[staff.acadRank] || 0, acadWeightTotal: team.acadWeightTotal || 0, headcount: team.headcount || HEADCOUNT, dept: staff.dept || '', hotelReferrals: team.hotelReferrals || 0, monthKey: team.monthKey || '' });
   const items = overrides.scorecard || buildScorecard(kpiRoleOf(staff), staff.kpiFail || []);
   const score = scorecardTotal(items);
   const lateLeave = overrides.lateLeave != null ? overrides.lateLeave : (staff.lateLeave || 0);
@@ -827,7 +830,7 @@ function clubJoinPool(noms, month) {
   const raw = (noms || []).filter(n => n.status === 'subscribed' && n.tier)
     .filter(n => !n.since || n.since === month)
     .reduce((a, n) => a + CLUB_TIERS[n.tier].bonus, 0);
-  return raw * clubBoost(month);
+  return raw * promoBoost(month);
 }
 // 續會分成池:訂閱起始月起 6 個月內嘅在會會員(唔包入會嗰個月本身)。
 function clubRenewPool(noms, month) {
@@ -1300,7 +1303,7 @@ function TrialCard({ staff, slots, bookings, onBook, onCancel }) {
 // ═══════════ ClubCard ═══════════
 function ClubCard({ staff, noms, month, bonus, onSubmit }) {
   const mine = noms.filter(n => n.staffId == staff.id);
-  const boosted = clubBoost(month) > 1;
+  const boosted = promoBoost(month) > 1;
   const [open, setOpen] = useState(false);
   const [dog, setDog] = useState('');
   const [phone, setPhone] = useState('');
@@ -1332,7 +1335,7 @@ function ClubCard({ staff, noms, month, bonus, onSubmit }) {
             <span className="pwd-club-tier-dot" style={{ background: t.color }} />
             <span className="pwd-club-tier-name">{t.label}</span>
             <span className="pwd-club-tier-fee">${t.fee}/月</span>
-            <span className="pwd-club-tier-bonus">入會 ${Math.round(t.bonus * clubBoost(month))}</span>
+            <span className="pwd-club-tier-bonus">入會 ${Math.round(t.bonus * promoBoost(month))}</span>
             <span className="pwd-club-tier-fee">續會 ${t.renew}/月 × 6</span>
           </div>
         ))}
@@ -1362,7 +1365,7 @@ function ClubCard({ staff, noms, month, bonus, onSubmit }) {
                 <span className="pwd-club-nom-dot" style={{ background: t ? t.color : 'var(--pw-cream-deep)' }} />
                 <div className="pwd-club-nom-info">
                   <b>{n.dog}{n.phone ? <span className="pwd-club-nom-owner">· {n.phone}</span> : null}</b>
-                  <span>{t ? `${t.label} · $${t.fee}/月 · 入池 $${Math.round(t.bonus * clubBoost(month))}` : '待店長確認入會資格'}</span>
+                  <span>{t ? `${t.label} · $${t.fee}/月 · 入池 $${Math.round(t.bonus * promoBoost(month))}` : '待店長確認入會資格'}</span>
                 </div>
                 <span className={'pwd-club-status ' + st.cls}>{st.label}</span>
               </div>
@@ -1443,11 +1446,11 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
     ? [ { pk: 'newcmm', value: kpi.actualParts[2].value, detail: staff.acadRank === 'assistant' ? '個人銷售佣 · 升初級導師後解鎖' : newDetail },
         { pk: 'renew', value: kpi.actualParts[3].value, detail: renewDetail } ]
     : [ { pk: 'hotel', value: kpi.actualParts[1].value, detail: hotelDetail },
-        ...(calc.referral > 0 ? [{ pk: 'referral', value: kpi.actualParts[4].value, detail: `成功轉介 ${calc.hotelReferrals} 隻 · $180/隻入池 ÷ 編制 3` }] : []) ];
+        ...(calc.referral > 0 ? [{ pk: 'referral', value: kpi.actualParts[4].value, detail: `成功轉介 ${calc.hotelReferrals} 隻 · $${calc.referralUnit || 180}/隻入池 ÷ 編制 3` + (promoBoost(team.monthKey) > 1 ? ' · 限期 ×1.5' : '') }] : []) ];
   const subscribedCount = clubNoms.filter(n => n.staffId == staff.id && n.status === 'subscribed').length;
   const teamSubscribed = clubNoms.filter(n => n.status === 'subscribed').length;
   const clubDetail = `團隊 ${teamSubscribed} 個入會(我提名 ${subscribedCount} 個) · 按職級固定分母分`
-    + (clubBoost(month) > 1 ? ' · 限期 ×1.5' : '');
+    + (promoBoost(month) > 1 ? ' · 限期 ×1.5' : '');
   const compRows = clubBonus > 0 ? [...compRowsBase, { pk: 'club', value: clubBonus, detail: clubDetail }] : compRowsBase;
   return (
     <>
