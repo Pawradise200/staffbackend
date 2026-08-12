@@ -2018,44 +2018,76 @@ function MgrLeave({ month, mgrData }) {
   const [phs, setPhs] = useState(() => ((mgrData.allPH && mgrData.allPH[sel]) || []).slice());
   const [phName, setPhName] = useState('');
   const [phDate, setPhDate] = useState('');
+  const [err, setErr] = useState('');
   function reseed(id) {
     const b = mgrData.allLeaveBal[id] || { annual: 0, statutory: 0, sick: 0 };
     setSel(id); setBal({ annual: b.annual, statutory: b.statutory, sick: b.sick });
     setRecs((mgrData.allLeaveRec[id] || []).slice()); setDate('');
-    setPhs(((mgrData.allPH && mgrData.allPH[id]) || []).slice()); setPhName(''); setPhDate('');
+    setPhs(((mgrData.allPH && mgrData.allPH[id]) || []).slice()); setPhName(''); setPhDate(''); setErr('');
+  }
+  // ⚠️ 2026-08-12 幽靈條目事故：呢版嘅寫入全部係樂觀更新，之前完全冇 check 後端回咩——
+  // 授權過期(WRITE_GUARD 回「未授權」)照樣喺畫面加咗行，店長以為儲咗，一 reload 就無晒。
+  // 同 2026-07-06「更表儲存唔到」係同一種病(嗰次只修咗 SaveBtn)。
+  // 而家一律：失敗就縮返畫面 ＋ 顯示後端真實錯誤，做唔到一定睇得見。
+  async function write(action, params, revert) {
+    setErr('');
+    try {
+      const r = await pwApi(action, params);
+      if (!r || r.ok === false) {
+        revert();
+        setErr((r && r.error ? r.error : '儲存失敗') + '（未寫入，畫面已還原）');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      revert();
+      setErr('網絡錯誤：' + (e.message || e) + '（未寫入，畫面已還原）');
+      return false;
+    }
   }
   const adj = (k, d) => setBal(b => ({ ...b, [k]: Math.max(0, +(b[k] + d).toFixed(1)) }));
   const fmtDate = (iso) => { const [, m, d] = iso.split('-'); return `${+m}月${+d}日`; };
   function saveBal() { return pwApi('saveLeave', { month, staffId: sel, annual: bal.annual, statutory: bal.statutory, sick: bal.sick }); }
   async function addRec() {
     if (!date) return;
-    const ds = fmtDate(date);
-    setRecs(r => [...r, { date: ds, type }]);
+    const ds = fmtDate(date), t = type, keep = date;
+    setRecs(r => [...r, { date: ds, type: t }]);
     setDate('');
-    await pwApi('addLeaveRec', { month, staffId: sel, date: ds, type });
+    await write('addLeaveRec', { month, staffId: sel, date: ds, type: t },
+      () => { setRecs(r => r.filter(x => !(x.date === ds && x.type === t))); setDate(keep); });
   }
   async function delRec(rec, i) {
     setRecs(r => r.filter((_, j) => j !== i));
-    await pwApi('deleteLeaveRec', { month, staffId: sel, date: rec.date, type: rec.type });
+    await write('deleteLeaveRec', { month, staffId: sel, date: rec.date, type: rec.type },
+      () => setRecs(r => { const c = r.slice(); c.splice(i, 0, rec); return c; }));
   }
   async function addPH() {
     if (!phName.trim() || !phDate) return;
-    const ds = fmtDate(phDate);
-    setPhs(p => [...p, { name: phName.trim(), date: ds }]);
+    const nm = phName.trim(), ds = fmtDate(phDate), keep = phDate;
+    setPhs(p => [...p, { name: nm, date: ds }]);
     setPhName(''); setPhDate('');
-    await pwApi('addPH', { month, staffId: sel, name: phName.trim(), date: ds });
+    await write('addPH', { month, staffId: sel, name: nm, date: ds },
+      () => { setPhs(p => p.filter(x => !(x.name === nm && x.date === ds)));
+              setPhName(nm); setPhDate(keep); });   // 打返嘅字唔好蒸發,即刻可以重試
   }
   async function delPH(p, i) {
     setPhs(arr => arr.filter((_, j) => j !== i));
-    await pwApi('deletePH', { month, staffId: sel, name: p.name, date: p.date });
+    await write('deletePH', { month, staffId: sel, name: p.name, date: p.date },
+      () => setPhs(arr => { const c = arr.slice(); c.splice(i, 0, p); return c; }));
   }
   // 「✓已放」=員工真係放咗:刪走待放 + 自動記一筆「公眾假期」請假記錄留痕。
   // ✕ 留返畀入錯刪錯用(唔留痕)。冇留痕嘅刪法,第日爭拗冇得對——2026-08-12 加。
+  // 個掣坐咗喺原本 ✕ 嘅位置,老闆要求撳落去先確認,避免手快誤觸即刻失數據。
   async function markPHTaken(p, i) {
+    const who = staff ? staff.name : '該員工';
+    if (!window.confirm('確認 ' + who + ' 已經放咗 ' + p.date + ' ' + p.name + '？\n\n會由「待放」名單移除，並記一筆「公眾假期」請假記錄。')) return;
     setPhs(arr => arr.filter((_, j) => j !== i));
+    const ok = await write('deletePH', { month, staffId: sel, name: p.name, date: p.date },
+      () => setPhs(arr => { const c = arr.slice(); c.splice(i, 0, p); return c; }));
+    if (!ok) return;   // 刪唔到就唔好記假期,否則兩邊都有＝重複
     setRecs(r => [...r, { date: p.date, type: '公眾假期' }]);
-    await pwApi('deletePH', { month, staffId: sel, name: p.name, date: p.date });
-    await pwApi('addLeaveRec', { month, staffId: sel, date: p.date, type: '公眾假期' });
+    await write('addLeaveRec', { month, staffId: sel, date: p.date, type: '公眾假期' },
+      () => setRecs(r => r.filter(x => !(x.date === p.date && x.type === '公眾假期'))));
   }
   return (
     <div className="pwd-mgr-stack">
@@ -2066,6 +2098,7 @@ function MgrLeave({ month, mgrData }) {
           </button>
         ))}
       </div>
+      {err && <div className="pwd-warn">⚠️ {err}　如果係「未授權」，撳返上面 🔒 重新解鎖再試一次。</div>}
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">{staff.name} · 假期結餘 (可調整)</div>
         <div className="pwd-leave-grid">
