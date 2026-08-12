@@ -9,8 +9,14 @@
 <meta http-equiv="Pragma" content="no-cache">
 <title>Pawradise 員工系統</title>
 <link rel="icon" href="pawradise-logo.jpg">
+<!-- 2026-08-12 提速:字型由 CSS @import(串行阻塞)改 link 並行載;預先同 CDN/API 握手 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Fredoka:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Fredoka:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap');
 
 :root {
   --pw-navy:#2C4A6E; --pw-navy-deep:#1F3552; --pw-navy-light:#4A7BAF;
@@ -142,6 +148,8 @@ img { display: block; }
 .t-例假 { background: var(--pw-success-bg); color: var(--pw-success); }
 .t-病假 { background: var(--pw-violet-bg); color: var(--pw-violet); }
 .t-事假 { background: var(--pw-warn-bg); color: var(--pw-warn); }
+.t-公眾假期 { background: var(--pw-danger-bg); color: var(--pw-danger); }
+.pwd-ph-taken { border: none; background: var(--pw-success-bg); color: var(--pw-success); font-family: inherit; font-weight: 900; font-size: 11px; padding: 4px 10px; border-radius: var(--pw-r-pill); cursor: pointer; margin-left: auto; flex-shrink: 0; }
 .pwd-larec-date { font-size: 12.5px; font-weight: 800; color: var(--pw-ink); }
 .pwd-larec-del { margin-left: auto; border: none; background: none; color: var(--pw-ink-faint); font-size: 13px; font-weight: 800; cursor: pointer; padding: 2px 4px; }
 .pwd-larec-del:hover { color: var(--pw-danger); }
@@ -2018,6 +2026,14 @@ function MgrLeave({ month, mgrData }) {
     setPhs(arr => arr.filter((_, j) => j !== i));
     await pwApi('deletePH', { month, staffId: sel, name: p.name, date: p.date });
   }
+  // 「✓已放」=員工真係放咗:刪走待放 + 自動記一筆「公眾假期」請假記錄留痕。
+  // ✕ 留返畀入錯刪錯用(唔留痕)。冇留痕嘅刪法,第日爭拗冇得對——2026-08-12 加。
+  async function markPHTaken(p, i) {
+    setPhs(arr => arr.filter((_, j) => j !== i));
+    setRecs(r => [...r, { date: p.date, type: '公眾假期' }]);
+    await pwApi('deletePH', { month, staffId: sel, name: p.name, date: p.date });
+    await pwApi('addLeaveRec', { month, staffId: sel, date: p.date, type: '公眾假期' });
+  }
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-people">
@@ -2046,7 +2062,7 @@ function MgrLeave({ month, mgrData }) {
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">登記請假</div>
         <div className="pwd-la-types" style={{ marginTop: 12 }}>
-          {['年假', '例假', '病假', '事假'].map(t => (
+          {['年假', '例假', '病假', '事假', '公眾假期'].map(t => (
             <button key={t} className={'pwd-la-chip' + (type === t ? ' on' : '')} onClick={() => setType(t)}>{t}</button>
           ))}
         </div>
@@ -2081,7 +2097,8 @@ function MgrLeave({ month, mgrData }) {
             <div key={i} className="pwd-larec-row">
               <span className="pwd-larec-type">🎌 {p.name}</span>
               <span className="pwd-larec-date">{p.date}</span>
-              <button className="pwd-larec-del" onClick={() => delPH(p, i)}>✕</button>
+              <button className="pwd-ph-taken" onClick={() => markPHTaken(p, i)}>✓ 已放</button>
+              <button className="pwd-larec-del" style={{ marginLeft: 0 }} onClick={() => delPH(p, i)}>✕</button>
             </div>
           ))}
           {phs.length === 0 && <div className="pwd-ph-empty">未有登記待放公眾假期</div>}
