@@ -585,6 +585,12 @@ img { display: block; }
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef } = React;
 
+// 版本印（2026-08-12）：Safari／PWA 會 cache 住舊前端，兩次事故都係咁兜圈
+// （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
+// 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
+// ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
+const APP_VERSION = 'v2026-08-12d';
+
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
 async function pwApi(action, params = {}) {
@@ -1252,7 +1258,7 @@ function Login({ onLogin }) {
         {error && <div className="pwd-login-err">{error}</div>}
         <button type="submit" className="pwd-login-btn" disabled={!name.trim() || !id.trim() || busy}>{busy ? '登入中…' : '登入'}</button>
       </form>
-      <div className="pwd-login-foot">Pawradise · 毛孩社交學院</div>
+      <div className="pwd-login-foot">Pawradise · 毛孩社交學院 · {APP_VERSION}</div>
     </div>
   );
 }
@@ -2616,7 +2622,7 @@ function CommissionApp() {
               trialSlots={dash.trialSlots} trialBookings={dash.trialBookings} trialDone={dash.trialDone}
               month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
               onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
-            <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt}</div>
+            <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt} · {APP_VERSION}</div>
           </>
         )}
         {tab === 'duty' && (
