@@ -385,6 +385,10 @@ img { display: block; }
 .pwd-tr-item-i span { font-size:10.5px; font-weight:700; color:var(--pw-ink-mute); }
 .pwd-tr-x { flex-shrink:0; background:none; border:1.5px solid var(--pw-cream-deep); color:var(--pw-ink-mute);
   border-radius:var(--pw-r-pill); padding:5px 11px; font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; }
+.pwd-tr-item.followed { opacity:.62; }
+.pwd-tr-follow { flex-shrink:0; background:var(--pw-success-bg); border:none; color:var(--pw-success);
+  border-radius:var(--pw-r-pill); padding:6px 12px; font-family:inherit; font-size:11px; font-weight:900; cursor:pointer; }
+.pwd-tr-pending { color:var(--pw-danger); font-weight:900; }
 .pwd-club-list { margin-top: 14px; padding-top: 14px; border-top: 1.5px solid var(--pw-cream-soft); display: flex; flex-direction: column; gap: 8px; }
 .pwd-club-list-lbl { font-size: 11px; font-weight: 900; color: var(--pw-ink-mute); }
 .pwd-club-nom { display: flex; align-items: center; gap: 10px; background: var(--pw-cream-soft); border-radius: var(--pw-r-md); padding: 10px 12px; }
@@ -1233,7 +1237,7 @@ function Login({ onLogin }) {
 
 // ═══════════ TrialCard ═══════════
 // 試堂登記：酒店部 check out 當場幫家長留位。名額同正常入學位分開計（每個幼稚園日 2 個）。
-function TrialCard({ staff, slots, bookings, onBook, onCancel }) {
+function TrialCard({ staff, slots, bookings, done, onBook, onCancel, onFollow }) {
   const [sel, setSel] = useState('');
   const [dog, setDog] = useState('');
   const [phone, setPhone] = useState('');
@@ -1242,6 +1246,9 @@ function TrialCard({ staff, slots, bookings, onBook, onCancel }) {
   const list = (slots || []).slice(0, 12);
   const totalLeft = (slots || []).reduce((a, s) => a + s.remaining, 0);
   const mine = (bookings || []);
+  // 已完成試堂（最近 14 日）：未跟進嘅排前面，跟進最值錢嘅窗口就係試完之後嗰幾日
+  const doneList = (done || []).slice().sort((a, b) => (a.followedBy ? 1 : 0) - (b.followedBy ? 1 : 0));
+  const pending = doneList.filter(d => !d.followedBy).length;
   async function submit() {
     if (!sel || !dog.trim() || busy) return;
     setBusy(true); setMsg('');
@@ -1308,6 +1315,26 @@ function TrialCard({ staff, slots, bookings, onBook, onCancel }) {
               <button className="pwd-tr-x" onClick={() => onCancel(b.id)}>取消</button>
             </div>
           ))}
+        </div>
+      )}
+      {doneList.length > 0 && (
+        <div className="pwd-tr-list">
+          <div className="pwd-club-list-lbl">
+            最近完成嘅試堂 · 14 日內 ({doneList.length})
+            {pending > 0 ? <span className="pwd-tr-pending"> {pending} 個待跟進</span> : null}
+          </div>
+          {doneList.map(d => (
+            <div key={d.id} className={'pwd-tr-item' + (d.followedBy ? ' followed' : '')}>
+              <div className="pwd-tr-item-i">
+                <b>{d.dog}{d.phone ? <span className="pwd-club-nom-owner"> · {d.phone}</span> : null}</b>
+                <span>{d.label}{d.followedBy ? ' · 已跟進 ' + d.followedBy : ''}</span>
+              </div>
+              {d.followedBy
+                ? <button className="pwd-tr-x" onClick={() => onFollow(d.id, true)}>撤回</button>
+                : <button className="pwd-tr-follow" onClick={() => onFollow(d.id, false)}>✓ 已跟進</button>}
+            </div>
+          ))}
+          <div className="pwd-tr-hint">試堂後跟進：問家長感受、講返狗狗當日表現、傾報 S1。跟完撳「✓ 已跟進」留返記錄。</div>
         </div>
       )}
     </div>
@@ -1437,7 +1464,7 @@ function CommissionHistory({ history, current, monthLabel }) {
 }
 
 // ═══════════ IndividualView ═══════════
-function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, clubNoms, trialSlots, trialBookings, history, month, monthLabel, onClubSubmit, onTrialBook, onTrialCancel }) {
+function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, clubNoms, trialSlots, trialBookings, trialDone, history, month, monthLabel, onClubSubmit, onTrialBook, onTrialCancel, onTrialFollow }) {
   const clubBonus = clubBonusFor(staff, clubNoms, month);
   const actualTotal = kpi.actualTotal + clubBonus;
   const actualParts = clubBonus > 0 ? [...kpi.actualParts, { key: 'club', value: clubBonus }] : kpi.actualParts;
@@ -1499,7 +1526,8 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         <div className="pwd-eyebrow">{isFd ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'}</div>
         {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} dept={staff.dept} />}
       </div>
-      <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} onBook={onTrialBook} onCancel={onTrialCancel} />
+      <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} done={trialDone}
+        onBook={onTrialBook} onCancel={onTrialCancel} onFollow={onTrialFollow} />
       <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
@@ -2479,6 +2507,10 @@ function CommissionApp() {
     await pwApi('trialCancel', { trialId });
     await reloadDash();
   }
+  async function followTrial(trialId, undo) {
+    await pwApi('trialFollow', { trialId, staffName: staff.name, staffId: staff.id, undo: undo ? '1' : '' });
+    await reloadDash();
+  }
   async function submitSwap({ date, shift }) {
     await pwApi('swap', { staffId: staff.id, date, shift });
   }
@@ -2539,9 +2571,9 @@ function CommissionApp() {
             )}
             <IndividualView staff={staff} calc={calc} items={items} kpi={kpi} team={team}
               lateLeave={lateLeave} dogEscape={dogEscape} clubNoms={dash.clubNoms} history={dash.history}
-              trialSlots={dash.trialSlots} trialBookings={dash.trialBookings}
+              trialSlots={dash.trialSlots} trialBookings={dash.trialBookings} trialDone={dash.trialDone}
               month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
-              onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
+              onTrialBook={submitTrial} onTrialCancel={cancelTrial} onTrialFollow={followTrial} />
             <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt}</div>
           </>
         )}
