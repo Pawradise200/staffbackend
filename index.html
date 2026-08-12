@@ -828,7 +828,12 @@ function fullResult(staff, team, overrides = {}) {
   let override = false, overrideReason = '';
   if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
   else if (lateLeave > 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (超過 3 次)`; }
+  // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
+  // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
+  const commGated = staff.commStart && team.monthKey && team.monthKey < staff.commStart;
+  if (commGated) { override = true; overrideReason = '入職首月 (佣金由第二個月起計)'; }
   const kpi = applyKpi(c, score, { override, overrideReason });
+  if (commGated) kpi.deducted = 0;   // 首月唔發唔係 KPI 扣起,唔好當年終池顯示
   return { calc: c, items, kpi, lateLeave, dogEscape };
 }
 // v3:會籍入會獎金一律入學院團隊池(唔再個人記名)。
@@ -851,6 +856,7 @@ function clubPoolTotal(noms, month) { return clubJoinPool(noms, month) + clubRen
 //    令酒店部照分學院池。新加嘅池唔可以重蹈覆轍。
 function clubBonusFor(staff, noms, month) {
   if (!staff || staff.dept === 'hotel' || staff.role === 'manager') return 0;
+  if (staff.commStart && month < staff.commStart) return 0;   // 入職首月唔發佣金(2026-08-12)
   const w = ACAD_W[staff.acadRank] || 0;
   if (w <= 0) return 0;                       // 無職級 = 0 份額,預留唔發
   return clubPoolTotal(noms, month) * (w / ACAD_WEIGHT_TOTAL);
