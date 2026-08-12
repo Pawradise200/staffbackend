@@ -599,6 +599,29 @@ async function pwApi(action, params = {}) {
   if (!res.ok) throw new Error('網絡錯誤 ' + res.status);
   return res.json();
 }
+// ⚠️ 2026-08-12 幽靈條目事故：所有寫入一律經呢度，強制驗返後端回應。
+// 之前多個寫入係「樂觀更新 + await 但唔 check」——授權過期後端回「未授權」乜都唔寫，
+// 畫面照樣顯示成功，用戶一 reload 就發現嘢唔見咗（2026-07-06 更表事故同一種病）。
+// 規矩：寫入失敗 → 回滾樂觀更新 ＋ 報後端真實原因。onErr 唔傳就用 alert（保證睇得見）。
+async function pwWrite(action, params, revert, onErr) {
+  const show = onErr || function (m) { window.alert(m); };
+  try {
+    const r = await pwApi(action, params);
+    if (!r || r.ok === false) {
+      if (revert) revert();
+      const raw = (r && r.error) || '儲存失敗';
+      show(/未授權/.test(raw)
+        ? '授權過期：請撳「🔒 鎖定」後重新輸入管理密碼，再試一次（今次未寫入，畫面已還原）'
+        : raw + '（未寫入，畫面已還原）');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    if (revert) revert();
+    show('網絡錯誤：' + (e.message || e) + '（未寫入，畫面已還原）');
+    return false;
+  }
+}
 function currentMonth() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -1958,8 +1981,10 @@ function MgrSwap({ mgrData }) {
   const initOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.initial : '?'; };
   const [reqs, setReqs] = useState(() => mgrData.allSwaps.map(r => ({ ...r })));
   async function act(id, status) {
+    const prev = reqs.find(r => r.id === id);
     setReqs(rs => rs.map(r => r.id === id ? { ...r, status } : r));
-    await pwApi('approveSwap', { swapId: id, status });
+    await pwWrite('approveSwap', { swapId: id, status },
+      () => setReqs(rs => rs.map(r => r.id === id ? { ...r, status: prev ? prev.status : 'pending' } : r)));
   }
   const pending = reqs.filter(r => r.status === 'pending');
   const done = reqs.filter(r => r.status !== 'pending');
@@ -2031,19 +2056,7 @@ function MgrLeave({ month, mgrData }) {
   // 而家一律：失敗就縮返畫面 ＋ 顯示後端真實錯誤，做唔到一定睇得見。
   async function write(action, params, revert) {
     setErr('');
-    try {
-      const r = await pwApi(action, params);
-      if (!r || r.ok === false) {
-        revert();
-        setErr((r && r.error ? r.error : '儲存失敗') + '（未寫入，畫面已還原）');
-        return false;
-      }
-      return true;
-    } catch (e) {
-      revert();
-      setErr('網絡錯誤：' + (e.message || e) + '（未寫入，畫面已還原）');
-      return false;
-    }
+    return pwWrite(action, params, revert, setErr);   // 呢版用頂部紅字 banner，唔用 alert
   }
   const adj = (k, d) => setBal(b => ({ ...b, [k]: Math.max(0, +(b[k] + d).toFixed(1)) }));
   const fmtDate = (iso) => { const [, m, d] = iso.split('-'); return `${+m}月${+d}日`; };
@@ -2098,7 +2111,7 @@ function MgrLeave({ month, mgrData }) {
           </button>
         ))}
       </div>
-      {err && <div className="pwd-warn">⚠️ {err}　如果係「未授權」，撳返上面 🔒 重新解鎖再試一次。</div>}
+      {err && <div className="pwd-warn">⚠️ {err}</div>}
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">{staff.name} · 假期結餘 (可調整)</div>
         <div className="pwd-leave-grid">
@@ -2200,8 +2213,9 @@ function MgrRoster({ mgrData }) {
   };
   async function save() {
     const r = await pwApi('saveRoster', { weekStart, staffId: sel, shifts: JSON.stringify(cur) });
-    setSavedShifts(cur);
-    return r;
+    // 只有真係寫入咗先當已儲存——否則「未儲存」提示會喺失敗時消失，睇落好似儲好咗
+    if (r && r.ok !== false) setSavedShifts(cur);
+    return r;   // SaveBtn 會顯示後端真實錯誤
   }
   const unsaved = JSON.stringify(cur) !== JSON.stringify(savedShifts);
   return (
@@ -2258,8 +2272,18 @@ function MgrClub({ mgrData }) {
   const nameOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.name : id; };
   const initOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.initial : '?'; };
   const [noms, setNoms] = useState(() => mgrData.allNoms.map(n => ({ ...n })));
-  async function set(id, status) { setNoms(l => l.map(n => n.id === id ? { ...n, status } : n)); await pwApi('approveNom', { nomId: id, status }); }
-  async function setTier(id, tier) { setNoms(l => l.map(n => n.id === id ? { ...n, tier, status: 'subscribed' } : n)); await pwApi('approveNom', { nomId: id, tier, status: 'subscribed' }); }
+  // 審批失敗要回滾——呢度改嘅係佣金依據（入會獎金按 subscribed 計），唔可以畫面同 sheet 唔一致
+  const revertNom = (id, prev) => () => setNoms(l => l.map(n => n.id === id ? { ...n, ...prev } : n));
+  async function set(id, status) {
+    const p = noms.find(n => n.id === id) || {};
+    setNoms(l => l.map(n => n.id === id ? { ...n, status } : n));
+    await pwWrite('approveNom', { nomId: id, status }, revertNom(id, { status: p.status, tier: p.tier }));
+  }
+  async function setTier(id, tier) {
+    const p = noms.find(n => n.id === id) || {};
+    setNoms(l => l.map(n => n.id === id ? { ...n, tier, status: 'subscribed' } : n));
+    await pwWrite('approveNom', { nomId: id, tier, status: 'subscribed' }, revertNom(id, { status: p.status, tier: p.tier }));
+  }
   const pending = noms.filter(n => n.status === 'pending');
   const approved = noms.filter(n => n.status === 'approved');
   const closed = noms.filter(n => n.status === 'subscribed' || n.status === 'rejected');
@@ -2517,8 +2541,9 @@ function CommissionApp() {
   async function reloadDash() { if (staff) { const res = await pwApi('dashboard', { staffId: staff.id, month }); if (res.ok) { setDash(res); } } }
 
   async function submitClub({ dogName, phone }) {
-    await pwApi('nominate', { staffId: staff.id, dogName, phone });
-    await reloadDash();
+    // 提名寫唔入就一定要話用戶知——ClubCard 提交後會清空表單收埋，靜靜哋失敗＝隻狗石沉大海
+    const ok = await pwWrite('nominate', { staffId: staff.id, dogName, phone });
+    if (ok) await reloadDash();
   }
   async function submitTrial({ classId, dogName, phone }) {
     const r = await pwApi('trialBook', { staffId: staff.id, classId, dogName, phone });
@@ -2526,11 +2551,11 @@ function CommissionApp() {
     return r;
   }
   async function cancelTrial(trialId) {
-    await pwApi('trialCancel', { trialId });
-    await reloadDash();
+    await pwWrite('trialCancel', { trialId });
+    await reloadDash();   // 成功失敗都重讀，名單一定同 sheet 一致
   }
   async function submitSwap({ date, shift }) {
-    await pwApi('swap', { staffId: staff.id, date, shift });
+    await pwWrite('swap', { staffId: staff.id, date, shift });
   }
   async function unlockMgr() {
     setMgrUnlocked(true);
