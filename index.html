@@ -1089,6 +1089,10 @@ function ManagerGoal({ calc }) {
     </div>
   );
 }
+// ⚠️ 呢個 component 只會 render 畀非店長員工（店長行 ManagerGoal）。
+// 老闆 2026-08-12：店長以下唔顯示公司／部門總業績銀碼，淨係要知有冇到門檻。
+// 所以進度條只有「滿」或「空」（唔可以用真實比例——睇條 bar 就估返到業績），
+// 數字位置顯示「已達／未達門檻」＋政策目標數（目標係制度寫明，唔係業績）。
 function GoalUnlock({ team, calc, role, dept }) {
   const T = TARGETS;
   const perTen = Math.round(1200 / HOTEL_SEATS);
@@ -1104,7 +1108,7 @@ function GoalUnlock({ team, calc, role, dept }) {
   return (
     <div className="pwd-goals">
       {goals.map((g, i) => {
-        const pct = g.noTarget ? 100 : Math.min(100, g.cur / g.target * 100);
+        const pct = g.noTarget ? 100 : (g.hit ? 100 : 0);   // 唔用真實比例，否則條 bar 反推到業績
         return (
           <div key={i} className={'pwd-goal' + (g.hit || g.noTarget ? ' hit' : '')}>
             <div className="pwd-goal-ico">{(g.hit || g.noTarget) ? '✓' : i + 1}</div>
@@ -1115,7 +1119,7 @@ function GoalUnlock({ team, calc, role, dept }) {
               </div>
               <div className="pwd-goal-bar"><div style={{ width: pct + '%' }} className={g.hit || g.noTarget ? 'hit' : ''} /></div>
               <div className="pwd-goal-foot">
-                <span className="pwd-goal-num">{g.noTarget ? g.fmt(g.cur) : <>{g.fmt(g.cur)} <i>/ {g.fmt(g.target)}</i></>}</span>
+                <span className="pwd-goal-num">{g.noTarget ? g.fmt(g.cur) : <>{g.hit ? '✓ 已達門檻' : '未達門檻'} <i>目標 {g.fmt(g.target)}</i></>}</span>
                 <span className={'pwd-goal-reward' + (g.hit || g.noTarget ? ' on' : '')}>{g.noTarget ? '' : g.hit ? '✓ ' : ''}{g.reward}</span>
               </div>
               {g.hint && <div className="pwd-goal-hint">{g.hint}</div>}
@@ -1482,13 +1486,15 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const pctOf = (v) => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
   const score = scorecardTotal(items);
   const isMgr = calc.isManager, isFd = calc.isFrontdesk;
+  // 以下三個 detail 只會喺非店長版面用（店長行 mgrtier 分支）——
+  // 老闆 2026-08-12：店長以下唔顯示總業績銀碼，只講「達／未達門檻」
   const newDetail = (calc.acadGateOk === false)
-    ? `學院總業績 ${money(calc.academyRevenue||0)} < $50k 門檻 · 學院佣暫不計`
+    ? `學院未達 $50k 門檻 · 學院佣暫不計`
     : `S1 ${calc.s1New||0}·S2 ${calc.s2New||0}·S1+S2 ${calc.comboNew||0}(個人,歸成交者)`;
   const renewDetail = (calc.acadGateOk === false)
     ? `學院總業績 < $50k 門檻 · 暫不計`
     : `團隊 ${calc.renewals} 個 · $900/個 · 按職級固定分母分`;
-  const hotelDetail = calc.hotelOver > 0 ? `超門檻 ${money(calc.hotelOver)}` : '未達門檻 $200k';
+  const hotelDetail = calc.hotelOver > 0 ? '已達門檻 · 超出部分 12% 入池 ÷ 編制 3' : '未達門檻 $200k';
   const compRowsBase = isMgr
     ? [ { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級 (已含學院交付獎)` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
     : isFd
@@ -2602,7 +2608,7 @@ function CommissionApp() {
                 <span className="pwd-readout-tag">本月實際</span>
                 {isManager
                   ? <span>門店總業績 <b>{money(storeRevenueOf(team))}</b></span>
-                  : <span>新生 S1<b>{team.s1New||0}</b>/S2<b>{team.s2New||0}</b>/雙<b>{team.comboNew||0}</b> · 續報 <b>{team.renewals}</b> · 酒店 <b>{money(hotelForCommission(team))}</b></span>}
+                  : <span>新生 S1<b>{team.s1New||0}</b>/S2<b>{team.s2New||0}</b>/雙<b>{team.comboNew||0}</b> · 續報 <b>{team.renewals}</b></span>}
               </div>
             )}
             <IndividualView staff={staff} calc={calc} items={items} kpi={kpi} team={team}
