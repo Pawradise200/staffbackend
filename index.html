@@ -149,7 +149,6 @@ img { display: block; }
 .t-病假 { background: var(--pw-violet-bg); color: var(--pw-violet); }
 .t-事假 { background: var(--pw-warn-bg); color: var(--pw-warn); }
 .t-公眾假期 { background: var(--pw-danger-bg); color: var(--pw-danger); }
-.pwd-ph-taken { border: none; background: var(--pw-success-bg); color: var(--pw-success); font-family: inherit; font-weight: 900; font-size: 11px; padding: 4px 10px; border-radius: var(--pw-r-pill); cursor: pointer; margin-left: auto; flex-shrink: 0; }
 .pwd-larec-date { font-size: 12.5px; font-weight: 800; color: var(--pw-ink); }
 .pwd-larec-del { margin-left: auto; border: none; background: none; color: var(--pw-ink-faint); font-size: 13px; font-weight: 800; cursor: pointer; padding: 2px 4px; }
 .pwd-larec-del:hover { color: var(--pw-danger); }
@@ -2084,24 +2083,15 @@ function MgrLeave({ month, mgrData }) {
       () => { setPhs(p => p.filter(x => !(x.name === nm && x.date === ds)));
               setPhName(nm); setPhDate(keep); });   // 打返嘅字唔好蒸發,即刻可以重試
   }
+  // 「待放公眾假期」＝仲欠員工幾多日未放。放咗就撳 ✕ 移走，一個掣一句確認（老闆 2026-08-12 定）。
+  // 唔另外寫請假記錄——之前試過分開「✓已放」同「✕刪除」兩個掣，店長覺得亂；而且一個掣
+  // 就唔會出現「入錯想刪都製造咗假嘅放假記錄」呢個問題。
   async function delPH(p, i) {
+    const who = staff ? staff.name : '該員工';
+    if (!window.confirm('確認移走 ' + who + ' 嘅「' + p.name + ' ' + p.date + '」？\n\n即係已經放咗，或者入錯想刪。')) return;
     setPhs(arr => arr.filter((_, j) => j !== i));
     await write('deletePH', { month, staffId: sel, name: p.name, date: p.date },
       () => setPhs(arr => { const c = arr.slice(); c.splice(i, 0, p); return c; }));
-  }
-  // 「✓已放」=員工真係放咗:刪走待放 + 自動記一筆「公眾假期」請假記錄留痕。
-  // ✕ 留返畀入錯刪錯用(唔留痕)。冇留痕嘅刪法,第日爭拗冇得對——2026-08-12 加。
-  // 個掣坐咗喺原本 ✕ 嘅位置,老闆要求撳落去先確認,避免手快誤觸即刻失數據。
-  async function markPHTaken(p, i) {
-    const who = staff ? staff.name : '該員工';
-    if (!window.confirm('確認 ' + who + ' 已經放咗 ' + p.date + ' ' + p.name + '？\n\n會由「待放」名單移除，並記一筆「公眾假期」請假記錄。')) return;
-    setPhs(arr => arr.filter((_, j) => j !== i));
-    const ok = await write('deletePH', { month, staffId: sel, name: p.name, date: p.date },
-      () => setPhs(arr => { const c = arr.slice(); c.splice(i, 0, p); return c; }));
-    if (!ok) return;   // 刪唔到就唔好記假期,否則兩邊都有＝重複
-    setRecs(r => [...r, { date: p.date, type: '公眾假期' }]);
-    await write('addLeaveRec', { month, staffId: sel, date: p.date, type: '公眾假期' },
-      () => setRecs(r => r.filter(x => !(x.date === p.date && x.type === '公眾假期'))));
   }
   return (
     <div className="pwd-mgr-stack">
@@ -2132,9 +2122,9 @@ function MgrLeave({ month, mgrData }) {
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">登記請假</div>
         <div className="pwd-la-types" style={{ marginTop: 12 }}>
-          {/* 「公眾假期」冇喺手動選項度（老闆 2026-08-12）：唯一入口係下面「待放公眾假期」，
-              放完撳「✓ 已放」由系統自動寫入記錄——兩個入口會令店長兩頭入，變重複。
-              .t-公眾假期 樣式保留，系統寫入嗰啲照樣顯示到。 */}
+          {/* 「公眾假期」冇喺呢度（老闆 2026-08-12）：公眾假期唯一入口＝下面「待放公眾假期」，
+              放咗就喺嗰度撳 ✕ 移走。兩個入口會令店長兩頭入變重複。
+              .t-公眾假期 樣式保留，萬一有舊記錄照樣顯示到。 */}
           {['年假', '例假', '病假', '事假'].map(t => (
             <button key={t} className={'pwd-la-chip' + (type === t ? ' on' : '')} onClick={() => setType(t)}>{t}</button>
           ))}
@@ -2170,8 +2160,7 @@ function MgrLeave({ month, mgrData }) {
             <div key={i} className="pwd-larec-row">
               <span className="pwd-larec-type">🎌 {p.name}</span>
               <span className="pwd-larec-date">{p.date}</span>
-              <button className="pwd-ph-taken" onClick={() => markPHTaken(p, i)}>✓ 已放</button>
-              <button className="pwd-larec-del" style={{ marginLeft: 0 }} onClick={() => delPH(p, i)}>✕</button>
+              <button className="pwd-larec-del" onClick={() => delPH(p, i)}>✕</button>
             </div>
           ))}
           {phs.length === 0 && <div className="pwd-ph-empty">未有登記待放公眾假期</div>}
