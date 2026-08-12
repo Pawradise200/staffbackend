@@ -1545,7 +1545,8 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
       <KpiCard role={kpiRoleOf(staff)} items={items} score={score} kpi={kpi} editable={false} />
       <KpiClauses lateLeave={lateLeave} dogEscape={dogEscape} />
-      <YearEndPool deducted={kpi.deducted} />
+      {/* 年終花紅獎池卡已剷走（老闆 2026-08-12）：呢筆未必會派，唔應該喺員工前台
+          做成「扣起嘅錢遲早攞得返」嘅預期。YearEndPool component 保留但唔再 render。 */}
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">計算 → KPI → 實際領取</div>
         <PayoutLedger calc={calc} kpi={kpi} />
@@ -2131,7 +2132,10 @@ function MgrLeave({ month, mgrData }) {
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">登記請假</div>
         <div className="pwd-la-types" style={{ marginTop: 12 }}>
-          {['年假', '例假', '病假', '事假', '公眾假期'].map(t => (
+          {/* 「公眾假期」冇喺手動選項度（老闆 2026-08-12）：唯一入口係下面「待放公眾假期」，
+              放完撳「✓ 已放」由系統自動寫入記錄——兩個入口會令店長兩頭入，變重複。
+              .t-公眾假期 樣式保留，系統寫入嗰啲照樣顯示到。 */}
+          {['年假', '例假', '病假', '事假'].map(t => (
             <button key={t} className={'pwd-la-chip' + (type === t ? ' on' : '')} onClick={() => setType(t)}>{t}</button>
           ))}
         </div>
