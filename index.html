@@ -1271,7 +1271,10 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
-  const list = (slots || []).slice(0, 12);
+  // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
+  //   （例：8月尾4日+9月頭8日已經夠12，9月中至尾嘅日子永遠見唔到，畫面又冇提示）。
+  //   後端 trialSlotsHandler 本身已限 45 日窗，呢度唔再加疊第二層截斷。
+  const list = (slots || []);
   const totalLeft = (slots || []).reduce((a, s) => a + s.remaining, 0);
   const mine = (bookings || []);
   // 已完成試堂（最近 14 日，最近嘅排前）——純唯讀。跟進記錄統一喺 Leads 主表做，唔喺呢度填。
