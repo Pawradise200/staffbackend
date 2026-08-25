@@ -98,7 +98,12 @@ img { display: block; }
 .pwd-roster-sum { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11.5px; font-weight: 800; color: var(--pw-ink-mute); background: var(--pw-cream-soft); border-radius: var(--pw-r-pill); padding: 7px 12px; margin-top: 12px; }
 .pwd-roster-sum b { font-family: var(--pw-font-display); font-weight: 700; font-size: 15px; color: var(--pw-navy); }
 .pwd-roster-sum .dot { color: var(--pw-ink-faint); }
+.pwd-view-toggle { display: flex; gap: 6px; background: var(--pw-cream-soft); border-radius: var(--pw-r-pill); padding: 4px; margin-top: 12px; }
+.pwd-view-toggle button { flex: 1; border: none; background: none; font-family: inherit; font-weight: 900; font-size: 12px; color: var(--pw-ink-mute); padding: 7px 0; border-radius: var(--pw-r-pill); cursor: pointer; transition: all .15s; }
+.pwd-view-toggle button.on { background: var(--pw-navy); color: #fff; }
 .pwd-duty { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; }
+.pwd-duty-team-people { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.pwd-duty-team-empty { font-size: 12px; font-weight: 700; color: var(--pw-ink-faint); }
 .pwd-duty-row { display: flex; align-items: center; gap: 11px; padding: 9px 11px; border-radius: var(--pw-r-md); background: var(--pw-cream-soft); }
 .pwd-duty-row.today { background: #FFF7E8; box-shadow: inset 0 0 0 1.5px var(--pw-gold); }
 .pwd-duty-row.off { opacity: .55; }
@@ -1230,9 +1235,11 @@ function Login({ onLogin }) {
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const res = await pwApi('auth', { name: name.trim(), id: id.trim() });
+      // [2026-08-25] 登入速度：舊版 auth 成功先再 call dashboard 兩程 request，
+      //   而家合併做一程 login action（後端已經一次過驗證身份+計主面板數據）。
+      const res = await pwApi('login', { name: name.trim(), id: id.trim(), month: currentMonth() });
       if (!res.ok) { setError(res.error || '登入失敗,請重試'); setBusy(false); return; }
-      onLogin(res.staff);
+      onLogin(res);
     } catch (err) {
       setError('連線失敗,請檢查網絡後重試'); setBusy(false);
     }
@@ -1576,6 +1583,11 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapDone, setSwapDone] = useState(null);
   const [busy, setBusy] = useState(false);
+  // [2026-08-25] 全隊一週視角：唔理登入緊邊個員工，都睇到呢一週逐日邊幾多人返工。
+  // 按需 lazy fetch（揀「全隊」先叫 action），唔掛入 dashboard 拖慢登入。
+  const [view, setView] = useState('mine'); // mine | team
+  const [teamData, setTeamData] = useState(null);
+  const [teamLoading, setTeamLoading] = useState(false);
   const week = weeks[weekIndex] || weeks[currentWeekIdx];
   const days = buildWeekDays(week, weekIndex, currentWeekIdx, todayDow);
   const sum = weekSummary(week);
@@ -1584,6 +1596,17 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
   const curWeek = weeks[currentWeekIdx];
   const myShifts = buildWeekDays(curWeek, currentWeekIdx, currentWeekIdx, todayDow)
     .map((d, i) => ({ ...d, i })).filter(d => !d.off && d.i >= todayDow);
+  useEffect(() => {
+    if (view !== 'team') return;
+    if (teamData && teamData.weekStart === week.weekStart) return;
+    let cancelled = false;
+    setTeamLoading(true);
+    pwApi('teamRoster', { weekStart: week.weekStart }).then(res => {
+      if (!cancelled && res.ok) setTeamData(res);
+    }).finally(() => { if (!cancelled) setTeamLoading(false); });
+    return () => { cancelled = true; };
+  }, [view, week.weekStart]);
+  const teamDays = (teamData && teamData.weekStart === week.weekStart) ? teamData.days : null;
   async function requestSwap(s) {
     if (busy) return;
     setBusy(true);
@@ -1609,6 +1632,11 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
           <span><b>{sum.workDays}</b> 更</span><span className="dot">·</span>
           <span><b>{sum.weekHours}</b> 時</span>
         </div>
+        <div className="pwd-view-toggle">
+          <button className={view === 'mine' ? 'on' : ''} onClick={() => setView('mine')}>我的</button>
+          <button className={view === 'team' ? 'on' : ''} onClick={() => setView('team')}>全隊</button>
+        </div>
+        {view === 'mine' && (
         <div className="pwd-duty">
           {days.map((d, i) => (
             <div key={i} className={'pwd-duty-row' + (d.today ? ' today' : '') + (d.off ? ' off' : '')}>
@@ -1627,6 +1655,33 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
             </div>
           ))}
         </div>
+        )}
+        {view === 'team' && (
+        <div className="pwd-duty">
+          {days.map((d, i) => {
+            const people = teamDays ? teamDays[i] : [];
+            return (
+              <div key={i} className={'pwd-duty-row' + (d.today ? ' today' : '') + (!teamLoading && people.length === 0 ? ' off' : '')}>
+                <div className="pwd-duty-date">
+                  <span className="pwd-duty-wd">{d.weekday}</span>
+                  <span className="pwd-duty-num">{d.date}</span>
+                </div>
+                <div className="pwd-duty-team-people">
+                  {teamLoading && !teamDays && <span className="pwd-duty-team-empty">載入中…</span>}
+                  {teamDays && people.length === 0 && <span className="pwd-duty-team-empty">今日冇人返工</span>}
+                  {teamDays && people.map((c, ci) => (
+                    <span key={ci} className="pwd-coworker">
+                      <span className="pwd-coworker-ava">{c.initial}</span>
+                      {c.name}{c.posKey && POSITIONS[c.posKey] ? (' · ' + POSITIONS[c.posKey].label) : ''}
+                    </span>
+                  ))}
+                </div>
+                {d.today && <span className="pwd-duty-now">今天</span>}
+              </div>
+            );
+          })}
+        </div>
+        )}
         {isCurrent && coworkers.length > 0 && (
           <div className="pwd-coworkers">
             <span className="pwd-coworkers-lbl">今天同更</span>
@@ -2537,10 +2592,13 @@ function CommissionApp() {
     if (saved) { try { const st = JSON.parse(saved); setStaff(st); loadDashboard(st); } catch (e) {} }
   }, []);
 
-  function doLogin(st) {
+  // [2026-08-25] 登入速度：res 而家係 login action 嘅合併回應（身份+主面板數據一齊嚟），
+  //   唔使好似之前咁再多 call 一次 dashboard——慳返一整程 Apps Script 固定開銷。
+  function doLogin(res) {
+    const st = res.staff;
     sessionStorage.setItem('pw_staff', JSON.stringify(st));
-    const cm = currentMonth();
-    setStaff(st); setTab('pay'); setMonth(cm); setMgrUnlocked(false); setMgrData(null); loadDashboard(st, cm);
+    setStaff(st); setTab('pay'); setMonth(currentMonth()); setMgrUnlocked(false); setMgrData(null);
+    setDash(res); setScreen('dash');
   }
   function doLogout() {
     sessionStorage.removeItem('pw_staff');
