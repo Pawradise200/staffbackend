@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-25e';
+const APP_VERSION = 'v2026-08-26a';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2497,25 +2497,38 @@ function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 
 // ═══════════ SeatsPanel（2026-08-25，「學位」分頁：S1/Club 名額 + 候補名單）═══════════
 // 老闆定案：所有導師都睇到（唔設密碼），登記候補都唔設密碼（導師自己篩選）；
 // 淨係「改狀態」（邀請/加入/謝絕）先要店長密碼（同 mgr/owner tab 共用返 mgrUnlocked 狀態）。
-const WAITLIST_DEPTS = { S1: '幼稚園 (S1)', CLUB: 'Calm Explorer Club' };
+const WAITLIST_DEPTS = { S1: '幼稚園 (S1)', ULTIMATE: 'Ultimate Explorer', CLUB: 'Calm Explorer Club（Light/Active）' };
 const WAITLIST_STATUS_FLOW = ['候補中', '已邀請', '已加入', '已謝絕'];
+function QuotaBar({ label, data, unitLabel, capped }) {
+  const pct = capped ? Math.min(100, Math.round((data.active / data.quota) * 100)) : null;
+  return (
+    <>
+      <div className="pwd-eyebrow" style={{ marginTop: 18 }}>{label}</div>
+      <div className="pwd-mgr-result-num" style={{ marginTop: 6, fontSize: capped ? undefined : 22 }}>
+        {capped ? `${data.active} / ${data.quota}` : `${data.active} ${unitLabel || ''}`}
+      </div>
+      {capped && (
+        <>
+          <div className="pwd-roster-sum" style={{ marginTop: 10 }}>
+            <span>{data.full ? '🔴 已滿，新登記請落候補' : `仲有 ${data.remaining} 個位`}</span>
+          </div>
+          <div style={{ height: 8, background: 'var(--pw-cream-deep)', borderRadius: 999, marginTop: 12, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: pct + '%', background: data.full ? '#C0524A' : 'var(--pw-navy)', transition: 'width .3s' }} />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
 function SeatStatusCard({ status }) {
   if (!status) return null;
-  const s1 = status.s1, club = status.club;
-  const pct = Math.min(100, Math.round((s1.active / s1.quota) * 100));
   return (
     <div className="pwd-card pwd-block">
-      <div className="pwd-eyebrow">幼稚園 (S1) 學位</div>
-      <div className="pwd-mgr-result-num" style={{ marginTop: 6 }}>{s1.active} / {s1.quota}</div>
-      <div className="pwd-roster-sum" style={{ marginTop: 10 }}>
-        <span>{s1.full ? '🔴 已滿，新登記請落候補' : `仲有 ${s1.remaining} 個位`}</span>
-      </div>
-      <div style={{ height: 8, background: 'var(--pw-cream-deep)', borderRadius: 999, marginTop: 12, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: pct + '%', background: s1.full ? '#C0524A' : 'var(--pw-navy)', transition: 'width .3s' }} />
-      </div>
-      <div className="pwd-eyebrow" style={{ marginTop: 18 }}>Calm Explorer Club</div>
-      <div className="pwd-mgr-result-num" style={{ marginTop: 6, fontSize: 22 }}>{club.members} 位會員</div>
-      <div className="pwd-tr-hint" style={{ marginTop: 6 }}>Club 冇硬性人數上限，仲有大把容量吸新會員。</div>
+      <QuotaBar label="幼稚園 (S1) 學位" data={status.s1} capped={true} />
+      <QuotaBar label="Ultimate Explorer 會籍" data={status.ultimate} capped={true} />
+      <div className="pwd-eyebrow" style={{ marginTop: 18 }}>Calm Explorer Club（全部層級）</div>
+      <div className="pwd-mgr-result-num" style={{ marginTop: 6, fontSize: 22 }}>{status.club.members} 位會員</div>
+      <div className="pwd-tr-hint" style={{ marginTop: 6 }}>Light／Active 唔設cap，負荷唔大仲有大把容量；淨係 Ultimate 設咗上限。</div>
     </div>
   );
 }
