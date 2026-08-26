@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-25d';
+const APP_VERSION = 'v2026-08-25e';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2494,6 +2494,146 @@ function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 
   );
 }
 
+// ═══════════ SeatsPanel（2026-08-25，「學位」分頁：S1/Club 名額 + 候補名單）═══════════
+// 老闆定案：所有導師都睇到（唔設密碼），登記候補都唔設密碼（導師自己篩選）；
+// 淨係「改狀態」（邀請/加入/謝絕）先要店長密碼（同 mgr/owner tab 共用返 mgrUnlocked 狀態）。
+const WAITLIST_DEPTS = { S1: '幼稚園 (S1)', CLUB: 'Calm Explorer Club' };
+const WAITLIST_STATUS_FLOW = ['候補中', '已邀請', '已加入', '已謝絕'];
+function SeatStatusCard({ status }) {
+  if (!status) return null;
+  const s1 = status.s1, club = status.club;
+  const pct = Math.min(100, Math.round((s1.active / s1.quota) * 100));
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">幼稚園 (S1) 學位</div>
+      <div className="pwd-mgr-result-num" style={{ marginTop: 6 }}>{s1.active} / {s1.quota}</div>
+      <div className="pwd-roster-sum" style={{ marginTop: 10 }}>
+        <span>{s1.full ? '🔴 已滿，新登記請落候補' : `仲有 ${s1.remaining} 個位`}</span>
+      </div>
+      <div style={{ height: 8, background: 'var(--pw-cream-deep)', borderRadius: 999, marginTop: 12, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: pct + '%', background: s1.full ? '#C0524A' : 'var(--pw-navy)', transition: 'width .3s' }} />
+      </div>
+      <div className="pwd-eyebrow" style={{ marginTop: 18 }}>Calm Explorer Club</div>
+      <div className="pwd-mgr-result-num" style={{ marginTop: 6, fontSize: 22 }}>{club.members} 位會員</div>
+      <div className="pwd-tr-hint" style={{ marginTop: 6 }}>Club 冇硬性人數上限，仲有大把容量吸新會員。</div>
+    </div>
+  );
+}
+function WaitlistAddForm({ staffId, onAdded }) {
+  const [dept, setDept] = useState('S1');
+  const [dogName, setDogName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  async function submit() {
+    if (!dogName.trim() || busy) return;
+    setBusy(true); setMsg('');
+    const r = await pwApi('waitlistAdd', { dept, dogName: dogName.trim(), phone: phone.trim(), ownerName: ownerName.trim(), note: note.trim(), staffId });
+    setBusy(false);
+    if (r && r.ok) {
+      setDogName(''); setPhone(''); setOwnerName(''); setNote('');
+      setMsg('已加入候補名單。'); onAdded();
+    } else setMsg((r && r.error) || '登記失敗');
+  }
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">新增候補登記</div>
+      <div className="pwd-view-toggle" style={{ marginTop: 10 }}>
+        {Object.keys(WAITLIST_DEPTS).map(k => (
+          <button key={k} className={dept === k ? 'on' : ''} onClick={() => setDept(k)}>{WAITLIST_DEPTS[k]}</button>
+        ))}
+      </div>
+      <div className="pwd-tr-row" style={{ marginTop: 10 }}>
+        <input className="pwd-tr-input" placeholder="狗狗名稱" value={dogName} onChange={e => setDogName(e.target.value)} />
+        <input className="pwd-tr-input" type="tel" inputMode="tel" placeholder="家長電話" value={phone} onChange={e => setPhone(e.target.value)} />
+      </div>
+      <div className="pwd-tr-row">
+        <input className="pwd-tr-input" placeholder="家長姓名" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
+        <input className="pwd-tr-input" placeholder="備註（可留空）" value={note} onChange={e => setNote(e.target.value)} />
+      </div>
+      {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
+      <div className="pwd-club-formacts">
+        <span className="pwd-tr-sub">&nbsp;</span>
+        <button className="pwd-la-confirm" disabled={!dogName.trim() || busy} onClick={submit}>{busy ? '登記中…' : '加入候補'}</button>
+      </div>
+    </div>
+  );
+}
+function WaitlistTable({ items, canManage, onUpdate }) {
+  if (!items) return null;
+  const active = items.filter(x => x.status === '候補中' || x.status === '已邀請');
+  const done = items.filter(x => x.status === '已加入' || x.status === '已謝絕');
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">候補名單（{active.length}）</div>
+      {active.length === 0 && <div className="pwd-tr-hint" style={{ marginTop: 8 }}>暫時冇人候補。</div>}
+      {active.length > 0 && (
+        <div className="pwd-tr-list" style={{ marginTop: 4 }}>
+          {active.map(x => (
+            <div key={x.id} className="pwd-tr-item">
+              <div className="pwd-tr-item-i">
+                <b>{x.dog}{x.phone ? <span className="pwd-club-nom-owner"> · {x.phone}</span> : null}</b>
+                <span>{WAITLIST_DEPTS[x.dept] || x.dept} · {x.owner || '（未填家長姓名）'} · {x.status}{x.note ? ' · ' + x.note : ''}</span>
+              </div>
+              {canManage ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {x.status === '候補中' && <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已邀請')}>已邀請</button>}
+                  <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已加入')}>已加入</button>
+                  <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已謝絕')}>謝絕</button>
+                </div>
+              ) : <span className="pwd-tr-sub">要店長解鎖先改到狀態</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {done.length > 0 && (
+        <>
+          <div className="pwd-eyebrow" style={{ marginTop: 18 }}>歷史（{done.length}）</div>
+          <div className="pwd-tr-list">
+            {done.map(x => (
+              <div key={x.id} className="pwd-tr-item">
+                <div className="pwd-tr-item-i">
+                  <b>{x.dog}</b>
+                  <span>{WAITLIST_DEPTS[x.dept] || x.dept} · {x.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+function SeatsPanel({ staffId, mgrUnlocked, onUnlock }) {
+  const [status, setStatus] = useState(null);
+  const [items, setItems] = useState(null);
+  async function loadAll() {
+    const [s, w] = await Promise.all([pwApi('seatStatus', {}), pwApi('waitlistList', {})]);
+    if (s && s.ok) setStatus(s); else setStatus(null);
+    if (w && w.ok) setItems(w.items); else setItems([]);
+  }
+  useEffect(() => { loadAll(); }, []);
+  async function updateStatus(id, newStatus) {
+    const ok = await pwWrite('waitlistUpdate', { id, status: newStatus });
+    if (ok) loadAll();
+  }
+  if (!status && !items) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入學位數據…</div></div>;
+  return (
+    <>
+      <SeatStatusCard status={status} />
+      <WaitlistAddForm staffId={staffId} onAdded={loadAll} />
+      {!mgrUnlocked && (
+        <div className="pwd-card pwd-block">
+          <ManagerGate onUnlock={onUnlock} title="候補審核 · 需要店長密碼" sub="睇候補名單／新增登記唔使密碼；要改狀態（邀請/加入/謝絕）先要店長密碼" />
+        </div>
+      )}
+      <WaitlistTable items={items} canManage={mgrUnlocked} onUpdate={updateStatus} />
+    </>
+  );
+}
+
 // ── 老闆評核店長 KPI ──
 function OwnerKpiEditor({ month, mgrData, mgr }) {
   const k0 = mgrData.allKpi[mgr.id] || { kpiFail: [], lateLeave: 0 };
@@ -2825,6 +2965,9 @@ function CommissionApp() {
         {tab === 'owner' && (
           <OwnerOverview dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />
         )}
+        {tab === 'seats' && (
+          <SeatsPanel staffId={staff.id} mgrUnlocked={mgrUnlocked} onUnlock={unlockMgr} />
+        )}
       </div>
 
       <div className="pwd-tabbar">
@@ -2835,6 +2978,9 @@ function CommissionApp() {
         )}
         <button className={'pwd-tabbtn' + (tab === 'duty' ? ' on' : '')} onClick={() => { setTab('duty'); reloadDash(); }}>
           <span className="pwd-tabbtn-ico">📅</span><span>更表</span>
+        </button>
+        <button className={'pwd-tabbtn' + (tab === 'seats' ? ' on' : '')} onClick={() => setTab('seats')}>
+          <span className="pwd-tabbtn-ico">🎓</span><span>學位</span>
         </button>
         {isManager && (
           <button className={'pwd-tabbtn' + (tab === 'mgr' ? ' on' : '')} onClick={() => setTab('mgr')}>
