@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-26e';
+const APP_VERSION = 'v2026-08-26f';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2580,29 +2580,34 @@ function WaitlistAddForm({ staffId, onAdded }) {
     </div>
   );
 }
-function WaitlistTable({ items, canManage, onUpdate }) {
+// [2026-08-26] dept 顏色：S1 用返學院金色徽章，Ultimate 用返紫色徽章（兩個都係
+//   app 現有色，一眼分得到邊個部門，唔使加新CSS）。
+const WAITLIST_DEPT_CLS = { S1: 'sh-academy', ULTIMATE: 'sh-hotelC' };
+function DeptBadge({ dept }) {
+  return <span className={'pwd-duty-pos ' + (WAITLIST_DEPT_CLS[dept] || 'sh-academy')}>{WAITLIST_DEPTS[dept] || dept}</span>;
+}
+function WaitlistTable({ items, onUpdate, onDelete }) {
   if (!items) return null;
   const active = items.filter(x => x.status === '候補中' || x.status === '已邀請');
   const done = items.filter(x => x.status === '已加入' || x.status === '已謝絕');
   return (
     <div className="pwd-card pwd-block">
-      <div className="pwd-eyebrow">候補名單（{active.length}）</div>
+      <div className="pwd-eyebrow">候補名單（{active.length}）· 按登記次序排</div>
       {active.length === 0 && <div className="pwd-tr-hint" style={{ marginTop: 8 }}>暫時冇人候補。</div>}
       {active.length > 0 && (
         <div className="pwd-tr-list" style={{ marginTop: 4 }}>
           {active.map(x => (
             <div key={x.id} className="pwd-tr-item">
               <div className="pwd-tr-item-i">
-                <b>{x.dog}{x.phone ? <span className="pwd-club-nom-owner"> · {x.phone}</span> : null}</b>
-                <span>{WAITLIST_DEPTS[x.dept] || x.dept} · {x.owner || '（未填家長姓名）'}{x.district ? ' · ' + x.district : ''} · {x.status}{x.note ? ' · ' + x.note : ''}</span>
+                <b><DeptBadge dept={x.dept} /> {x.dog}{x.phone ? <span className="pwd-club-nom-owner"> · {x.phone}</span> : null}</b>
+                <span>{x.owner || '（未填家長姓名）'}{x.district ? ' · ' + x.district : ''} · {x.status}{x.note ? ' · ' + x.note : ''}</span>
               </div>
-              {canManage ? (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {x.status === '候補中' && <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已邀請')}>已邀請</button>}
-                  <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已加入')}>已加入</button>
-                  <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已謝絕')}>謝絕</button>
-                </div>
-              ) : <span className="pwd-tr-sub">要店長解鎖先改到狀態</span>}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {x.status === '候補中' && <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已邀請')}>已邀請</button>}
+                <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已加入')}>已加入</button>
+                <button className="pwd-tr-x" onClick={() => onUpdate(x.id, '已謝絕')}>謝絕</button>
+                <button className="pwd-tr-x" onClick={() => onDelete(x.id)}>刪除</button>
+              </div>
             </div>
           ))}
         </div>
@@ -2614,9 +2619,10 @@ function WaitlistTable({ items, canManage, onUpdate }) {
             {done.map(x => (
               <div key={x.id} className="pwd-tr-item">
                 <div className="pwd-tr-item-i">
-                  <b>{x.dog}</b>
-                  <span>{WAITLIST_DEPTS[x.dept] || x.dept} · {x.status}</span>
+                  <b><DeptBadge dept={x.dept} /> {x.dog}</b>
+                  <span>{x.status}</span>
                 </div>
+                <button className="pwd-tr-x" onClick={() => onDelete(x.id)}>刪除</button>
               </div>
             ))}
           </div>
@@ -2625,7 +2631,8 @@ function WaitlistTable({ items, canManage, onUpdate }) {
     </div>
   );
 }
-function SeatsPanel({ staffId, mgrUnlocked, onUnlock }) {
+// [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
+function SeatsPanel({ staffId }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
   async function loadAll() {
@@ -2638,17 +2645,16 @@ function SeatsPanel({ staffId, mgrUnlocked, onUnlock }) {
     const ok = await pwWrite('waitlistUpdate', { id, status: newStatus });
     if (ok) loadAll();
   }
+  async function deleteEntry(id) {
+    const ok = await pwWrite('waitlistDelete', { id });
+    if (ok) loadAll();
+  }
   if (!status && !items) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入學位數據…</div></div>;
   return (
     <>
       <SeatStatusCard status={status} />
       <WaitlistAddForm staffId={staffId} onAdded={loadAll} />
-      {!mgrUnlocked && (
-        <div className="pwd-card pwd-block">
-          <ManagerGate onUnlock={onUnlock} title="候補審核 · 需要店長密碼" sub="睇候補名單／新增登記唔使密碼；要改狀態（邀請/加入/謝絕）先要店長密碼" />
-        </div>
-      )}
-      <WaitlistTable items={items} canManage={mgrUnlocked} onUpdate={updateStatus} />
+      <WaitlistTable items={items} onUpdate={updateStatus} onDelete={deleteEntry} />
     </>
   );
 }
@@ -2985,7 +2991,7 @@ function CommissionApp() {
           <OwnerOverview dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />
         )}
         {tab === 'seats' && (
-          <SeatsPanel staffId={staff.id} mgrUnlocked={mgrUnlocked} onUnlock={unlockMgr} />
+          <SeatsPanel staffId={staff.id} />
         )}
       </div>
 
