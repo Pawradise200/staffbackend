@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-26a';
+const APP_VERSION = 'v2026-08-26b';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2497,7 +2497,9 @@ function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 
 // ═══════════ SeatsPanel（2026-08-25，「學位」分頁：S1/Club 名額 + 候補名單）═══════════
 // 老闆定案：所有導師都睇到（唔設密碼），登記候補都唔設密碼（導師自己篩選）；
 // 淨係「改狀態」（邀請/加入/謝絕）先要店長密碼（同 mgr/owner tab 共用返 mgrUnlocked 狀態）。
-const WAITLIST_DEPTS = { S1: '幼稚園 (S1)', ULTIMATE: 'Ultimate Explorer', CLUB: 'Calm Explorer Club（Light/Active）' };
+// [2026-08-26 老闆定] Light/Active Explorer 暫時唔設cap，候補登記唔使呢個選項
+// （得 S1／Ultimate 先會爆滿，先需要候補）。
+const WAITLIST_DEPTS = { S1: '幼稚園 (S1)', ULTIMATE: 'Ultimate Explorer' };
 const WAITLIST_STATUS_FLOW = ['候補中', '已邀請', '已加入', '已謝絕'];
 function QuotaBar({ label, data, unitLabel, capped }) {
   const pct = capped ? Math.min(100, Math.round((data.active / data.quota) * 100)) : null;
