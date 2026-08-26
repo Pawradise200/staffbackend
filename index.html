@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-26d';
+const APP_VERSION = 'v2026-08-26e';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2569,7 +2569,6 @@ function WaitlistAddForm({ staffId, onAdded }) {
         <input className="pwd-tr-input" placeholder="家長姓名" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
         <input className="pwd-tr-input" placeholder="地區（填具體地點，例：太古城／將軍澳，唔好淨係填港島／九龍／新界）" value={district} onChange={e => setDistrict(e.target.value)} />
       </div>
-      <div className="pwd-tr-hint">地區請填得越具體越好——呢啲數據用嚟分析邊度適合開分校，「九龍」太籠統幫唔到手。</div>
       <div className="pwd-tr-row">
         <input className="pwd-tr-input" placeholder="備註（可留空）" value={note} onChange={e => setNote(e.target.value)} />
       </div>
