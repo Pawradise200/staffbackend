@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-25c';
+const APP_VERSION = 'v2026-08-25d';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1273,7 +1273,7 @@ function Login({ onLogin }) {
 }
 
 // ═══════════ TrialCard ═══════════
-// 試堂登記：酒店部 check out 當場幫家長留位。名額同正常入學位分開計（每個幼稚園日 2 個）。
+// 試堂登記：酒店客免費體驗／新生付費試堂統一喺呢度幫家長留位。名額同正常入學位分開計（每個幼稚園日 2 個）。
 function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
   const [sel, setSel] = useState('');
   const [dog, setDog] = useState('');
@@ -1310,7 +1310,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
       <div className="pwd-tr-head">
         <div>
           <div className="pwd-eyebrow">試堂登記</div>
-          <div className="pwd-tr-sub">住宿客人專享一日體驗 · 每個幼稚園日 2 個位</div>
+          <div className="pwd-tr-sub">一日體驗 · 每個幼稚園日 2 個位</div>
         </div>
         <div className="pwd-club-earned">未來仲有<b>{totalLeft}</b></div>
       </div>
