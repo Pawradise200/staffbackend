@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-25a';
+const APP_VERSION = 'v2026-08-25b';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2527,6 +2527,102 @@ function MgrOwnerKpi({ month, mgrData }) {
   return <OwnerKpiEditor month={month} mgrData={mgrData} mgr={mgr} />;
 }
 
+// ═══════════ OwnerOverview（2026-08-25，老闆專屬簡易總覽）═══════════
+// 老闆要求：好簡單，淨係想睇① duty(本週邊日邊個返工) ②各部門業績 ③員工佣金。
+// 唔重用店長嗰套（MgrOps/MgrKpi 係逐格輸入嘅表格，唔係唯讀摘要），起返三張獨立卡。
+function OwnerDutyThisWeek({ weekStart, dates, todayDow }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    pwApi('teamRoster', { weekStart }).then(res => { if (!cancelled && res.ok) setData(res); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [weekStart]);
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">本週邊個返工</div>
+      <div className="pwd-duty" style={{ marginTop: 12 }}>
+        {WEEKDAYS.map((wd, i) => {
+          const people = data ? data.days[i] : [];
+          return (
+            <div key={i} className={'pwd-duty-row' + (i === todayDow ? ' today' : '') + (!loading && people.length === 0 ? ' off' : '')}>
+              <div className="pwd-duty-date"><span className="pwd-duty-wd">{wd}</span><span className="pwd-duty-num">{dates[i]}</span></div>
+              <div className="pwd-duty-team-people">
+                {loading && !data && <span className="pwd-duty-team-empty">載入中…</span>}
+                {data && people.length === 0 && <span className="pwd-duty-team-empty">今日冇人返工</span>}
+                {data && people.map((c, ci) => (
+                  <span key={ci} className="pwd-coworker"><span className="pwd-coworker-ava">{c.initial}</span>{c.name}{c.posKey && POSITIONS[c.posKey] ? (' · ' + POSITIONS[c.posKey].label) : ''}</span>
+                ))}
+              </div>
+              {i === todayDow && <span className="pwd-duty-now">今天</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+function OwnerDeptRevenue({ team }) {
+  const rows = [
+    { label: '酒店業績', val: team.hotelRevenue || 0 },
+    { label: '學院業績', val: team.academyRevenue || 0 },
+    { label: '基本美容', val: team.groomBasic || 0 },
+    { label: '星級美容', val: team.groomStar || 0 },
+    { label: '接送', val: team.pickup || 0 },
+    { label: '套票', val: team.packageRevenue || 0 },
+    { label: '其他', val: team.other || 0 },
+  ];
+  const total = rows.reduce((a, r) => a + r.val, 0);
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">{team.month} 各部門業績</div>
+      <div className="pwd-ledger" style={{ marginTop: 8 }}>
+        {rows.map(r => (
+          <div key={r.label} className="pwd-led-row"><span className="pwd-led-lbl">{r.label}</span><span className="pwd-led-val">{money(r.val)}</span></div>
+        ))}
+        <div className="pwd-led-row total"><span className="pwd-led-lbl">合計</span><span className="pwd-led-val">{money(total)}</span></div>
+      </div>
+    </div>
+  );
+}
+function OwnerCommissionTable({ mgrData }) {
+  const team = mgrData.team;
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'owner' && s.dept !== 'academy');
+  const teamForCalc = { ...team, acadWeightTotal: ACAD_WEIGHT_TOTAL, headcount: poolStaff.length || HEADCOUNT };
+  const rows = mgrData.staffList.filter(s => s.role !== 'owner').map(s => {
+    const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0 };
+    const att = (mgrData.allAttendance && mgrData.allAttendance[s.id] != null) ? mgrData.allAttendance[s.id] : 0;
+    const { kpi } = fullResult({ ...s, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
+    return { name: s.name, role: s.role, amt: kpi.actualTotal };
+  }).sort((a, b) => b.amt - a.amt);
+  const total = rows.reduce((a, r) => a + r.amt, 0);
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">{team.month} 員工佣金（預估，實際以月結為準）</div>
+      <div className="pwd-ledger" style={{ marginTop: 8 }}>
+        {rows.map(r => (
+          <div key={r.name} className="pwd-led-row"><span className="pwd-led-lbl">{r.name}{r.role === 'manager' ? ' · 店長' : ''}</span><span className="pwd-led-val">{money(r.amt)}</span></div>
+        ))}
+        <div className="pwd-led-row total"><span className="pwd-led-lbl">合計</span><span className="pwd-led-val">{money(total)}</span></div>
+      </div>
+    </div>
+  );
+}
+function OwnerOverview({ dash, mgrUnlocked, mgrData, onUnlock }) {
+  if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="老闆總覽 · 需要老闆密碼" sub="請輸入老闆密碼" onUnlock={onUnlock} />;
+  if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
+  const week = dash.weeks[dash.currentWeekIdx];
+  return (
+    <>
+      <OwnerDutyThisWeek weekStart={week.weekStart} dates={week.dates} todayDow={dash.todayDow} />
+      <OwnerDeptRevenue team={mgrData.team} />
+      <OwnerCommissionTable mgrData={mgrData} />
+    </>
+  );
+}
+
 // ── ManagerPanel ──
 function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
@@ -2580,16 +2676,22 @@ function CommissionApp() {
     setMonth(m);
     if (!staff) return;
     // 清走舊月份嗀管理數據,避免營運數據表帶住舊月份嗀數字而誤存到新月份
-    if (staff.role === 'manager') setMgrData(null);
+    if (staff.role === 'manager' || staff.role === 'owner') setMgrData(null);
     await loadDashboard(staff, m);
-    if (staff.role === 'manager' && mgrUnlocked) {
+    if ((staff.role === 'manager' || staff.role === 'owner') && mgrUnlocked) {
       try { const res = await pwApi('managerData', { month: m }); if (res.ok) setMgrData(res); } catch (e) {}
     }
   }
   // 自動續登
   useEffect(() => {
     const saved = sessionStorage.getItem('pw_staff');
-    if (saved) { try { const st = JSON.parse(saved); setStaff(st); loadDashboard(st); } catch (e) {} }
+    if (saved) {
+      try {
+        const st = JSON.parse(saved);
+        if (st.role === 'owner') setTab('owner');   // 老闆冇「我的佣金」tab，唔重設會停喺 pay 空白畫面
+        setStaff(st); loadDashboard(st);
+      } catch (e) {}
+    }
   }, []);
 
   // [2026-08-25] 登入速度：res 而家係 login action 嘅合併回應（身份+主面板數據一齊嚟），
@@ -2597,7 +2699,7 @@ function CommissionApp() {
   function doLogin(res) {
     const st = res.staff;
     sessionStorage.setItem('pw_staff', JSON.stringify(st));
-    setStaff(st); setTab('pay'); setMonth(currentMonth()); setMgrUnlocked(false); setMgrData(null);
+    setStaff(st); setTab(st.role === 'owner' ? 'owner' : 'pay'); setMonth(currentMonth()); setMgrUnlocked(false); setMgrData(null);
     setDash(res); setScreen('dash');
   }
   function doLogout() {
@@ -2642,6 +2744,7 @@ function CommissionApp() {
   );
 
   const isManager = staff.role === 'manager';
+  const isOwner = staff.role === 'owner';
   const team = dash.team;
   const staffForCalc = { ...staff, attendance: dash.staff.attendance, kpiFail: dash.kpiFail, lateLeave: dash.lateLeave };
   const { calc, items, kpi, lateLeave, dogEscape } = fullResult(staffForCalc, team);
@@ -2658,7 +2761,7 @@ function CommissionApp() {
       </div>
 
       <div className="pwd-body">
-        {(tab === 'pay' || (tab === 'mgr' && mgrArea !== 'roster')) && (
+        {(tab === 'pay' || tab === 'owner' || (tab === 'mgr' && mgrArea !== 'roster')) && (
           <div className="pwd-monthbar">
             <span className="pwd-monthbar-lbl">查看月份</span>
             <select className="pwd-monthsel" value={month} onChange={(e) => changeMonth(e.target.value)}>
@@ -2668,7 +2771,7 @@ function CommissionApp() {
             </select>
           </div>
         )}
-        {tab === 'pay' && (
+        {tab === 'pay' && !isOwner && (
           <>
             {staff.role !== 'frontdesk' && (
               <div className="pwd-readout">
@@ -2695,18 +2798,28 @@ function CommissionApp() {
             area={mgrArea} onAreaChange={setMgrArea}
             onUnlock={unlockMgr} onLock={() => setMgrUnlocked(false)} />
         )}
+        {tab === 'owner' && (
+          <OwnerOverview dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />
+        )}
       </div>
 
       <div className="pwd-tabbar">
-        <button className={'pwd-tabbtn' + (tab === 'pay' ? ' on' : '')} onClick={() => { setTab('pay'); reloadDash(); }}>
-          <span className="pwd-tabbtn-ico">💰</span><span>我的佣金</span>
-        </button>
+        {!isOwner && (
+          <button className={'pwd-tabbtn' + (tab === 'pay' ? ' on' : '')} onClick={() => { setTab('pay'); reloadDash(); }}>
+            <span className="pwd-tabbtn-ico">💰</span><span>我的佣金</span>
+          </button>
+        )}
         <button className={'pwd-tabbtn' + (tab === 'duty' ? ' on' : '')} onClick={() => { setTab('duty'); reloadDash(); }}>
           <span className="pwd-tabbtn-ico">📅</span><span>更表</span>
         </button>
         {isManager && (
           <button className={'pwd-tabbtn' + (tab === 'mgr' ? ' on' : '')} onClick={() => setTab('mgr')}>
             <span className="pwd-tabbtn-ico">🗂</span><span>店長後台</span>
+          </button>
+        )}
+        {isOwner && (
+          <button className={'pwd-tabbtn' + (tab === 'owner' ? ' on' : '')} onClick={() => setTab('owner')}>
+            <span className="pwd-tabbtn-ico">📊</span><span>老闆總覽</span>
           </button>
         )}
       </div>
