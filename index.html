@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-26c';
+const APP_VERSION = 'v2026-08-26d';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2530,7 +2530,7 @@ function SeatStatusCard({ status }) {
       <QuotaBar label="Ultimate Explorer 會籍" data={status.ultimate} capped={true} />
       <div className="pwd-eyebrow" style={{ marginTop: 18 }}>Calm Explorer Club（全部層級）</div>
       <div className="pwd-mgr-result-num" style={{ marginTop: 6, fontSize: 22 }}>{status.club.members} 位會員</div>
-      <div className="pwd-tr-hint" style={{ marginTop: 6 }}>Light／Active 唔設cap，負荷唔大仲有大把容量；淨係 Ultimate 設咗上限。</div>
+      <div className="pwd-tr-hint" style={{ marginTop: 6 }}>Light / Active Explorer 暫時不設上限。</div>
     </div>
   );
 }
@@ -2567,8 +2567,9 @@ function WaitlistAddForm({ staffId, onAdded }) {
       </div>
       <div className="pwd-tr-row">
         <input className="pwd-tr-input" placeholder="家長姓名" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
-        <input className="pwd-tr-input" placeholder="地區（例：九龍／港島／新界）" value={district} onChange={e => setDistrict(e.target.value)} />
+        <input className="pwd-tr-input" placeholder="地區（填具體地點，例：太古城／將軍澳，唔好淨係填港島／九龍／新界）" value={district} onChange={e => setDistrict(e.target.value)} />
       </div>
+      <div className="pwd-tr-hint">地區請填得越具體越好——呢啲數據用嚟分析邊度適合開分校，「九龍」太籠統幫唔到手。</div>
       <div className="pwd-tr-row">
         <input className="pwd-tr-input" placeholder="備註（可留空）" value={note} onChange={e => setNote(e.target.value)} />
       </div>
