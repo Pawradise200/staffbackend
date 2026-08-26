@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-26b';
+const APP_VERSION = 'v2026-08-26c';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2512,7 +2512,7 @@ function QuotaBar({ label, data, unitLabel, capped }) {
       {capped && (
         <>
           <div className="pwd-roster-sum" style={{ marginTop: 10 }}>
-            <span>{data.full ? '🔴 已滿，新登記請落候補' : `仲有 ${data.remaining} 個位`}</span>
+            <span>{data.full ? '🔴 已滿，新登記請落候補' : `尚餘 ${data.remaining} 個位`}</span>
           </div>
           <div style={{ height: 8, background: 'var(--pw-cream-deep)', borderRadius: 999, marginTop: 12, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: pct + '%', background: data.full ? '#C0524A' : 'var(--pw-navy)', transition: 'width .3s' }} />
@@ -2539,16 +2539,17 @@ function WaitlistAddForm({ staffId, onAdded }) {
   const [dogName, setDogName] = useState('');
   const [phone, setPhone] = useState('');
   const [ownerName, setOwnerName] = useState('');
+  const [district, setDistrict] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   async function submit() {
     if (!dogName.trim() || busy) return;
     setBusy(true); setMsg('');
-    const r = await pwApi('waitlistAdd', { dept, dogName: dogName.trim(), phone: phone.trim(), ownerName: ownerName.trim(), note: note.trim(), staffId });
+    const r = await pwApi('waitlistAdd', { dept, dogName: dogName.trim(), phone: phone.trim(), ownerName: ownerName.trim(), district: district.trim(), note: note.trim(), staffId });
     setBusy(false);
     if (r && r.ok) {
-      setDogName(''); setPhone(''); setOwnerName(''); setNote('');
+      setDogName(''); setPhone(''); setOwnerName(''); setDistrict(''); setNote('');
       setMsg('已加入候補名單。'); onAdded();
     } else setMsg((r && r.error) || '登記失敗');
   }
@@ -2566,6 +2567,9 @@ function WaitlistAddForm({ staffId, onAdded }) {
       </div>
       <div className="pwd-tr-row">
         <input className="pwd-tr-input" placeholder="家長姓名" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
+        <input className="pwd-tr-input" placeholder="地區（例：九龍／港島／新界）" value={district} onChange={e => setDistrict(e.target.value)} />
+      </div>
+      <div className="pwd-tr-row">
         <input className="pwd-tr-input" placeholder="備註（可留空）" value={note} onChange={e => setNote(e.target.value)} />
       </div>
       {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
@@ -2590,7 +2594,7 @@ function WaitlistTable({ items, canManage, onUpdate }) {
             <div key={x.id} className="pwd-tr-item">
               <div className="pwd-tr-item-i">
                 <b>{x.dog}{x.phone ? <span className="pwd-club-nom-owner"> · {x.phone}</span> : null}</b>
-                <span>{WAITLIST_DEPTS[x.dept] || x.dept} · {x.owner || '（未填家長姓名）'} · {x.status}{x.note ? ' · ' + x.note : ''}</span>
+                <span>{WAITLIST_DEPTS[x.dept] || x.dept} · {x.owner || '（未填家長姓名）'}{x.district ? ' · ' + x.district : ''} · {x.status}{x.note ? ' · ' + x.note : ''}</span>
               </div>
               {canManage ? (
                 <div style={{ display: 'flex', gap: 6 }}>
