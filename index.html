@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-25b';
+const APP_VERSION = 'v2026-08-25c';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -659,6 +659,8 @@ function monthLabelFull(m) {
 
 // ═══════════ 業務邏輯 (port from commission-data.js) ═══════════
 const HEADCOUNT = 3;
+// [2026-08-25 老闆定] 新生付費試堂現行收費——顯示用，真正記賬金額由後端 TRIAL_NEW_STUDENT_FEE 決定
+const TRIAL_NEW_STUDENT_FEE = 499;
 const TARGETS = { hotelThreshold: 200000, academyThreshold: 50000, renewalTier: 5, packageGoal: 12 };
 const ROLE_KPIS = {
   junior: { label: '初級寵物照顧員', items: [
@@ -1278,6 +1280,10 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  // [2026-08-25 老闆定] 統一喺呢度留位：酒店客免費體驗 vs 新生要收 $499（同步入收入記錄）。
+  const [customerType, setCustomerType] = useState('hotel'); // hotel | new
+  const [ownerName, setOwnerName] = useState('');
+  const [payMethod, setPayMethod] = useState('現金');
   // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
   //   （例：8月尾4日+9月頭8日已經夠12，9月中至尾嘅日子永遠見唔到，畫面又冇提示）。
   //   後端 trialSlotsHandler 本身已限 45 日窗，呢度唔再加疊第二層截斷。
@@ -1286,14 +1292,18 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
   const mine = (bookings || []);
   // 已完成試堂（最近 14 日，最近嘅排前）——純唯讀。跟進記錄統一喺 Leads 主表做，唔喺呢度填。
   const doneList = (done || []);
+  const isNew = customerType === 'new';
+  const canSubmit = sel && dog.trim() && !busy && (!isNew || (ownerName.trim() && payMethod));
   async function submit() {
-    if (!sel || !dog.trim() || busy) return;
+    if (!canSubmit) return;
     setBusy(true); setMsg('');
-    const r = await onBook({ classId: sel, dogName: dog.trim(), phone: phone.trim() });
+    const r = await onBook({ classId: sel, dogName: dog.trim(), phone: phone.trim(), customerType,
+      ownerName: isNew ? ownerName.trim() : '', payMethod: isNew ? payMethod : '' });
     setBusy(false);
     if (r && r.ok === false) { setMsg(r.error || '登記失敗'); return; }
-    setSel(''); setDog(''); setPhone('');
-    setMsg('已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
+    setSel(''); setDog(''); setPhone(''); setOwnerName('');
+    setMsg(isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。`
+                 : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
   }
   return (
     <div className="pwd-card pwd-block">
@@ -1322,18 +1332,32 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
             })}
           </div>
           <div className="pwd-tr-form">
-            <div className="pwd-tr-row">
+            <div className="pwd-view-toggle">
+              <button className={!isNew ? 'on' : ''} onClick={() => setCustomerType('hotel')}>🏨 酒店客（免費）</button>
+              <button className={isNew ? 'on' : ''} onClick={() => setCustomerType('new')}>🆕 新生（${TRIAL_NEW_STUDENT_FEE}）</button>
+            </div>
+            <div className="pwd-tr-row" style={{ marginTop: 10 }}>
               <input className="pwd-tr-input" placeholder="狗狗名稱" value={dog} onChange={e => setDog(e.target.value)} />
               <input className="pwd-tr-input" type="tel" inputMode="tel" placeholder="家長電話" value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
+            {isNew && (
+              <div className="pwd-tr-row">
+                <input className="pwd-tr-input" placeholder="家長姓名（入收入記錄用）" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
+                <select className="pwd-monthsel" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
+                  <option value="現金">現金</option>
+                  <option value="轉賬">轉賬</option>
+                </select>
+              </div>
+            )}
             <div className="pwd-tr-hint">
-              揀好日子 → 入名 → 提交，<b>然後即刻 WhatsApp 發確認訊息</b>（見《體驗邀請與確認訊息範本》訊息二）。
-              口頭講完唔入呢度，等於冇留位。
+              {isNew
+                ? <>揀好日子 → 入齊資料同已收嘅 ${TRIAL_NEW_STUDENT_FEE} → 提交（會自動記入收入記錄），<b>然後即刻 WhatsApp 發確認訊息</b>。</>
+                : <>揀好日子 → 入名 → 提交，<b>然後即刻 WhatsApp 發確認訊息</b>（見《體驗邀請與確認訊息範本》訊息二）。口頭講完唔入呢度，等於冇留位。</>}
             </div>
             {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
             <div className="pwd-club-formacts">
               <span className="pwd-tr-sub">{sel ? '已揀 ' + (list.find(x => x.id === sel) || {}).label : '請先揀一日'}</span>
-              <button className="pwd-la-confirm" disabled={!sel || !dog.trim() || busy} onClick={submit}>
+              <button className="pwd-la-confirm" disabled={!canSubmit} onClick={submit}>
                 {busy ? '登記中…' : '確認留位'}
               </button>
             </div>
@@ -2713,8 +2737,8 @@ function CommissionApp() {
     const ok = await pwWrite('nominate', { staffId: staff.id, dogName, phone });
     if (ok) await reloadDash();
   }
-  async function submitTrial({ classId, dogName, phone }) {
-    const r = await pwApi('trialBook', { staffId: staff.id, classId, dogName, phone });
+  async function submitTrial({ classId, dogName, phone, customerType, ownerName, payMethod }) {
+    const r = await pwApi('trialBook', { staffId: staff.id, classId, dogName, phone, customerType, ownerName, payMethod });
     await reloadDash();
     return r;
   }
