@@ -594,7 +594,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-08-26f';
+const APP_VERSION = 'v2026-09-02a';
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1876,11 +1876,14 @@ function MgrOps({ month, mgrData }) {
   const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const teamForCalc = { ...team, academyRevenue: acadTotal, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT };
   const storeRev = storeRevenueOf(teamForCalc);
-  const previewTotal = mgrData.staffList.reduce((a, s) => {
+  // owner 行唔係員工,唔可以入預覽總額(dept 空白會被當酒店部食一份池,8/25 開 owner 帳戶起嘅幽靈數)
+  const previewTotal = mgrData.staffList.filter(s => s.role !== 'owner').reduce((a, s) => {
     const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0 };
     const att = (mgrData.allAttendance && mgrData.allAttendance[s.id] != null) ? mgrData.allAttendance[s.id] : 0;
-    const { kpi } = fullResult({ ...s, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
-    return a + kpi.actualTotal;
+    // 個人新生數(allSales)＋會籍獎金要入埋,先同員工個人頁/月結引擎一條數(2026-09-02 修,同 OwnerCommissionTable)
+    const sales = (mgrData.allSales && mgrData.allSales[s.id]) || {};
+    const { kpi } = fullResult({ ...s, ...sales, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
+    return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '');
   }, 0);
   function save() {
     return pwApi('saveOps', {
@@ -2783,8 +2786,11 @@ function OwnerCommissionTable({ mgrData }) {
   const rows = mgrData.staffList.filter(s => s.role !== 'owner').map(s => {
     const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0 };
     const att = (mgrData.allAttendance && mgrData.allAttendance[s.id] != null) ? mgrData.allAttendance[s.id] : 0;
-    const { kpi } = fullResult({ ...s, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
-    return { name: s.name, role: s.role, amt: kpi.actualTotal };
+    // 個人新生數(allSales)＋會籍獎金要入埋,先同員工個人頁/月結引擎一條數(2026-09-02 修)
+    const sales = (mgrData.allSales && mgrData.allSales[s.id]) || {};
+    const { kpi } = fullResult({ ...s, ...sales, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
+    const club = clubBonusFor(s, mgrData.allNoms, team.monthKey || '');
+    return { name: s.name, role: s.role, amt: kpi.actualTotal + club };
   }).sort((a, b) => b.amt - a.amt);
   const total = rows.reduce((a, r) => a + r.amt, 0);
   return (
