@@ -764,9 +764,9 @@ function monthsBetween(a, b) {
   const [y1, m1] = a.split('-').map(Number), [y2, m2] = b.split('-').map(Number);
   return (y2 - y1) * 12 + (m2 - m1);
 }
-// 限期加碼:2026 年 8–9 月 ×1.5,10 月起回復標準金額。
+// 限期加碼:2026 年 8 月 ×1.5(老闆 2026-09-05 提早結束,原定 8–9 月),9 月起回復標準金額。
 // 兩項一齊行:①Calm Explorer Club 入會獎金(清存量) ②酒店轉介學院獎金(推動漏斗開頭)
-const PROMO_MONTHS = ['2026-08', '2026-09'];
+const PROMO_MONTHS = ['2026-08'];
 const PROMO_RATE = 1.5;
 function promoBoost(month) { return PROMO_MONTHS.includes(month) ? PROMO_RATE : 1; }
 // 未知崗位一律當前台處理,避免任何手誤令整個面板崩潰變空白
