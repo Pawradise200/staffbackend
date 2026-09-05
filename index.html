@@ -573,7 +573,15 @@ img { display: block; }
 .pwd-cc-summary { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 10px 14px; border-radius: var(--pw-r-md); font-weight: 900; font-size: 13px; }
 .pwd-cc-summary.pass { background: var(--pw-success-bg); color: var(--pw-success); }
 .pwd-cc-summary.fail { background: var(--pw-danger-bg); color: var(--pw-danger); }
-.pwd-cc-rec { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--pw-cream-deep); font-size: 12px; }
+.pwd-cc-rec { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--pw-cream-deep); font-size: 12px; cursor: pointer; }
+.pwd-cc-detail { padding: 2px 0 8px 8px; border-bottom: 1px solid var(--pw-cream-deep); }
+.pwd-cc-drow { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: 12px; color: var(--pw-ink); }
+.pwd-cc-drow .m-ok { color: var(--pw-success); font-weight: 900; }
+.pwd-cc-drow .m-bad { color: var(--pw-danger); font-weight: 900; }
+.pwd-cc-drow .m-na { color: var(--pw-ink-faint); font-weight: 900; }
+.pwd-cc-week { margin-top: 10px; padding: 9px 12px; border-radius: var(--pw-r-md); font-size: 12px; font-weight: 800; }
+.pwd-cc-week.warn { background: var(--pw-danger-bg); color: var(--pw-danger); }
+.pwd-cc-week.done { background: var(--pw-success-bg); color: var(--pw-success); }
 .pwd-cc-recmain { flex: 1; min-width: 0; }
 .pwd-cc-rectag { font-weight: 900; font-size: 11px; padding: 3px 9px; border-radius: var(--pw-r-pill); flex-shrink: 0; }
 .pwd-cc-rectag.pass { background: var(--pw-success-bg); color: var(--pw-success); }
@@ -2857,18 +2865,16 @@ const CLEAN_CHECKLISTS = {
       ['天台地面', '已沖洗，無排泄物殘留'],
       ['水喉', '使用後放置於盤內'],
     ] },
-    { name: 'C. 活動區', items: [
-      ['活動區地面', '乾淨無毛髮、無水漬'],
-    ] },
-    { name: 'D. 廚房／餐具', items: [
+    { name: 'C. 廚房／餐具', items: [
       ['食碗', '已清洗並疊放整齊，無殘渣油漬'],
       ['備餐位', '檯面乾淨，無隔夜食物'],
       ['雪櫃', '無存放過期食物'],
     ] },
-    { name: 'E. 公共位', items: [
+    { name: 'D. 公共位', items: [
       ['尿板', '已清洗，無尿垢、無異味'],
       ['水碗', '盛有清水，碗身無黏滑感、無殘渣'],
       ['器材用品', '使用後歸回原位，無散落'],
+      ['活動區地面', '乾淨無毛髮、無水漬'],
       ['公眾地方地面', '𨋢口、樓梯等地面乾淨，無毛髮'],
       ['氣味', '無明顯異味'],
       ['垃圾', '已傾倒，無滿溢並已套袋'],
@@ -2886,7 +2892,6 @@ const CLEAN_CHECKLISTS = {
       ['教具水碗', '盛有清水，碗身無黏滑感、無殘渣'],
     ] },
     { name: 'C. 休息區', hint: '包括休息房間，標準與酒店部相同', items: [
-      ['休息區墊子', '無異味、無污漬'],
       ['休息區地面', '無毛髮、無污漬水漬'],
       ['休息區玻璃', '無鼻印指印水印'],
       ['休息區排泄物', '無任何排泄物殘留'],
@@ -2896,7 +2901,8 @@ const CLEAN_CHECKLISTS = {
       ['16樓雪櫃', '內外乾淨，無存放過期食物'],
     ] },
     { name: 'E. 學校門口', items: [
-      ['學校門口', '地面無毛髮毛球、無垃圾'],
+      // [2026-09-06 老闆定] 唔查「無垃圾」——晚間垃圾會暫放防煙門側等收，屬正常運作
+      ['學校門口', '地面無毛髮毛球'],
     ] },
   ] },
 };
@@ -2910,6 +2916,7 @@ function MgrCleanCheck() {
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
   const [records, setRecords] = useState(null);
+  const [openId, setOpenId] = useState(null);
 
   async function loadRecords() {
     try {
@@ -2958,11 +2965,18 @@ function MgrCleanCheck() {
   const curMonth = currentMonth();
   const monthRecs = (records || []).filter(r => String(r.time).slice(0, 7) === curMonth);
   const failThisMonth = d => monthRecs.filter(r => r.dept === d && r.result === '不合格').length;
+  // [2026-09-06 老闆定] 每部門每星期至少一次；本週未檢嘅部門開頁即紅字提醒
+  const mondayStr = cleanCheckMondayStr();
+  const weekMissing = records === null ? [] :
+    ['酒店部', '學院部'].filter(d => !records.some(r => r.dept === d && String(r.time).slice(0, 10) >= mondayStr));
 
   return (
     <>
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">🧹 清潔突擊檢查</div>
+        {records !== null && (weekMissing.length > 0
+          ? <div className="pwd-cc-week warn">⚠️ 本週尚未檢查：{weekMissing.join('、')}（每部門每星期至少一次）</div>
+          : <div className="pwd-cc-week done">✓ 本週兩部門已完成檢查</div>)}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           {['酒店部', '學院部'].map(d => (
             <button key={d} className={'pwd-cc-deptbtn' + (dept === d ? ' on' : '')} onClick={() => switchDept(d)}>
@@ -3013,22 +3027,62 @@ function MgrCleanCheck() {
       <div className="pwd-card pwd-block" style={{ marginTop: 14 }}>
         <div className="pwd-eyebrow">📋 檢查記錄</div>
         <div className="pwd-cc-std" style={{ marginTop: 8 }}>
-          本月不合格：🏨 {failThisMonth('酒店部')} 次 · 🎓 {failThisMonth('學院部')} 次（KPI 目標：每部門 ≤ 1）
+          本月不合格：🏨 {failThisMonth('酒店部')} 次 · 🎓 {failThisMonth('學院部')} 次（KPI 目標：每部門 ≤ 1）· 點擊記錄可查看逐項結果
         </div>
         {records === null && <div className="pwd-cc-std" style={{ marginTop: 10 }}>載入中…</div>}
         {records !== null && records.length === 0 && <div className="pwd-cc-std" style={{ marginTop: 10 }}>暫無記錄</div>}
         {(records || []).map(r => (
-          <div key={r.id} className="pwd-cc-rec">
-            <div className="pwd-cc-recmain">
-              <div className="pwd-cc-name">{r.dept} · {String(r.time).slice(0, 16).replace('T', ' ')}</div>
-              <div className="pwd-cc-std">檢查人 {r.inspector}{r.onDuty ? ' · 當值 ' + r.onDuty : ''}{r.failItems ? ' · ✗：' + r.failItems : ''}</div>
+          <React.Fragment key={r.id}>
+            <div className="pwd-cc-rec" onClick={() => setOpenId(openId === r.id ? null : r.id)}>
+              <div className="pwd-cc-recmain">
+                <div className="pwd-cc-name">{r.dept} · {String(r.time).slice(0, 16).replace('T', ' ')}</div>
+                <div className="pwd-cc-std">檢查人 {r.inspector}{r.onDuty ? ' · 當值 ' + r.onDuty : ''}{r.failItems ? ' · ✗：' + r.failItems : ''}</div>
+              </div>
+              <span className={'pwd-cc-rectag' + (r.result === '不合格' ? ' fail' : ' pass')}>{r.result}{r.failCount > 0 ? ' ✗' + r.failCount : ''}</span>
             </div>
-            <span className={'pwd-cc-rectag' + (r.result === '不合格' ? ' fail' : ' pass')}>{r.result}{r.failCount > 0 ? ' ✗' + r.failCount : ''}</span>
-          </div>
+            {openId === r.id && <CleanCheckMarks marks={r.marks} />}
+          </React.Fragment>
         ))}
       </div>
     </>
   );
+}
+
+// 本週一（yyyy-MM-dd）：同記錄時間戳做字串比較，唔解析日期字串
+function cleanCheckMondayStr() {
+  const d = new Date();
+  const mon = new Date(d.getTime() - ((d.getDay() + 6) % 7) * 86400000);
+  return mon.getFullYear() + '-' + String(mon.getMonth() + 1).padStart(2, '0') + '-' + String(mon.getDate()).padStart(2, '0');
+}
+// 撳開記錄顯示逐項 ✓/✗/N/A（2026-09-06 老闆要求）
+function CleanCheckMarks({ marks }) {
+  const keys = Object.keys(marks || {});
+  if (!keys.length) return <div className="pwd-cc-detail"><div className="pwd-cc-std">此記錄無逐項資料</div></div>;
+  return (
+    <div className="pwd-cc-detail">
+      {keys.map(k => (
+        <div key={k} className="pwd-cc-drow">
+          <span>{k}</span>
+          <span className={marks[k] === '✓' ? 'm-ok' : marks[k] === '✗' ? 'm-bad' : 'm-na'}>{marks[k]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// 店長後台頂部提醒（2026-09-06 老闆定：唔要 email，登入店長後台即見提示就夠）——
+// 唔理店長喺邊個管理分頁都會見到；本週兩部門齊咗就唔佔位
+function MgrCleanReminder() {
+  const [missing, setMissing] = useState(null);
+  useEffect(() => {
+    pwApi('cleanCheckList').then(r => {
+      if (!r.ok) return;
+      const mon = cleanCheckMondayStr();
+      setMissing(['酒店部', '學院部'].filter(d => !r.items.some(x => x.dept === d && String(x.time).slice(0, 10) >= mon)));
+    }).catch(() => {});
+  }, []);
+  if (!missing || missing.length === 0) return null;
+  return <div className="pwd-cc-week warn">⚠️ 本週尚未進行清潔突擊檢查：{missing.join('、')}（每部門每星期至少一次）· 請到「清潔檢查」分頁完成</div>;
 }
 
 // ── 員工版清潔檢查摘要（2026-09-05 老闆定「折中」）──
@@ -3036,6 +3090,7 @@ function MgrCleanCheck() {
 // 名喺後端已按有冇 key 隱去，唔係前端收埋咁簡單。完整記錄喺店長頁。
 function CleanCheckSummary() {
   const [records, setRecords] = useState(null);
+  const [openId, setOpenId] = useState(null);
   useEffect(() => {
     pwApi('cleanCheckList').then(r => { if (r.ok) setRecords(r.items); }).catch(() => {});
   }, []);
@@ -3047,16 +3102,19 @@ function CleanCheckSummary() {
     <div className="pwd-card pwd-block">
       <div className="pwd-eyebrow">🧹 清潔突擊檢查 · 部門結果</div>
       <div className="pwd-cc-std">
-        本月不合格：🏨 酒店部 {failOf('酒店部')} 次 · 🎓 學院部 {failOf('學院部')} 次（KPI 目標：每部門 ≤ 1）
+        本月不合格：🏨 酒店部 {failOf('酒店部')} 次 · 🎓 學院部 {failOf('學院部')} 次（KPI 目標：每部門 ≤ 1）· 點擊記錄可查看逐項結果
       </div>
       {records.slice(0, 5).map(r => (
-        <div key={r.id} className="pwd-cc-rec">
-          <div className="pwd-cc-recmain">
-            <div className="pwd-cc-name">{r.dept} · {String(r.time).slice(0, 16).replace('T', ' ')}</div>
-            {r.failItems && <div className="pwd-cc-std">✗：{r.failItems}（須於 24 小時內改善）</div>}
+        <React.Fragment key={r.id}>
+          <div className="pwd-cc-rec" onClick={() => setOpenId(openId === r.id ? null : r.id)}>
+            <div className="pwd-cc-recmain">
+              <div className="pwd-cc-name">{r.dept} · {String(r.time).slice(0, 16).replace('T', ' ')}</div>
+              {r.failItems && <div className="pwd-cc-std">✗：{r.failItems}（須於 24 小時內改善）</div>}
+            </div>
+            <span className={'pwd-cc-rectag' + (r.result === '不合格' ? ' fail' : ' pass')}>{r.result}{r.failCount > 0 ? ' ✗' + r.failCount : ''}</span>
           </div>
-          <span className={'pwd-cc-rectag' + (r.result === '不合格' ? ' fail' : ' pass')}>{r.result}{r.failCount > 0 ? ' ✗' + r.failCount : ''}</span>
-        </div>
+          {openId === r.id && <CleanCheckMarks marks={r.marks} />}
+        </React.Fragment>
       ))}
     </div>
   );
@@ -3073,6 +3131,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
         <div><b>團隊管理</b><span>店長專用 · 你的 KPI 由老闆評核</span></div>
         <button className="pwd-mgr-lock" onClick={onLock}>🔒 鎖定</button>
       </div>
+      <MgrCleanReminder />
       <div className="pwd-mgr-nav">
         {MGR_AREAS.map(a => (
           <button key={a.key} className={'pwd-mgr-navbtn' + (area === a.key ? ' on' : '')} onClick={() => onAreaChange(a.key)}>{a.label}</button>
