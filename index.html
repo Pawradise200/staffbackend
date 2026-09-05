@@ -555,6 +555,31 @@ img { display: block; }
 .pwd-mgr-savebtn { width: 100%; border: none; background: var(--pw-navy); color: #fff; font-family: inherit; font-weight: 900; font-size: 14px; padding: 13px; border-radius: var(--pw-r-md); cursor: pointer; }
 .pwd-mgr-savebtn:disabled { opacity: .5; cursor: default; }
 
+/* 清潔突擊檢查（2026-09-05） */
+.pwd-cc-deptbtn { flex: 1; border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); font-family: inherit; font-weight: 900; font-size: 13px; padding: 10px; border-radius: var(--pw-r-md); color: var(--pw-ink-mute); cursor: pointer; }
+.pwd-cc-deptbtn.on { background: var(--pw-navy); border-color: var(--pw-navy); color: #fff; }
+.pwd-cc-group { margin-top: 16px; }
+.pwd-cc-grouphead { font-size: 12px; font-weight: 900; color: var(--pw-gold-deep); margin-bottom: 2px; }
+.pwd-cc-grouphint { font-size: 10.5px; font-weight: 700; color: var(--pw-ink-faint); margin-left: 6px; }
+.pwd-cc-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--pw-cream-deep); }
+.pwd-cc-label { flex: 1; min-width: 0; }
+.pwd-cc-name { font-size: 13px; font-weight: 800; color: var(--pw-ink); }
+.pwd-cc-std { font-size: 11px; color: var(--pw-ink-mute); }
+.pwd-cc-marks { display: flex; gap: 5px; flex-shrink: 0; }
+.pwd-cc-markbtn { border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); font-family: inherit; font-weight: 900; font-size: 12px; width: 40px; padding: 7px 0; border-radius: var(--pw-r-sm); color: var(--pw-ink-faint); cursor: pointer; }
+.pwd-cc-markbtn.ok { background: var(--pw-success-bg); border-color: var(--pw-success); color: var(--pw-success); }
+.pwd-cc-markbtn.bad { background: var(--pw-danger-bg); border-color: var(--pw-danger); color: var(--pw-danger); }
+.pwd-cc-markbtn.na { background: var(--pw-cream); border-color: var(--pw-ink-faint); color: var(--pw-ink-mute); }
+.pwd-cc-fillbtn { border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); font-family: inherit; font-weight: 800; font-size: 11.5px; padding: 7px 12px; border-radius: var(--pw-r-pill); color: var(--pw-navy); cursor: pointer; }
+.pwd-cc-summary { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 10px 14px; border-radius: var(--pw-r-md); font-weight: 900; font-size: 13px; }
+.pwd-cc-summary.pass { background: var(--pw-success-bg); color: var(--pw-success); }
+.pwd-cc-summary.fail { background: var(--pw-danger-bg); color: var(--pw-danger); }
+.pwd-cc-rec { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--pw-cream-deep); font-size: 12px; }
+.pwd-cc-recmain { flex: 1; min-width: 0; }
+.pwd-cc-rectag { font-weight: 900; font-size: 11px; padding: 3px 9px; border-radius: var(--pw-r-pill); flex-shrink: 0; }
+.pwd-cc-rectag.pass { background: var(--pw-success-bg); color: var(--pw-success); }
+.pwd-cc-rectag.fail { background: var(--pw-danger-bg); color: var(--pw-danger); }
+
 /* Login */
 .pwd-login { min-height: 100vh; background: var(--pw-navy-deep); display: flex; flex-direction: column; align-items: center; padding: calc(env(safe-area-inset-top, 0px) + 70px) 26px 30px; gap: 22px; }
 .pwd-login-top { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 8px; }
@@ -1791,6 +1816,7 @@ const MGR_AREAS = [
   { key: 'ops', label: '營運數據' }, { key: 'kpi', label: 'KPI 評核' },
   { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
+  { key: 'clean', label: '清潔檢查' },
   { key: 'ownerkpi', label: '評核店長 🔑' },
 ];
 function datesFromWeekStart(weekStart) {
@@ -2818,6 +2844,196 @@ function OwnerOverview({ dash, mgrUnlocked, mgrData, onUnlock }) {
   );
 }
 
+// ── 清潔突擊檢查（2026-09-05 老闆批）──
+// 項目同標準對齊《清潔突擊檢查表》PDF（內部文件/人事薪酬/KPI/），改項目要兩邊同步。
+// 判定規則（前端顯示用；正式結果後端重算）：✗ 超過 3 項＝不合格。
+const CLEAN_CHECKLISTS = {
+  '酒店部': { icon: '🏨', hint: '於下午時段突擊，不預先通知', groups: [
+    { name: 'A. 房間', hint: '隨機抽查 3 間，優先當日有狗隻入住', items: [
+      ['房間地面', '無毛髮、無污漬水漬'],
+      ['房間玻璃', '無鼻印指印水印（濕布後乾布抹淨）'],
+      ['房間排泄物', '房內無任何排泄物殘留'],
+    ] },
+    { name: 'B. 天台', hint: '狗隻如廁區', items: [
+      ['天台地面', '已沖洗，無排泄物殘留'],
+      ['水喉', '使用後放置於盤內'],
+    ] },
+    { name: 'C. 活動區', items: [
+      ['活動區地面', '乾淨無毛髮、無水漬'],
+    ] },
+    { name: 'D. 廚房／餐具', items: [
+      ['食碗', '已清洗並疊放整齊，無殘渣油漬'],
+      ['備餐位', '檯面乾淨，無隔夜食物'],
+      ['雪櫃', '無存放過期食物'],
+    ] },
+    { name: 'E. 公共位', items: [
+      ['尿板', '已清洗，無尿垢、無異味'],
+      ['水碗', '盛有清水，碗身無黏滑感、無殘渣'],
+      ['器材用品', '使用後歸回原位，無散落'],
+      ['氣味', '無明顯異味'],
+      ['垃圾', '已傾倒，無滿溢並已套袋'],
+      ['拖地水', '已傾倒及更換，無過夜污水'],
+    ] },
+  ] },
+  '學院部': { icon: '🎓', hint: '於晚間下課後時段突擊，不預先通知', groups: [
+    { name: 'A. 課室', items: [
+      ['課室地面', '無毛髮、無尿漬水漬'],
+      ['課室氣味', '課室中央停留 5 秒，無明顯異味'],
+    ] },
+    { name: 'B. 教具', hint: '隨機抽查 3 件，狗隻會以口接觸嘅優先', items: [
+      ['教具衛生', '無食物殘渣、無異味、無黏漬'],
+      ['物資收納', '所有物資根據標籤收納妥當'],
+      ['教具水碗', '盛有清水，碗身無黏滑感、無殘渣'],
+    ] },
+    { name: 'C. 休息區', hint: '包括休息房間，標準與酒店部相同', items: [
+      ['休息區墊子', '無異味、無污漬'],
+      ['休息區地面', '無毛髮、無污漬水漬'],
+      ['休息區玻璃', '無鼻印指印水印'],
+      ['休息區排泄物', '無任何排泄物殘留'],
+    ] },
+    { name: 'D. 設備', items: [
+      ['圍欄／分隔板', '穩固無鬆動，表面乾淨無污跡'],
+      ['16樓雪櫃', '內外乾淨，無存放過期食物'],
+    ] },
+  ] },
+};
+
+function MgrCleanCheck() {
+  const [dept, setDept] = useState('酒店部');
+  const [marks, setMarks] = useState({});
+  const [inspector, setInspector] = useState('');
+  const [onDuty, setOnDuty] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState('');
+  const [records, setRecords] = useState(null);
+
+  async function loadRecords() {
+    try {
+      const r = await pwApi('cleanCheckList');
+      if (r.ok) setRecords(r.items);
+    } catch (e) { /* 記錄載入失敗唔阻提交，下面顯示提示 */ }
+  }
+  useEffect(() => { loadRecords(); }, []);
+
+  const conf = CLEAN_CHECKLISTS[dept];
+  const allItems = conf.groups.flatMap(gr => gr.items.map(it => it[0]));
+  const filled = allItems.filter(k => marks[k]).length;
+  const failCount = allItems.filter(k => marks[k] === '✗').length;
+  const isFail = failCount > 3;
+  const allFilled = filled === allItems.length;
+
+  function setMark(k, v) {
+    setSavedMsg('');
+    setMarks(m => ({ ...m, [k]: m[k] === v ? '' : v }));
+  }
+  function switchDept(d) {
+    if (d === dept) return;
+    if (filled > 0 && !window.confirm('切換部門會清空未提交嘅剔選，確定？')) return;
+    setDept(d); setMarks({}); setSavedMsg('');
+  }
+  function fillAllPass() {
+    setSavedMsg('');
+    const m = {};
+    allItems.forEach(k => { m[k] = '✓'; });
+    setMarks(m);
+  }
+  async function submit() {
+    if (!inspector.trim()) { window.alert('請填檢查人'); return; }
+    if (!allFilled) { window.alert('仲有 ' + (allItems.length - filled) + ' 項未剔'); return; }
+    const payload = {};
+    allItems.forEach(k => { payload[k] = marks[k]; });
+    setSaving(true);
+    const ok = await pwWrite('cleanCheckSave', {
+      dept: dept, inspector: inspector.trim(), onDuty: onDuty.trim(),
+      items: JSON.stringify(payload), note: note.trim(),
+    });
+    setSaving(false);
+    if (ok) {
+      setSavedMsg('✓ 已記錄：' + dept + ' ' + (isFail ? '不合格' : '合格') + '（✗ ' + failCount + ' 項）'
+        + (failCount > 0 ? ' · 記住 24 小時內改善並拍照回報' : ''));
+      setMarks({}); setNote('');
+      loadRecords();
+    }
+  }
+
+  const curMonth = currentMonth();
+  const monthRecs = (records || []).filter(r => String(r.time).slice(0, 7) === curMonth);
+  const failThisMonth = d => monthRecs.filter(r => r.dept === d && r.result === '不合格').length;
+
+  return (
+    <>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">🧹 清潔突擊檢查</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          {['酒店部', '學院部'].map(d => (
+            <button key={d} className={'pwd-cc-deptbtn' + (dept === d ? ' on' : '')} onClick={() => switchDept(d)}>
+              {CLEAN_CHECKLISTS[d].icon} {d}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+          <span className="pwd-cc-std">{conf.hint} · ✗ 超過 3 項＝不合格</span>
+          <button className="pwd-cc-fillbtn" onClick={fillAllPass}>全部 ✓ 再逐項改</button>
+        </div>
+        {conf.groups.map(gr => (
+          <div key={gr.name} className="pwd-cc-group">
+            <div className="pwd-cc-grouphead">{gr.name}{gr.hint && <span className="pwd-cc-grouphint">{gr.hint}</span>}</div>
+            {gr.items.map(([k, std]) => (
+              <div key={k} className="pwd-cc-item">
+                <div className="pwd-cc-label">
+                  <div className="pwd-cc-name">{k}</div>
+                  <div className="pwd-cc-std">{std}</div>
+                </div>
+                <div className="pwd-cc-marks">
+                  <button className={'pwd-cc-markbtn' + (marks[k] === '✓' ? ' ok' : '')} onClick={() => setMark(k, '✓')}>✓</button>
+                  <button className={'pwd-cc-markbtn' + (marks[k] === '✗' ? ' bad' : '')} onClick={() => setMark(k, '✗')}>✗</button>
+                  <button className={'pwd-cc-markbtn' + (marks[k] === 'N/A' ? ' na' : '')} onClick={() => setMark(k, 'N/A')}>N/A</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+        <div className={'pwd-cc-summary' + (isFail ? ' fail' : ' pass')}>
+          <span>已剔 {filled}/{allItems.length} · ✗ {failCount} 項</span>
+          <span>{allFilled ? (isFail ? '不合格' : '合格') : '未剔齊'}</span>
+        </div>
+        <div className="pwd-mgr-field" style={{ marginTop: 14 }}><label>檢查人 <b>*</b></label>
+          <input className="pwd-input" type="text" autoComplete="off" placeholder="邊個做檢查" value={inspector} onChange={e => setInspector(e.target.value)} />
+        </div>
+        <div className="pwd-mgr-field" style={{ marginTop: 12 }}><label>當值員工／導師</label>
+          <input className="pwd-input" type="text" autoComplete="off" placeholder="當日負責清潔嘅同事" value={onDuty} onChange={e => setOnDuty(e.target.value)} />
+        </div>
+        <div className="pwd-mgr-field" style={{ marginTop: 12 }}><label>備註（不達標詳情／改善期限）</label>
+          <input className="pwd-input" type="text" autoComplete="off" placeholder="選填" value={note} onChange={e => setNote(e.target.value)} />
+        </div>
+        <div style={{ marginTop: 14 }}>
+          {savedMsg && <div className="pwd-mgr-saved" style={{ marginBottom: 8 }}>{savedMsg}</div>}
+          <button className="pwd-mgr-savebtn" disabled={saving} onClick={submit}>{saving ? '提交中…' : '提交檢查記錄'}</button>
+        </div>
+      </div>
+
+      <div className="pwd-card pwd-block" style={{ marginTop: 14 }}>
+        <div className="pwd-eyebrow">📋 檢查記錄</div>
+        <div className="pwd-cc-std" style={{ marginTop: 8 }}>
+          本月不合格：🏨 {failThisMonth('酒店部')} 次 · 🎓 {failThisMonth('學院部')} 次（KPI 目標：每部門 ≤ 1）
+        </div>
+        {records === null && <div className="pwd-cc-std" style={{ marginTop: 10 }}>載入中…（載入失敗唔影響提交）</div>}
+        {records !== null && records.length === 0 && <div className="pwd-cc-std" style={{ marginTop: 10 }}>未有記錄</div>}
+        {(records || []).map(r => (
+          <div key={r.id} className="pwd-cc-rec">
+            <div className="pwd-cc-recmain">
+              <div className="pwd-cc-name">{r.dept} · {String(r.time).slice(0, 16).replace('T', ' ')}</div>
+              <div className="pwd-cc-std">檢查人 {r.inspector}{r.onDuty ? ' · 當值 ' + r.onDuty : ''}{r.failItems ? ' · ✗：' + r.failItems : ''}</div>
+            </div>
+            <span className={'pwd-cc-rectag' + (r.result === '不合格' ? ' fail' : ' pass')}>{r.result}{r.failCount > 0 ? ' ✗' + r.failCount : ''}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // ── ManagerPanel ──
 function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
@@ -2840,6 +3056,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
       {area === 'swap' && <MgrSwap mgrData={mgrData} />}
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
       {area === 'roster' && <MgrRoster mgrData={mgrData} />}
+      {area === 'clean' && <MgrCleanCheck />}
       {area === 'ownerkpi' && <MgrOwnerKpi month={month} mgrData={mgrData} />}
     </>
   );
