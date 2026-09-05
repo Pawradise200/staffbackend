@@ -570,7 +570,6 @@ img { display: block; }
 .pwd-cc-markbtn.ok { background: var(--pw-success-bg); border-color: var(--pw-success); color: var(--pw-success); }
 .pwd-cc-markbtn.bad { background: var(--pw-danger-bg); border-color: var(--pw-danger); color: var(--pw-danger); }
 .pwd-cc-markbtn.na { background: var(--pw-cream); border-color: var(--pw-ink-faint); color: var(--pw-ink-mute); }
-.pwd-cc-fillbtn { border: 1.5px solid var(--pw-cream-deep); background: var(--pw-paper); font-family: inherit; font-weight: 800; font-size: 11.5px; padding: 7px 12px; border-radius: var(--pw-r-pill); color: var(--pw-navy); cursor: pointer; }
 .pwd-cc-summary { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 10px 14px; border-radius: var(--pw-r-md); font-weight: 900; font-size: 13px; }
 .pwd-cc-summary.pass { background: var(--pw-success-bg); color: var(--pw-success); }
 .pwd-cc-summary.fail { background: var(--pw-danger-bg); color: var(--pw-danger); }
@@ -2848,8 +2847,8 @@ function OwnerOverview({ dash, mgrUnlocked, mgrData, onUnlock }) {
 // 項目同標準對齊《清潔突擊檢查表》PDF（內部文件/人事薪酬/KPI/），改項目要兩邊同步。
 // 判定規則（前端顯示用；正式結果後端重算）：✗ 超過 3 項＝不合格。
 const CLEAN_CHECKLISTS = {
-  '酒店部': { icon: '🏨', hint: '於下午時段突擊，不預先通知', groups: [
-    { name: 'A. 房間', hint: '隨機抽查 3 間，優先當日有狗隻入住', items: [
+  '酒店部': { icon: '🏨', hint: '於下午時段突擊檢查 · 不作預先通知', groups: [
+    { name: 'A. 房間', hint: '隨機抽查 3 間，優先抽查當日有狗隻入住之房間', items: [
       ['房間地面', '無毛髮、無污漬水漬'],
       ['房間玻璃', '無鼻印指印水印（濕布後乾布抹淨）'],
       ['房間排泄物', '房內無任何排泄物殘留'],
@@ -2870,17 +2869,18 @@ const CLEAN_CHECKLISTS = {
       ['尿板', '已清洗，無尿垢、無異味'],
       ['水碗', '盛有清水，碗身無黏滑感、無殘渣'],
       ['器材用品', '使用後歸回原位，無散落'],
+      ['公眾地方地面', '𨋢口、樓梯等地面乾淨，無毛髮'],
       ['氣味', '無明顯異味'],
       ['垃圾', '已傾倒，無滿溢並已套袋'],
       ['拖地水', '已傾倒及更換，無過夜污水'],
     ] },
   ] },
-  '學院部': { icon: '🎓', hint: '於晚間下課後時段突擊，不預先通知', groups: [
+  '學院部': { icon: '🎓', hint: '於晚間下課後時段突擊檢查 · 不作預先通知', groups: [
     { name: 'A. 課室', items: [
       ['課室地面', '無毛髮、無尿漬水漬'],
       ['課室氣味', '課室中央停留 5 秒，無明顯異味'],
     ] },
-    { name: 'B. 教具', hint: '隨機抽查 3 件，狗隻會以口接觸嘅優先', items: [
+    { name: 'B. 教具', hint: '隨機抽查 3 件，以狗隻會以口接觸者為優先', items: [
       ['教具衛生', '無食物殘渣、無異味、無黏漬'],
       ['物資收納', '所有物資根據標籤收納妥當'],
       ['教具水碗', '盛有清水，碗身無黏滑感、無殘渣'],
@@ -2894,6 +2894,9 @@ const CLEAN_CHECKLISTS = {
     { name: 'D. 設備', items: [
       ['圍欄／分隔板', '穩固無鬆動，表面乾淨無污跡'],
       ['16樓雪櫃', '內外乾淨，無存放過期食物'],
+    ] },
+    { name: 'E. 學校門口', items: [
+      ['學校門口', '地面無毛髮毛球、無垃圾'],
     ] },
   ] },
 };
@@ -2929,18 +2932,13 @@ function MgrCleanCheck() {
   }
   function switchDept(d) {
     if (d === dept) return;
-    if (filled > 0 && !window.confirm('切換部門會清空未提交嘅剔選，確定？')) return;
+    if (filled > 0 && !window.confirm('切換部門將清除未提交之選項，確定？')) return;
     setDept(d); setMarks({}); setSavedMsg('');
   }
-  function fillAllPass() {
-    setSavedMsg('');
-    const m = {};
-    allItems.forEach(k => { m[k] = '✓'; });
-    setMarks(m);
-  }
+  // [2026-09-05 老闆定] 唔設「全部✓」快捷掣——避免員工未檢查就一鍵剔晒，逐項必須人手填
   async function submit() {
-    if (!inspector.trim()) { window.alert('請填檢查人'); return; }
-    if (!allFilled) { window.alert('仲有 ' + (allItems.length - filled) + ' 項未剔'); return; }
+    if (!inspector.trim()) { window.alert('請輸入檢查人'); return; }
+    if (!allFilled) { window.alert('尚有 ' + (allItems.length - filled) + ' 項未填'); return; }
     const payload = {};
     allItems.forEach(k => { payload[k] = marks[k]; });
     setSaving(true);
@@ -2951,7 +2949,7 @@ function MgrCleanCheck() {
     setSaving(false);
     if (ok) {
       setSavedMsg('✓ 已記錄：' + dept + ' ' + (isFail ? '不合格' : '合格') + '（✗ ' + failCount + ' 項）'
-        + (failCount > 0 ? ' · 記住 24 小時內改善並拍照回報' : ''));
+        + (failCount > 0 ? ' · 所有 ✗ 項目須於 24 小時內改善並拍照回報' : ''));
       setMarks({}); setNote('');
       loadRecords();
     }
@@ -2972,9 +2970,8 @@ function MgrCleanCheck() {
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-          <span className="pwd-cc-std">{conf.hint} · ✗ 超過 3 項＝不合格</span>
-          <button className="pwd-cc-fillbtn" onClick={fillAllPass}>全部 ✓ 再逐項改</button>
+        <div style={{ marginTop: 10 }}>
+          <span className="pwd-cc-std">{conf.hint} · ✗ 超過 3 項即為不合格</span>
         </div>
         {conf.groups.map(gr => (
           <div key={gr.name} className="pwd-cc-group">
@@ -2995,14 +2992,14 @@ function MgrCleanCheck() {
           </div>
         ))}
         <div className={'pwd-cc-summary' + (isFail ? ' fail' : ' pass')}>
-          <span>已剔 {filled}/{allItems.length} · ✗ {failCount} 項</span>
-          <span>{allFilled ? (isFail ? '不合格' : '合格') : '未剔齊'}</span>
+          <span>已填 {filled}/{allItems.length} · ✗ {failCount} 項</span>
+          <span>{allFilled ? (isFail ? '不合格' : '合格') : '未完成'}</span>
         </div>
         <div className="pwd-mgr-field" style={{ marginTop: 14 }}><label>檢查人 <b>*</b></label>
-          <input className="pwd-input" type="text" autoComplete="off" placeholder="邊個做檢查" value={inspector} onChange={e => setInspector(e.target.value)} />
+          <input className="pwd-input" type="text" autoComplete="off" placeholder="請輸入檢查人姓名" value={inspector} onChange={e => setInspector(e.target.value)} />
         </div>
         <div className="pwd-mgr-field" style={{ marginTop: 12 }}><label>當值員工／導師</label>
-          <input className="pwd-input" type="text" autoComplete="off" placeholder="當日負責清潔嘅同事" value={onDuty} onChange={e => setOnDuty(e.target.value)} />
+          <input className="pwd-input" type="text" autoComplete="off" placeholder="當日負責清潔之員工" value={onDuty} onChange={e => setOnDuty(e.target.value)} />
         </div>
         <div className="pwd-mgr-field" style={{ marginTop: 12 }}><label>備註（不達標詳情／改善期限）</label>
           <input className="pwd-input" type="text" autoComplete="off" placeholder="選填" value={note} onChange={e => setNote(e.target.value)} />
@@ -3018,8 +3015,8 @@ function MgrCleanCheck() {
         <div className="pwd-cc-std" style={{ marginTop: 8 }}>
           本月不合格：🏨 {failThisMonth('酒店部')} 次 · 🎓 {failThisMonth('學院部')} 次（KPI 目標：每部門 ≤ 1）
         </div>
-        {records === null && <div className="pwd-cc-std" style={{ marginTop: 10 }}>載入中…（載入失敗唔影響提交）</div>}
-        {records !== null && records.length === 0 && <div className="pwd-cc-std" style={{ marginTop: 10 }}>未有記錄</div>}
+        {records === null && <div className="pwd-cc-std" style={{ marginTop: 10 }}>載入中…</div>}
+        {records !== null && records.length === 0 && <div className="pwd-cc-std" style={{ marginTop: 10 }}>暫無記錄</div>}
         {(records || []).map(r => (
           <div key={r.id} className="pwd-cc-rec">
             <div className="pwd-cc-recmain">
@@ -3031,6 +3028,37 @@ function MgrCleanCheck() {
         ))}
       </div>
     </>
+  );
+}
+
+// ── 員工版清潔檢查摘要（2026-09-05 老闆定「折中」）──
+// 員工睇到部門級結果（本月次數＋最近記錄＋✗項目），唔顯示檢查人／當值員工名——
+// 名喺後端已按有冇 key 隱去，唔係前端收埋咁簡單。完整記錄喺店長頁。
+function CleanCheckSummary() {
+  const [records, setRecords] = useState(null);
+  useEffect(() => {
+    pwApi('cleanCheckList').then(r => { if (r.ok) setRecords(r.items); }).catch(() => {});
+  }, []);
+  if (!records || records.length === 0) return null;  // 未有記錄唔佔位
+  const curMonth = currentMonth();
+  const monthRecs = records.filter(r => String(r.time).slice(0, 7) === curMonth);
+  const failOf = d => monthRecs.filter(r => r.dept === d && r.result === '不合格').length;
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">🧹 清潔突擊檢查 · 部門結果</div>
+      <div className="pwd-cc-std">
+        本月不合格：🏨 酒店部 {failOf('酒店部')} 次 · 🎓 學院部 {failOf('學院部')} 次（KPI 目標：每部門 ≤ 1）
+      </div>
+      {records.slice(0, 5).map(r => (
+        <div key={r.id} className="pwd-cc-rec">
+          <div className="pwd-cc-recmain">
+            <div className="pwd-cc-name">{r.dept} · {String(r.time).slice(0, 16).replace('T', ' ')}</div>
+            {r.failItems && <div className="pwd-cc-std">✗：{r.failItems}（須於 24 小時內改善）</div>}
+          </div>
+          <span className={'pwd-cc-rectag' + (r.result === '不合格' ? ' fail' : ' pass')}>{r.result}{r.failCount > 0 ? ' ✗' + r.failCount : ''}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -3198,6 +3226,7 @@ function CommissionApp() {
               trialSlots={dash.trialSlots} trialBookings={dash.trialBookings} trialDone={dash.trialDone}
               month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
               onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
+            <CleanCheckSummary />
             <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt} · {APP_VERSION}</div>
           </>
         )}
