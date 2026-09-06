@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-06d'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-09-06e'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -4029,65 +4029,9 @@ function MgrOwnerKpi({
 }
 
 // ═══════════ OwnerOverview（2026-08-25，老闆專屬簡易總覽）═══════════
-// 老闆要求：好簡單，淨係想睇① duty(本週邊日邊個返工) ②各部門業績 ③員工佣金。
-// 唔重用店長嗰套（MgrOps/MgrKpi 係逐格輸入嘅表格，唔係唯讀摘要），起返三張獨立卡。
-function OwnerDutyThisWeek({
-  weekStart,
-  dates,
-  todayDow
-}) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    pwApi('teamRoster', {
-      weekStart
-    }).then(res => {
-      if (!cancelled && res.ok) setData(res);
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [weekStart]);
-  return /*#__PURE__*/React.createElement("div", {
-    className: "pwd-card pwd-block"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pwd-eyebrow"
-  }, "\u672C\u9031\u908A\u500B\u8FD4\u5DE5"), /*#__PURE__*/React.createElement("div", {
-    className: "pwd-duty",
-    style: {
-      marginTop: 12
-    }
-  }, WEEKDAYS.map((wd, i) => {
-    const people = data ? data.days[i] : [];
-    return /*#__PURE__*/React.createElement("div", {
-      key: i,
-      className: 'pwd-duty-row' + (i === todayDow ? ' today' : '') + (!loading && people.length === 0 ? ' off' : '')
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "pwd-duty-date"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "pwd-duty-wd"
-    }, wd), /*#__PURE__*/React.createElement("span", {
-      className: "pwd-duty-num"
-    }, dates[i])), /*#__PURE__*/React.createElement("div", {
-      className: "pwd-duty-team-people"
-    }, loading && !data && /*#__PURE__*/React.createElement("span", {
-      className: "pwd-duty-team-empty"
-    }, "\u8F09\u5165\u4E2D\u2026"), data && people.length === 0 && /*#__PURE__*/React.createElement("span", {
-      className: "pwd-duty-team-empty"
-    }, "\u4ECA\u65E5\u5187\u4EBA\u8FD4\u5DE5"), data && people.map((c, ci) => /*#__PURE__*/React.createElement("span", {
-      key: ci,
-      className: "pwd-coworker"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "pwd-coworker-ava"
-    }, c.initial), c.name, c.posKey && POSITIONS[c.posKey] ? ' · ' + POSITIONS[c.posKey].label : ''))), i === todayDow && /*#__PURE__*/React.createElement("span", {
-      className: "pwd-duty-now"
-    }, "\u4ECA\u5929"));
-  })));
-}
+// 老闆要求（2026-09-06 更新）：唔重複放更表（另有位置睇），淨係要數據——
+// ①各部門業績 ②員工佣金 ③試堂登記摘要。
+// 唔重用店長嗰套（MgrOps/MgrKpi 係逐格輸入嘅表格，唔係唯讀摘要），起返獨立卡。
 function OwnerDeptRevenue({
   team
 }) {
@@ -4197,6 +4141,52 @@ function OwnerCommissionTable({
     className: "pwd-led-val"
   }, money(total)))));
 }
+// 試堂登記摘要（唯讀）：即將到來＋最近 14 日完成＋未來 45 日剩餘名額。
+// 數據直接用 dash 現有嘅 trialSlots/trialBookings/trialDone，唔另外打 API。
+function OwnerTrialSummary({
+  slots,
+  bookings,
+  done
+}) {
+  const upcoming = bookings || [];
+  const doneList = done || [];
+  const totalLeft = (slots || []).reduce((a, s) => a + s.remaining, 0);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u8A66\u5802\u767B\u8A18"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-sub"
+  }, "\u552F\u8B80\u6458\u8981 \xB7 \u767B\u8A18/\u53D6\u6D88\u55BA\u54E1\u5DE5\u500B\u4EBA\u9801\u505A")), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-earned"
+  }, "\u672A\u4F86\u4EF2\u6709", /*#__PURE__*/React.createElement("b", null, totalLeft))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-list"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-list-lbl"
+  }, "\u5373\u5C07\u5230\u4F86\u5605\u8A66\u5802 (", upcoming.length, ")"), upcoming.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u66AB\u6642\u5187\u672A\u4F86\u8A66\u5802\u767B\u8A18\u3002"), upcoming.map(b => /*#__PURE__*/React.createElement("div", {
+    key: b.id,
+    className: "pwd-tr-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-item-i"
+  }, /*#__PURE__*/React.createElement("b", null, b.dog, b.phone ? /*#__PURE__*/React.createElement("span", {
+    className: "pwd-club-nom-owner"
+  }, " \xB7 ", b.phone) : null), /*#__PURE__*/React.createElement("span", null, b.label))))), doneList.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-list"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-list-lbl"
+  }, "\u6700\u8FD1\u5B8C\u6210\u5605\u8A66\u5802 \xB7 14 \u65E5\u5167 (", doneList.length, ")"), doneList.map(d => /*#__PURE__*/React.createElement("div", {
+    key: d.id,
+    className: "pwd-tr-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-item-i"
+  }, /*#__PURE__*/React.createElement("b", null, d.dog, d.phone ? /*#__PURE__*/React.createElement("span", {
+    className: "pwd-club-nom-owner"
+  }, " \xB7 ", d.phone) : null), /*#__PURE__*/React.createElement("span", null, d.label))))));
+}
 function OwnerOverview({
   dash,
   mgrUnlocked,
@@ -4223,15 +4213,14 @@ function OwnerOverview({
       color: 'var(--pw-ink-mute)'
     }
   }, "\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u2026"));
-  const week = dash.weeks[dash.currentWeekIdx];
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerDutyThisWeek, {
-    weekStart: week.weekStart,
-    dates: week.dates,
-    todayDow: dash.todayDow
-  }), /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
     team: mgrData.team
   }), /*#__PURE__*/React.createElement(OwnerCommissionTable, {
     mgrData: mgrData
+  }), /*#__PURE__*/React.createElement(OwnerTrialSummary, {
+    slots: dash.trialSlots,
+    bookings: dash.trialBookings,
+    done: dash.trialDone
   }));
 }
 

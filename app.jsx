@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-06d';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-09-06e';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2139,42 +2139,9 @@ function MgrOwnerKpi({ month, mgrData }) {
 }
 
 // ═══════════ OwnerOverview（2026-08-25，老闆專屬簡易總覽）═══════════
-// 老闆要求：好簡單，淨係想睇① duty(本週邊日邊個返工) ②各部門業績 ③員工佣金。
-// 唔重用店長嗰套（MgrOps/MgrKpi 係逐格輸入嘅表格，唔係唯讀摘要），起返三張獨立卡。
-function OwnerDutyThisWeek({ weekStart, dates, todayDow }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    pwApi('teamRoster', { weekStart }).then(res => { if (!cancelled && res.ok) setData(res); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [weekStart]);
-  return (
-    <div className="pwd-card pwd-block">
-      <div className="pwd-eyebrow">本週邊個返工</div>
-      <div className="pwd-duty" style={{ marginTop: 12 }}>
-        {WEEKDAYS.map((wd, i) => {
-          const people = data ? data.days[i] : [];
-          return (
-            <div key={i} className={'pwd-duty-row' + (i === todayDow ? ' today' : '') + (!loading && people.length === 0 ? ' off' : '')}>
-              <div className="pwd-duty-date"><span className="pwd-duty-wd">{wd}</span><span className="pwd-duty-num">{dates[i]}</span></div>
-              <div className="pwd-duty-team-people">
-                {loading && !data && <span className="pwd-duty-team-empty">載入中…</span>}
-                {data && people.length === 0 && <span className="pwd-duty-team-empty">今日冇人返工</span>}
-                {data && people.map((c, ci) => (
-                  <span key={ci} className="pwd-coworker"><span className="pwd-coworker-ava">{c.initial}</span>{c.name}{c.posKey && POSITIONS[c.posKey] ? (' · ' + POSITIONS[c.posKey].label) : ''}</span>
-                ))}
-              </div>
-              {i === todayDow && <span className="pwd-duty-now">今天</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// 老闆要求（2026-09-06 更新）：唔重複放更表（另有位置睇），淨係要數據——
+// ①各部門業績 ②員工佣金 ③試堂登記摘要。
+// 唔重用店長嗰套（MgrOps/MgrKpi 係逐格輸入嘅表格，唔係唯讀摘要），起返獨立卡。
 function OwnerDeptRevenue({ team }) {
   const rows = [
     { label: '酒店業績', val: team.hotelRevenue || 0 },
@@ -2224,15 +2191,57 @@ function OwnerCommissionTable({ mgrData }) {
     </div>
   );
 }
+// 試堂登記摘要（唯讀）：即將到來＋最近 14 日完成＋未來 45 日剩餘名額。
+// 數據直接用 dash 現有嘅 trialSlots/trialBookings/trialDone，唔另外打 API。
+function OwnerTrialSummary({ slots, bookings, done }) {
+  const upcoming = bookings || [];
+  const doneList = done || [];
+  const totalLeft = (slots || []).reduce((a, s) => a + s.remaining, 0);
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-tr-head">
+        <div>
+          <div className="pwd-eyebrow">試堂登記</div>
+          <div className="pwd-tr-sub">唯讀摘要 · 登記/取消喺員工個人頁做</div>
+        </div>
+        <div className="pwd-club-earned">未來仲有<b>{totalLeft}</b></div>
+      </div>
+      <div className="pwd-tr-list">
+        <div className="pwd-club-list-lbl">即將到來嘅試堂 ({upcoming.length})</div>
+        {upcoming.length === 0 && <div className="pwd-tr-hint">暫時冇未來試堂登記。</div>}
+        {upcoming.map(b => (
+          <div key={b.id} className="pwd-tr-item">
+            <div className="pwd-tr-item-i">
+              <b>{b.dog}{b.phone ? <span className="pwd-club-nom-owner"> · {b.phone}</span> : null}</b>
+              <span>{b.label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {doneList.length > 0 && (
+        <div className="pwd-tr-list">
+          <div className="pwd-club-list-lbl">最近完成嘅試堂 · 14 日內 ({doneList.length})</div>
+          {doneList.map(d => (
+            <div key={d.id} className="pwd-tr-item">
+              <div className="pwd-tr-item-i">
+                <b>{d.dog}{d.phone ? <span className="pwd-club-nom-owner"> · {d.phone}</span> : null}</b>
+                <span>{d.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function OwnerOverview({ dash, mgrUnlocked, mgrData, onUnlock }) {
   if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="老闆總覽 · 需要老闆密碼" sub="請輸入老闆密碼" onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
-  const week = dash.weeks[dash.currentWeekIdx];
   return (
     <>
-      <OwnerDutyThisWeek weekStart={week.weekStart} dates={week.dates} todayDow={dash.todayDow} />
       <OwnerDeptRevenue team={mgrData.team} />
       <OwnerCommissionTable mgrData={mgrData} />
+      <OwnerTrialSummary slots={dash.trialSlots} bookings={dash.trialBookings} done={dash.trialDone} />
     </>
   );
 }
