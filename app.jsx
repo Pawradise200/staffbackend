@@ -2541,14 +2541,31 @@ function CommissionApp() {
   const [mgrUnlocked, setMgrUnlocked] = useState(false);
   const [mgrData, setMgrData] = useState(null);
   const [mgrArea, setMgrArea] = useState('ops'); // 店長後台目前分頁
+  const [refreshing, setRefreshing] = useState(false); // 背景更新緊數據（畫面已用 cache 即顯）
 
+  // [2026-09-06 老闆批「開app立即睇到」] cache 先行：有上次數據即刻上畫，背景攞新數據靜靜替換。
+  // cache 只做顯示加速——所有寫入操作照舊直接打後端，唔會基於 cache 做決定。
+  function dashCacheKey(st) { return 'pw_dash_' + st.id; }
+  function readDashCache(st, m) {
+    try {
+      const c = JSON.parse(localStorage.getItem(dashCacheKey(st)) || 'null');
+      return c && c.month === m ? c.res : null;
+    } catch (e) { return null; }
+  }
+  function writeDashCache(st, m, res) {
+    try { localStorage.setItem(dashCacheKey(st), JSON.stringify({ month: m, res: res })); } catch (e) {}
+  }
   async function loadDashboard(st, m = month) {
-    setScreen('loading');
+    const cached = readDashCache(st, m);
+    if (cached) { setDash(cached); setStaff({ ...st, ...cached.staff }); setScreen('dash'); setRefreshing(true); }
+    else setScreen('loading');
     try {
       const res = await pwApi('dashboard', { staffId: st.id, month: m });
-      if (!res.ok) { setErrMsg(res.error || '載入失敗'); setScreen('error'); return; }
+      if (!res.ok) { if (!cached) { setErrMsg(res.error || '載入失敗'); setScreen('error'); } return; }
       setDash(res); setStaff({ ...st, ...res.staff }); setScreen('dash');
-    } catch (e) { setErrMsg('連線失敗,請檢查網絡'); setScreen('error'); }
+      writeDashCache(st, m, res);
+    } catch (e) { if (!cached) { setErrMsg('連線失敗,請檢查網絡'); setScreen('error'); } }
+    finally { setRefreshing(false); }
   }
   // 切換查看月份
   async function changeMonth(m) {
@@ -2564,7 +2581,8 @@ function CommissionApp() {
   }
   // 自動續登
   useEffect(() => {
-    const saved = sessionStorage.getItem('pw_staff');
+    // [2026-09-06 老闆批] 記住登入：改用 localStorage，閂咗 app 再開都唔使重新入名+ID（登出先清）
+    const saved = localStorage.getItem('pw_staff');
     if (saved) {
       try {
         const st = JSON.parse(saved);
@@ -2578,15 +2596,17 @@ function CommissionApp() {
   //   唔使好似之前咁再多 call 一次 dashboard——慳返一整程 Apps Script 固定開銷。
   function doLogin(res) {
     const st = res.staff;
-    sessionStorage.setItem('pw_staff', JSON.stringify(st));
+    localStorage.setItem('pw_staff', JSON.stringify(st));
     setStaff(st); setTab(st.role === 'owner' ? 'owner' : 'pay'); setMonth(currentMonth()); setMgrUnlocked(false); setMgrData(null);
     setDash(res); setScreen('dash');
+    writeDashCache(st, currentMonth(), res);
   }
   function doLogout() {
-    sessionStorage.removeItem('pw_staff');
+    try { if (staff) localStorage.removeItem(dashCacheKey(staff)); } catch (e) {}
+    localStorage.removeItem('pw_staff');
     setStaff(null); setDash(null); setTab('pay'); setMgrUnlocked(false); setMgrData(null); setScreen('login');
   }
-  async function reloadDash() { if (staff) { const res = await pwApi('dashboard', { staffId: staff.id, month }); if (res.ok) { setDash(res); } } }
+  async function reloadDash() { if (staff) { const res = await pwApi('dashboard', { staffId: staff.id, month }); if (res.ok) { setDash(res); writeDashCache(staff, month, res); } } }
 
   async function submitClub({ dogName, phone }) {
     // 提名寫唔入就一定要話用戶知——ClubCard 提交後會清空表單收埋，靜靜哋失敗＝隻狗石沉大海
@@ -2635,7 +2655,7 @@ function CommissionApp() {
         <div className="pwd-h-logo"><img src="pawradise-logo.jpg" alt="" /></div>
         <div className="pwd-h-text">
           <h1>{staff.name}</h1>
-          <p>{isManager ? '店長 · ' : ''}Pawradise · {team.month}</p>
+          <p>{isManager ? '店長 · ' : ''}Pawradise · {team.month}{refreshing ? ' · 🔄 同步中' : ''}</p>
         </div>
         <button className="pwd-h-logout" onClick={doLogout} title="登出"><span className="pwd-h-ava">{staff.initial}</span></button>
       </div>

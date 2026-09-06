@@ -4649,17 +4649,50 @@ function CommissionApp() {
   const [mgrUnlocked, setMgrUnlocked] = useState(false);
   const [mgrData, setMgrData] = useState(null);
   const [mgrArea, setMgrArea] = useState('ops'); // 店長後台目前分頁
+  const [refreshing, setRefreshing] = useState(false); // 背景更新緊數據（畫面已用 cache 即顯）
 
+  // [2026-09-06 老闆批「開app立即睇到」] cache 先行：有上次數據即刻上畫，背景攞新數據靜靜替換。
+  // cache 只做顯示加速——所有寫入操作照舊直接打後端，唔會基於 cache 做決定。
+  function dashCacheKey(st) {
+    return 'pw_dash_' + st.id;
+  }
+  function readDashCache(st, m) {
+    try {
+      const c = JSON.parse(localStorage.getItem(dashCacheKey(st)) || 'null');
+      return c && c.month === m ? c.res : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function writeDashCache(st, m, res) {
+    try {
+      localStorage.setItem(dashCacheKey(st), JSON.stringify({
+        month: m,
+        res: res
+      }));
+    } catch (e) {}
+  }
   async function loadDashboard(st, m = month) {
-    setScreen('loading');
+    const cached = readDashCache(st, m);
+    if (cached) {
+      setDash(cached);
+      setStaff({
+        ...st,
+        ...cached.staff
+      });
+      setScreen('dash');
+      setRefreshing(true);
+    } else setScreen('loading');
     try {
       const res = await pwApi('dashboard', {
         staffId: st.id,
         month: m
       });
       if (!res.ok) {
-        setErrMsg(res.error || '載入失敗');
-        setScreen('error');
+        if (!cached) {
+          setErrMsg(res.error || '載入失敗');
+          setScreen('error');
+        }
         return;
       }
       setDash(res);
@@ -4668,9 +4701,14 @@ function CommissionApp() {
         ...res.staff
       });
       setScreen('dash');
+      writeDashCache(st, m, res);
     } catch (e) {
-      setErrMsg('連線失敗,請檢查網絡');
-      setScreen('error');
+      if (!cached) {
+        setErrMsg('連線失敗,請檢查網絡');
+        setScreen('error');
+      }
+    } finally {
+      setRefreshing(false);
     }
   }
   // 切換查看月份
@@ -4692,7 +4730,8 @@ function CommissionApp() {
   }
   // 自動續登
   useEffect(() => {
-    const saved = sessionStorage.getItem('pw_staff');
+    // [2026-09-06 老闆批] 記住登入：改用 localStorage，閂咗 app 再開都唔使重新入名+ID（登出先清）
+    const saved = localStorage.getItem('pw_staff');
     if (saved) {
       try {
         const st = JSON.parse(saved);
@@ -4707,7 +4746,7 @@ function CommissionApp() {
   //   唔使好似之前咁再多 call 一次 dashboard——慳返一整程 Apps Script 固定開銷。
   function doLogin(res) {
     const st = res.staff;
-    sessionStorage.setItem('pw_staff', JSON.stringify(st));
+    localStorage.setItem('pw_staff', JSON.stringify(st));
     setStaff(st);
     setTab(st.role === 'owner' ? 'owner' : 'pay');
     setMonth(currentMonth());
@@ -4715,9 +4754,13 @@ function CommissionApp() {
     setMgrData(null);
     setDash(res);
     setScreen('dash');
+    writeDashCache(st, currentMonth(), res);
   }
   function doLogout() {
-    sessionStorage.removeItem('pw_staff');
+    try {
+      if (staff) localStorage.removeItem(dashCacheKey(staff));
+    } catch (e) {}
+    localStorage.removeItem('pw_staff');
     setStaff(null);
     setDash(null);
     setTab('pay');
@@ -4733,6 +4776,7 @@ function CommissionApp() {
       });
       if (res.ok) {
         setDash(res);
+        writeDashCache(staff, month, res);
       }
     }
   }
@@ -4853,7 +4897,7 @@ function CommissionApp() {
     alt: ""
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-h-text"
-  }, /*#__PURE__*/React.createElement("h1", null, staff.name), /*#__PURE__*/React.createElement("p", null, isManager ? '店長 · ' : '', "Pawradise \xB7 ", team.month)), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("h1", null, staff.name), /*#__PURE__*/React.createElement("p", null, isManager ? '店長 · ' : '', "Pawradise \xB7 ", team.month, refreshing ? ' · 🔄 同步中' : '')), /*#__PURE__*/React.createElement("button", {
     className: "pwd-h-logout",
     onClick: doLogout,
     title: "\u767B\u51FA"
