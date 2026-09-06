@@ -1879,7 +1879,12 @@ function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 
     setBusy(true);
     try {
       const res = await pwApi(action, { passcode: code });
-      if (res.ok) { PW_KEY = code; onUnlock(); }
+      if (res.ok) {
+        PW_KEY = code; onUnlock();
+        // [2026-09-06 老闆嫌次次入] 解鎖後記住管理密碼；「🔒 鎖定」或登出先清。
+        // 密碼如果之後改咗，記住嗰條 key 寫入時後端會回「未授權」，pwWrite 會指引重新解鎖。
+        try { localStorage.setItem('pw_mgr_key', code); } catch (e) {}
+      }
       else { setErr(true); setPin(''); }
     } catch (e) { setErr(true); setPin(''); }
     setBusy(false);
@@ -2588,6 +2593,13 @@ function CommissionApp() {
         const st = JSON.parse(saved);
         if (st.role === 'owner') setTab('owner');   // 老闆冇「我的佣金」tab，唔重設會停喺 pay 空白畫面
         setStaff(st); loadDashboard(st);
+        // 還原管理解鎖：有記住嘅 key 就唔使再入密碼，管理數據背景載
+        const mk = localStorage.getItem('pw_mgr_key');
+        if (mk && (st.role === 'manager' || st.role === 'owner')) {
+          PW_KEY = mk;
+          setMgrUnlocked(true);
+          pwApi('managerData', { month: currentMonth() }).then(r => { if (r.ok) setMgrData(r); }).catch(() => {});
+        }
       } catch (e) {}
     }
   }, []);
@@ -2604,6 +2616,7 @@ function CommissionApp() {
   function doLogout() {
     try { if (staff) localStorage.removeItem(dashCacheKey(staff)); } catch (e) {}
     localStorage.removeItem('pw_staff');
+    localStorage.removeItem('pw_mgr_key'); PW_KEY = '';
     setStaff(null); setDash(null); setTab('pay'); setMgrUnlocked(false); setMgrData(null); setScreen('login');
   }
   async function reloadDash() { if (staff) { const res = await pwApi('dashboard', { staffId: staff.id, month }); if (res.ok) { setDash(res); writeDashCache(staff, month, res); } } }
@@ -2697,7 +2710,7 @@ function CommissionApp() {
         {tab === 'mgr' && (
           <ManagerPanel key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}
             area={mgrArea} onAreaChange={setMgrArea}
-            onUnlock={unlockMgr} onLock={() => setMgrUnlocked(false)} />
+            onUnlock={unlockMgr} onLock={() => { setMgrUnlocked(false); localStorage.removeItem('pw_mgr_key'); PW_KEY = ''; }} />
         )}
         {tab === 'owner' && (
           <OwnerOverview dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />

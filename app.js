@@ -3532,6 +3532,11 @@ function ManagerGate({
       if (res.ok) {
         PW_KEY = code;
         onUnlock();
+        // [2026-09-06 老闆嫌次次入] 解鎖後記住管理密碼；「🔒 鎖定」或登出先清。
+        // 密碼如果之後改咗，記住嗰條 key 寫入時後端會回「未授權」，pwWrite 會指引重新解鎖。
+        try {
+          localStorage.setItem('pw_mgr_key', code);
+        } catch (e) {}
       } else {
         setErr(true);
         setPin('');
@@ -4738,6 +4743,17 @@ function CommissionApp() {
         if (st.role === 'owner') setTab('owner'); // 老闆冇「我的佣金」tab，唔重設會停喺 pay 空白畫面
         setStaff(st);
         loadDashboard(st);
+        // 還原管理解鎖：有記住嘅 key 就唔使再入密碼，管理數據背景載
+        const mk = localStorage.getItem('pw_mgr_key');
+        if (mk && (st.role === 'manager' || st.role === 'owner')) {
+          PW_KEY = mk;
+          setMgrUnlocked(true);
+          pwApi('managerData', {
+            month: currentMonth()
+          }).then(r => {
+            if (r.ok) setMgrData(r);
+          }).catch(() => {});
+        }
       } catch (e) {}
     }
   }, []);
@@ -4761,6 +4777,8 @@ function CommissionApp() {
       if (staff) localStorage.removeItem(dashCacheKey(staff));
     } catch (e) {}
     localStorage.removeItem('pw_staff');
+    localStorage.removeItem('pw_mgr_key');
+    PW_KEY = '';
     setStaff(null);
     setDash(null);
     setTab('pay');
@@ -4957,7 +4975,11 @@ function CommissionApp() {
     area: mgrArea,
     onAreaChange: setMgrArea,
     onUnlock: unlockMgr,
-    onLock: () => setMgrUnlocked(false)
+    onLock: () => {
+      setMgrUnlocked(false);
+      localStorage.removeItem('pw_mgr_key');
+      PW_KEY = '';
+    }
   }), tab === 'owner' && /*#__PURE__*/React.createElement(OwnerOverview, {
     dash: dash,
     mgrUnlocked: mgrUnlocked,
