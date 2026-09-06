@@ -622,11 +622,16 @@ img { display: block; }
 <script defer src="react.production.min.js"></script>
 <script defer src="react-dom.production.min.js"></script>
 
-<script defer src="app.js?v=20260906c"></script>
+<script defer src="app.js?v=20260906d"></script>
 <script>
 // PWA：註冊 service worker（本機 file:// 或唔支援嘅環境會靜靜跳過）
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  // 新版 SW 接管嗰刻自動 reload 一次——更新即次生效，唔使開兩次；guard 防 reload 循環
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloaded) return; reloaded = true; location.reload();
+  });
 }
 </script>
 </body>
