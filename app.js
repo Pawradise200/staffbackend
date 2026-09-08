@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-06e'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-09-08c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -726,9 +726,9 @@ function fullResult(staff, team, overrides = {}) {
   if (dogEscape) {
     override = true;
     overrideReason = '團隊發生走失狗狗事故';
-  } else if (lateLeave > 3) {
+  } else if (lateLeave >= 3) {
     override = true;
-    overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (超過 3 次)`;
+    overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`;
   }
   // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
   // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
@@ -1294,7 +1294,7 @@ function KpiClauses({
   lateLeave,
   dogEscape
 }) {
-  const lateTriggered = lateLeave > 3;
+  const lateTriggered = lateLeave >= 3;
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-clauses"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1307,7 +1307,7 @@ function KpiClauses({
     className: "pwd-clause-dot"
   }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-clause-text"
-  }, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u7D2F\u7A4D\u9072\u5230\u6216\u8ACB\u5047\u8D85\u904E 3 \u6B21"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u7D2F\u7A4D\u9072\u5230\u6216\u8ACB\u5047 3 \u6B21\u6216\u4EE5\u4E0A"), /*#__PURE__*/React.createElement("span", {
     className: "pwd-clause-sub"
   }, "\u500B\u4EBA \xB7 \u672C\u6708\u5DF2\u7D2F\u7A4D ", lateLeave, " \u6B21")), /*#__PURE__*/React.createElement("span", {
     className: 'pwd-clause-tag' + (lateTriggered ? ' hit' : '')
@@ -2031,6 +2031,7 @@ function DutyRoster({
   todayDow,
   leave,
   leaveRecords,
+  longLeave,
   coworkers,
   onSwap
 }) {
@@ -2234,7 +2235,33 @@ function DutyRoster({
     style: {
       marginTop: 12
     }
-  }, "\u672C\u6708\u66AB\u7121\u8ACB\u5047\u8A18\u9304")), /*#__PURE__*/React.createElement("div", {
+  }, "\u672C\u6708\u66AB\u7121\u8ACB\u5047\u8A18\u9304"), longLeave && longLeave.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u9577\u5047\u7533\u8ACB"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-larec",
+    style: {
+      marginTop: 8
+    }
+  }, longLeave.map(r => {
+    const f = iso => {
+      const p = (iso || '').split('-');
+      return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso;
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      key: r.id,
+      className: "pwd-larec-row"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: 'pwd-larec-type t-' + r.type
+    }, r.type), /*#__PURE__*/React.createElement("span", {
+      className: "pwd-larec-date"
+    }, f(r.start), " \u2013 ", f(r.end)), /*#__PURE__*/React.createElement("span", {
+      className: 'pwd-mgr-swap-status ' + r.status
+    }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'));
+  })))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-head"
@@ -2953,6 +2980,14 @@ function MgrLeave({
   const [phs, setPhs] = useState(() => (mgrData.allPH && mgrData.allPH[sel] || []).slice());
   const [phName, setPhName] = useState('');
   const [phDate, setPhDate] = useState('');
+  // [2026-09-08 老闆要求] 長假申請：店長喺呢度代員工提交，老闆總覽批核
+  const [llReqs, setLlReqs] = useState(() => (mgrData.allLongLeave || []).map(r => ({
+    ...r
+  })));
+  const [llType, setLlType] = useState('年假');
+  const [llStart, setLlStart] = useState('');
+  const [llEnd, setLlEnd] = useState('');
+  const [llNote, setLlNote] = useState('');
   const [err, setErr] = useState('');
   function reseed(id) {
     const b = mgrData.allLeaveBal[id] || {
@@ -2972,6 +3007,9 @@ function MgrLeave({
     setPhName('');
     setPhDate('');
     setErr('');
+    setLlStart('');
+    setLlEnd('');
+    setLlNote('');
   }
   // ⚠️ 2026-08-12 幽靈條目事故：呢版嘅寫入全部係樂觀更新，之前完全冇 check 後端回咩——
   // 授權過期(WRITE_GUARD 回「未授權」)照樣喺畫面加咗行，店長以為儲咗，一 reload 就無晒。
@@ -3030,6 +3068,41 @@ function MgrLeave({
       c.splice(i, 0, rec);
       return c;
     }));
+  }
+  async function addLongLeave() {
+    if (!llStart || !llEnd) return;
+    if (llEnd < llStart) {
+      setErr('結束日期早過開始日期');
+      return;
+    }
+    const req = {
+      id: 'tmp-' + Date.now(),
+      staffId: sel,
+      start: llStart,
+      end: llEnd,
+      type: llType,
+      note: llNote.trim(),
+      status: 'pending'
+    };
+    const keepS = llStart,
+      keepE = llEnd,
+      keepN = llNote;
+    setLlReqs(r => [...r, req]);
+    setLlStart('');
+    setLlEnd('');
+    setLlNote('');
+    await write('longLeaveAdd', {
+      staffId: sel,
+      start: req.start,
+      end: req.end,
+      type: req.type,
+      note: req.note
+    }, () => {
+      setLlReqs(r => r.filter(x => x.id !== req.id));
+      setLlStart(keepS);
+      setLlEnd(keepE);
+      setLlNote(keepN);
+    });
   }
   async function addPH() {
     if (!phName.trim() || !phDate) return;
@@ -3167,6 +3240,71 @@ function MgrLeave({
     className: "pwd-larec-del",
     onClick: () => delRec(rec, i)
   }, "\u2715"))))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u9577\u5047\u7533\u8ACB (\u4EA4\u8001\u95C6\u6279\u6838)"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-types",
+    style: {
+      marginTop: 12
+    }
+  }, ['年假', '病假', '事假'].map(t => /*#__PURE__*/React.createElement("button", {
+    key: t,
+    className: 'pwd-la-chip' + (llType === t ? ' on' : ''),
+    onClick: () => setLlType(t)
+  }, t))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-daterow"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-la-datelbl"
+  }, "\u958B\u59CB\u65E5\u671F"), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-la-date",
+    type: "date",
+    value: llStart,
+    onChange: e => setLlStart(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-daterow"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-la-datelbl"
+  }, "\u7D50\u675F\u65E5\u671F"), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-la-date",
+    type: "date",
+    value: llEnd,
+    onChange: e => setLlEnd(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-frow",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "pwd-club-input",
+    placeholder: "\u5099\u8A3B (\u53EF\u7559\u7A7A, \u4F8B: \u56DE\u9109)",
+    value: llNote,
+    onChange: e => setLlNote(e.target.value)
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    style: {
+      marginTop: 12,
+      width: '100%'
+    },
+    disabled: !llStart || !llEnd,
+    onClick: addLongLeave
+  }, "\uFF0B \u70BA ", staff.name, " \u63D0\u4EA4\u9577\u5047\u7533\u8ACB"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-larec",
+    style: {
+      marginTop: 14
+    }
+  }, llReqs.filter(r => r.staffId == sel).map(r => /*#__PURE__*/React.createElement("div", {
+    key: r.id,
+    className: "pwd-larec-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-larec-type t-' + r.type
+  }, r.type), /*#__PURE__*/React.createElement("span", {
+    className: "pwd-larec-date"
+  }, fmtDate(r.start), " \u2013 ", fmtDate(r.end)), /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-mgr-swap-status ' + r.status
+  }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'))), llReqs.filter(r => r.staffId == sel).length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-ph-empty"
+  }, "\u672A\u6709\u9577\u5047\u7533\u8ACB"))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
@@ -4187,6 +4325,85 @@ function OwnerTrialSummary({
     className: "pwd-club-nom-owner"
   }, " \xB7 ", d.phone) : null), /*#__PURE__*/React.createElement("span", null, d.label))))));
 }
+// ── 長假申請批核（2026-09-08 老闆要求：店長喺「請假假期」代員工提交，呢度批）──
+function OwnerLongLeave({
+  mgrData
+}) {
+  const nameOf = id => {
+    const s = mgrData.staffList.find(x => x.id == id);
+    return s ? s.name : id;
+  };
+  const initOf = id => {
+    const s = mgrData.staffList.find(x => x.id == id);
+    return s ? s.initial : '?';
+  };
+  const fmtD = iso => {
+    const p = (iso || '').split('-');
+    return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso;
+  };
+  const [reqs, setReqs] = useState(() => (mgrData.allLongLeave || []).map(r => ({
+    ...r
+  })));
+  async function act(id, status) {
+    const prev = reqs.find(r => r.id === id);
+    setReqs(rs => rs.map(r => r.id === id ? {
+      ...r,
+      status
+    } : r));
+    await pwWrite('longLeaveApprove', {
+      reqId: id,
+      status
+    }, () => setReqs(rs => rs.map(r => r.id === id ? {
+      ...r,
+      status: prev ? prev.status : 'pending'
+    } : r)));
+  }
+  const pending = reqs.filter(r => r.status === 'pending');
+  const done = reqs.filter(r => r.status !== 'pending');
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u9577\u5047\u7533\u8ACB\u6279\u6838 (", pending.length, ")"), pending.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "pwd-ph-empty",
+    style: {
+      marginTop: 12
+    }
+  }, "\u6C92\u6709\u5F85\u6279\u6838\u7684\u9577\u5047\u7533\u8ACB") : /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-swaps"
+  }, pending.map(r => /*#__PURE__*/React.createElement("div", {
+    key: r.id,
+    className: "pwd-mgr-swap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-swap-top"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-ava"
+  }, initOf(r.staffId)), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-swap-info"
+  }, /*#__PURE__*/React.createElement("b", null, nameOf(r.staffId), " \xB7 ", r.type), /*#__PURE__*/React.createElement("span", null, fmtD(r.start), " \u2013 ", fmtD(r.end), r.note ? ' · ' + r.note : ''))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-swap-acts"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "pwd-btn-reject",
+    onClick: () => act(r.id, 'rejected')
+  }, "\u62D2\u7D55"), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-btn-approve",
+    onClick: () => act(r.id, 'approved')
+  }, "\u6279\u51C6"))))), done.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-swaps",
+    style: {
+      marginTop: 14
+    }
+  }, done.map(r => /*#__PURE__*/React.createElement("div", {
+    key: r.id,
+    className: "pwd-mgr-swap done"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-ava"
+  }, initOf(r.staffId)), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-swap-info"
+  }, /*#__PURE__*/React.createElement("b", null, nameOf(r.staffId), " \xB7 ", r.type), /*#__PURE__*/React.createElement("span", null, fmtD(r.start), " \u2013 ", fmtD(r.end))), /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-mgr-swap-status ' + r.status
+  }, r.status === 'approved' ? '已批准' : '已拒絕')))));
+}
 function OwnerOverview({
   dash,
   mgrUnlocked,
@@ -4213,7 +4430,9 @@ function OwnerOverview({
       color: 'var(--pw-ink-mute)'
     }
   }, "\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u2026"));
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerLongLeave, {
+    mgrData: mgrData
+  }), /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
     team: mgrData.team
   }), /*#__PURE__*/React.createElement(OwnerCommissionTable, {
     mgrData: mgrData
@@ -4954,6 +5173,7 @@ function CommissionApp() {
     todayDow: dash.todayDow,
     leave: dash.leave,
     leaveRecords: dash.leaveRecords,
+    longLeave: dash.longLeave,
     coworkers: dash.coworkers,
     onSwap: submitSwap
   }), tab === 'mgr' && /*#__PURE__*/React.createElement(ManagerPanel, {

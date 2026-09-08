@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-06e';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-09-08c';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -275,7 +275,7 @@ function fullResult(staff, team, overrides = {}) {
   const dogEscape = overrides.dogEscape != null ? overrides.dogEscape : (team.dogEscape || false);
   let override = false, overrideReason = '';
   if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
-  else if (lateLeave > 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (超過 3 次)`; }
+  else if (lateLeave >= 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`; }
   // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
   // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
   const commGated = staff.commStart && team.monthKey && team.monthKey < staff.commStart;
@@ -590,7 +590,7 @@ function RateTable({ role, dept }) {
   );
 }
 function KpiClauses({ lateLeave, dogEscape }) {
-  const lateTriggered = lateLeave > 3;
+  const lateTriggered = lateLeave >= 3;
   return (
     <div className="pwd-clauses">
       <div className="pwd-clauses-head">
@@ -600,7 +600,7 @@ function KpiClauses({ lateLeave, dogEscape }) {
       <div className={'pwd-clause' + (lateTriggered ? ' hit' : '')}>
         <span className="pwd-clause-dot" />
         <div className="pwd-clause-text">
-          <b>當月累積遲到或請假超過 3 次</b>
+          <b>當月累積遲到或請假 3 次或以上</b>
           <span className="pwd-clause-sub">個人 · 本月已累積 {lateLeave} 次</span>
         </div>
         <span className={'pwd-clause-tag' + (lateTriggered ? ' hit' : '')}>{lateTriggered ? '已觸發' : `尚餘 ${Math.max(0, 3 - lateLeave)} 次`}</span>
@@ -1015,7 +1015,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
 }
 
 // ═══════════ DutyRoster ═══════════
-function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, coworkers, onSwap }) {
+function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, longLeave, coworkers, onSwap }) {
   const [weekIndex, setWeekIndex] = useState(currentWeekIdx);
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapDone, setSwapDone] = useState(null);
@@ -1170,6 +1170,24 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
             ))}
           </div>
         ) : <div className="pwd-ph-empty" style={{ marginTop: 12 }}>本月暫無請假記錄</div>}
+        {/* [2026-09-08 老闆定] 員工睇到自己長假申請狀態（唯讀）；冇申請就唔顯示，版面零變化 */}
+        {longLeave && longLeave.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div className="pwd-eyebrow">長假申請</div>
+            <div className="pwd-larec" style={{ marginTop: 8 }}>
+              {longLeave.map(r => {
+                const f = (iso) => { const p = (iso || '').split('-'); return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso; };
+                return (
+                  <div key={r.id} className="pwd-larec-row">
+                    <span className={'pwd-larec-type t-' + r.type}>{r.type}</span>
+                    <span className="pwd-larec-date">{f(r.start)} – {f(r.end)}</span>
+                    <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="pwd-card pwd-block">
@@ -1554,12 +1572,19 @@ function MgrLeave({ month, mgrData }) {
   const [phs, setPhs] = useState(() => ((mgrData.allPH && mgrData.allPH[sel]) || []).slice());
   const [phName, setPhName] = useState('');
   const [phDate, setPhDate] = useState('');
+  // [2026-09-08 老闆要求] 長假申請：店長喺呢度代員工提交，老闆總覽批核
+  const [llReqs, setLlReqs] = useState(() => (mgrData.allLongLeave || []).map(r => ({ ...r })));
+  const [llType, setLlType] = useState('年假');
+  const [llStart, setLlStart] = useState('');
+  const [llEnd, setLlEnd] = useState('');
+  const [llNote, setLlNote] = useState('');
   const [err, setErr] = useState('');
   function reseed(id) {
     const b = mgrData.allLeaveBal[id] || { annual: 0, statutory: 0, sick: 0 };
     setSel(id); setBal({ annual: b.annual, statutory: b.statutory, sick: b.sick });
     setRecs((mgrData.allLeaveRec[id] || []).slice()); setDate('');
     setPhs(((mgrData.allPH && mgrData.allPH[id]) || []).slice()); setPhName(''); setPhDate(''); setErr('');
+    setLlStart(''); setLlEnd(''); setLlNote('');
   }
   // ⚠️ 2026-08-12 幽靈條目事故：呢版嘅寫入全部係樂觀更新，之前完全冇 check 後端回咩——
   // 授權過期(WRITE_GUARD 回「未授權」)照樣喺畫面加咗行，店長以為儲咗，一 reload 就無晒。
@@ -1584,6 +1609,17 @@ function MgrLeave({ month, mgrData }) {
     setRecs(r => r.filter((_, j) => j !== i));
     await write('deleteLeaveRec', { month, staffId: sel, date: rec.date, type: rec.type },
       () => setRecs(r => { const c = r.slice(); c.splice(i, 0, rec); return c; }));
+  }
+  async function addLongLeave() {
+    if (!llStart || !llEnd) return;
+    if (llEnd < llStart) { setErr('結束日期早過開始日期'); return; }
+    const req = { id: 'tmp-' + Date.now(), staffId: sel, start: llStart, end: llEnd, type: llType, note: llNote.trim(), status: 'pending' };
+    const keepS = llStart, keepE = llEnd, keepN = llNote;
+    setLlReqs(r => [...r, req]);
+    setLlStart(''); setLlEnd(''); setLlNote('');
+    await write('longLeaveAdd', { staffId: sel, start: req.start, end: req.end, type: req.type, note: req.note },
+      () => { setLlReqs(r => r.filter(x => x.id !== req.id));
+              setLlStart(keepS); setLlEnd(keepE); setLlNote(keepN); });
   }
   async function addPH() {
     if (!phName.trim() || !phDate) return;
@@ -1655,6 +1691,39 @@ function MgrLeave({ month, mgrData }) {
               <button className="pwd-larec-del" onClick={() => delRec(rec, i)}>✕</button>
             </div>
           ))}
+        </div>
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">長假申請 (交老闆批核)</div>
+        {/* [2026-09-08 老闆定] 長假類別只設 年假/病假/事假——例假由店長排更時自己編，唔行申請批核 */}
+        <div className="pwd-la-types" style={{ marginTop: 12 }}>
+          {['年假', '病假', '事假'].map(t => (
+            <button key={t} className={'pwd-la-chip' + (llType === t ? ' on' : '')} onClick={() => setLlType(t)}>{t}</button>
+          ))}
+        </div>
+        <div className="pwd-la-daterow">
+          <span className="pwd-la-datelbl">開始日期</span>
+          <input className="pwd-la-date" type="date" value={llStart} onChange={(e) => setLlStart(e.target.value)} />
+        </div>
+        <div className="pwd-la-daterow">
+          <span className="pwd-la-datelbl">結束日期</span>
+          <input className="pwd-la-date" type="date" value={llEnd} onChange={(e) => setLlEnd(e.target.value)} />
+        </div>
+        <div className="pwd-club-frow" style={{ marginTop: 10 }}>
+          <input className="pwd-club-input" placeholder="備註 (可留空, 例: 回鄉)" value={llNote} onChange={(e) => setLlNote(e.target.value)} />
+        </div>
+        <button className="pwd-la-confirm" style={{ marginTop: 12, width: '100%' }} disabled={!llStart || !llEnd} onClick={addLongLeave}>
+          ＋ 為 {staff.name} 提交長假申請
+        </button>
+        <div className="pwd-larec" style={{ marginTop: 14 }}>
+          {llReqs.filter(r => r.staffId == sel).map((r) => (
+            <div key={r.id} className="pwd-larec-row">
+              <span className={'pwd-larec-type t-' + r.type}>{r.type}</span>
+              <span className="pwd-larec-date">{fmtDate(r.start)} – {fmtDate(r.end)}</span>
+              <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'}</span>
+            </div>
+          ))}
+          {llReqs.filter(r => r.staffId == sel).length === 0 && <div className="pwd-ph-empty">未有長假申請</div>}
         </div>
       </div>
       <div className="pwd-card pwd-block">
@@ -2234,11 +2303,63 @@ function OwnerTrialSummary({ slots, bookings, done }) {
     </div>
   );
 }
+// ── 長假申請批核（2026-09-08 老闆要求：店長喺「請假假期」代員工提交，呢度批）──
+function OwnerLongLeave({ mgrData }) {
+  const nameOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.name : id; };
+  const initOf = (id) => { const s = mgrData.staffList.find(x => x.id == id); return s ? s.initial : '?'; };
+  const fmtD = (iso) => { const p = (iso || '').split('-'); return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso; };
+  const [reqs, setReqs] = useState(() => (mgrData.allLongLeave || []).map(r => ({ ...r })));
+  async function act(id, status) {
+    const prev = reqs.find(r => r.id === id);
+    setReqs(rs => rs.map(r => r.id === id ? { ...r, status } : r));
+    await pwWrite('longLeaveApprove', { reqId: id, status },
+      () => setReqs(rs => rs.map(r => r.id === id ? { ...r, status: prev ? prev.status : 'pending' } : r)));
+  }
+  const pending = reqs.filter(r => r.status === 'pending');
+  const done = reqs.filter(r => r.status !== 'pending');
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">長假申請批核 ({pending.length})</div>
+      {pending.length === 0 ? <div className="pwd-ph-empty" style={{ marginTop: 12 }}>沒有待批核的長假申請</div> : (
+        <div className="pwd-mgr-swaps">
+          {pending.map(r => (
+            <div key={r.id} className="pwd-mgr-swap">
+              <div className="pwd-mgr-swap-top">
+                <span className="pwd-mgr-swap-ava">{initOf(r.staffId)}</span>
+                <div className="pwd-mgr-swap-info">
+                  <b>{nameOf(r.staffId)} · {r.type}</b>
+                  <span>{fmtD(r.start)} – {fmtD(r.end)}{r.note ? ' · ' + r.note : ''}</span>
+                </div>
+              </div>
+              <div className="pwd-mgr-swap-acts">
+                <button className="pwd-btn-reject" onClick={() => act(r.id, 'rejected')}>拒絕</button>
+                <button className="pwd-btn-approve" onClick={() => act(r.id, 'approved')}>批准</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {done.length > 0 && (
+        <div className="pwd-mgr-swaps" style={{ marginTop: 14 }}>
+          {done.map(r => (
+            <div key={r.id} className="pwd-mgr-swap done">
+              <span className="pwd-mgr-swap-ava">{initOf(r.staffId)}</span>
+              <div className="pwd-mgr-swap-info"><b>{nameOf(r.staffId)} · {r.type}</b><span>{fmtD(r.start)} – {fmtD(r.end)}</span></div>
+              <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : '已拒絕'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OwnerOverview({ dash, mgrUnlocked, mgrData, onUnlock }) {
   if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="老闆總覽 · 需要老闆密碼" sub="請輸入老闆密碼" onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
   return (
     <>
+      <OwnerLongLeave mgrData={mgrData} />
       <OwnerDeptRevenue team={mgrData.team} />
       <OwnerCommissionTable mgrData={mgrData} />
       <OwnerTrialSummary slots={dash.trialSlots} bookings={dash.trialBookings} done={dash.trialDone} />
@@ -2714,7 +2835,7 @@ function CommissionApp() {
         )}
         {tab === 'duty' && (
           <DutyRoster staff={staff} weeks={dash.weeks} currentWeekIdx={dash.currentWeekIdx} todayDow={dash.todayDow}
-            leave={dash.leave} leaveRecords={dash.leaveRecords} coworkers={dash.coworkers} onSwap={submitSwap} />
+            leave={dash.leave} leaveRecords={dash.leaveRecords} longLeave={dash.longLeave} coworkers={dash.coworkers} onSwap={submitSwap} />
         )}
         {tab === 'mgr' && (
           <ManagerPanel key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}
