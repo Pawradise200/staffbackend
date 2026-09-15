@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-08c';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-09-16a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -723,7 +723,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
       <div className="pwd-tr-head">
         <div>
           <div className="pwd-eyebrow">試堂登記</div>
-          <div className="pwd-tr-sub">一日體驗 · 每個幼稚園日 2 個位</div>
+          <div className="pwd-tr-sub">一日體驗 · 名額以下方卡片為準</div>
         </div>
         <div className="pwd-club-earned">未來仲有<b>{totalLeft}</b></div>
       </div>

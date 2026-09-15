@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-08c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-09-16a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1516,7 +1516,7 @@ function TrialCard({
     className: "pwd-eyebrow"
   }, "\u8A66\u5802\u767B\u8A18"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-sub"
-  }, "\u4E00\u65E5\u9AD4\u9A57 \xB7 \u6BCF\u500B\u5E7C\u7A1A\u5712\u65E5 2 \u500B\u4F4D")), /*#__PURE__*/React.createElement("div", {
+  }, "\u4E00\u65E5\u9AD4\u9A57 \xB7 \u540D\u984D\u4EE5\u4E0B\u65B9\u5361\u7247\u70BA\u6E96")), /*#__PURE__*/React.createElement("div", {
     className: "pwd-club-earned"
   }, "\u672A\u4F86\u4EF2\u6709", /*#__PURE__*/React.createElement("b", null, totalLeft))), list.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
