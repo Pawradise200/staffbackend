@@ -956,7 +956,7 @@ function ClubCard({ staff, noms, month, bonus, onSubmit }) {
 }
 
 // ═══════════ CommissionHistory ═══════════
-function CommissionHistory({ history, current, monthLabel }) {
+function CommissionHistory({ history, current, monthLabel, isMktg }) {
   const data = [...history, { m: monthLabel, v: Math.round(current), now: true }];
   let run = 0;
   const pts = data.map(d => { run += d.v; return { m: d.m, cum: run, now: d.now }; });
@@ -971,7 +971,7 @@ function CommissionHistory({ history, current, monthLabel }) {
   const last = pts[pts.length - 1];
   return (
     <div className="pwd-card pwd-block">
-      <div className="pwd-eyebrow">本年累計佣金</div>
+      <div className="pwd-eyebrow">本年累計{isMktg ? '表現獎金' : '佣金'}</div>
       <div className="pwd-hist-cum">
         <span className="pwd-hist-cum-num"><span className="cur">HK$</span>{moneyPlain(cumulative)}</span>
         <span className="pwd-hist-cum-sub">2026 年至今 · 平均每月 {money(avg)}</span>
@@ -1071,7 +1071,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
       {!isMktg && <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} done={trialDone}
         onBook={onTrialBook} onCancel={onTrialCancel} />}
       {!isMktg && <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />}
-      <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
+      <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} isMktg={isMktg} />
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由{isMktg ? '管理層' : '店長'}評核</span></div>
       <KpiCard role={kpiRoleOf(staff)} items={items} score={score} kpi={kpi} editable={false} />
       {/* [2026-09-21] 兩條否決條款對內容與流量部都唔適用,所以成張卡唔 render——
@@ -1083,7 +1083,10 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         <div className="pwd-eyebrow">計算 → KPI → 實際領取</div>
         <PayoutLedger calc={calc} kpi={kpi} isMktg={isMktg} />
       </div>
-      <RateTable role={staff.role} dept={staff.dept} />
+      {/* [2026-09-21 老闆定] 內容與流量部唔 render 佣金率參考表——
+          嗰張表講嘅係酒店池／學院新生／續報等其他部門嘅佣金率，同佢完全無關;
+          佢嘅「分數 → 發放幾多」上面 MarketingGoal 階梯卡已經講得好清楚。 */}
+      {!isMktg && <RateTable role={staff.role} dept={staff.dept} />}
     </>
   );
 }
@@ -2955,7 +2958,9 @@ function CommissionApp() {
         )}
         {tab === 'pay' && !isOwner && (
           <>
-            {staff.role !== 'frontdesk' && (
+            {/* [2026-09-21] marketing 一併排除：呢行印緊學院部新生／續報數字,
+                同內容與流量部完全無關(同清潔檢查、佣金率參考表同一道理)。 */}
+            {staff.role !== 'frontdesk' && kpiRoleOf(staff) !== 'marketing' && (
               <div className="pwd-readout">
                 <span className="pwd-readout-tag">本月實際</span>
                 {isManager
@@ -2968,7 +2973,8 @@ function CommissionApp() {
               trialSlots={dash.trialSlots} trialBookings={dash.trialBookings} trialDone={dash.trialDone}
               month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
               onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
-            <CleanCheckSummary />
+            {/* [2026-09-21 老闆定] 清潔突擊檢查唔關內容與流量部事 */}
+            {kpiRoleOf(staff) !== 'marketing' && <CleanCheckSummary />}
             <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt} · {APP_VERSION}</div>
           </>
         )}

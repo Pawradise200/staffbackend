@@ -1869,7 +1869,8 @@ function ClubCard({
 function CommissionHistory({
   history,
   current,
-  monthLabel
+  monthLabel,
+  isMktg
 }) {
   const data = [...history, {
     m: monthLabel,
@@ -1902,7 +1903,7 @@ function CommissionHistory({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u672C\u5E74\u7D2F\u8A08\u4F63\u91D1"), /*#__PURE__*/React.createElement("div", {
+  }, "\u672C\u5E74\u7D2F\u8A08", isMktg ? '表現獎金' : '佣金'), /*#__PURE__*/React.createElement("div", {
     className: "pwd-hist-cum"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-hist-cum-num"
@@ -2118,7 +2119,8 @@ function IndividualView({
   }), /*#__PURE__*/React.createElement(CommissionHistory, {
     history: history,
     current: actualTotal,
-    monthLabel: monthLabel
+    monthLabel: monthLabel,
+    isMktg: isMktg
   }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-kpi-divider"
   }, /*#__PURE__*/React.createElement("span", null, "KPI \u7D50\u7B97 \xB7 \u6708\u5E95\u7531", isMktg ? '管理層' : '店長', "\u8A55\u6838")), /*#__PURE__*/React.createElement(KpiCard, {
@@ -2138,7 +2140,7 @@ function IndividualView({
     calc: calc,
     kpi: kpi,
     isMktg: isMktg
-  })), /*#__PURE__*/React.createElement(RateTable, {
+  })), !isMktg && /*#__PURE__*/React.createElement(RateTable, {
     role: staff.role,
     dept: staff.dept
   }));
@@ -5353,7 +5355,7 @@ function CommissionApp() {
   }, monthOptions().map(m => /*#__PURE__*/React.createElement("option", {
     key: m,
     value: m
-  }, monthLabelFull(m), m === currentMonth() ? ' · 本月' : '')))), tab === 'pay' && !isOwner && /*#__PURE__*/React.createElement(React.Fragment, null, staff.role !== 'frontdesk' && /*#__PURE__*/React.createElement("div", {
+  }, monthLabelFull(m), m === currentMonth() ? ' · 本月' : '')))), tab === 'pay' && !isOwner && /*#__PURE__*/React.createElement(React.Fragment, null, staff.role !== 'frontdesk' && kpiRoleOf(staff) !== 'marketing' && /*#__PURE__*/React.createElement("div", {
     className: "pwd-readout"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-readout-tag"
@@ -5375,7 +5377,7 @@ function CommissionApp() {
     onClubSubmit: submitClub,
     onTrialBook: submitTrial,
     onTrialCancel: cancelTrial
-  }), /*#__PURE__*/React.createElement(CleanCheckSummary, null), /*#__PURE__*/React.createElement("div", {
+  }), kpiRoleOf(staff) !== 'marketing' && /*#__PURE__*/React.createElement(CleanCheckSummary, null), /*#__PURE__*/React.createElement("div", {
     className: "pwd-foot"
   }, "\u4F63\u91D1\u70BA\u9810\u4F30\u503C,\u5BE6\u969B\u4EE5\u6708\u7D50\u516C\u4F48\u70BA\u6E96 \xB7 \u66F4\u65B0 ", team.updatedAt, " \xB7 ", APP_VERSION)), tab === 'duty' && /*#__PURE__*/React.createElement(DutyRoster, {
     staff: staff,
