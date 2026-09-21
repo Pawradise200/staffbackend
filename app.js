@@ -4545,12 +4545,59 @@ function OwnerLongLeave({
     className: 'pwd-mgr-swap-status ' + r.status
   }, r.status === 'approved' ? '已批准' : '已拒絕')))));
 }
+
+// [2026-09-21 老闆要求] 老闆總覽加評核入口：直接評核店長同內容與流量部，
+//   唔使再借店長部機入「店長後台 → 老闆評核」。呢度個老闆密碼閘已經行咗（見下面
+//   mgrUnlocked），所以唔會再問多次密碼。
+//   只用現有 class（pwd-mgr-nav / pwd-mgr-navbtn / pwd-mgrgoal-foot），冇新增 CSS。
+function OwnerKpiEntry({
+  month,
+  mgrData,
+  onPick
+}) {
+  const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
+  if (!targets.length) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "KPI \u8A55\u6838 \xB7 \u5E97\u9577\u8207\u5167\u5BB9\u53CA\u5E02\u5834\u63A8\u5EE3\u5C08\u54E1"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-nav"
+  }, targets.map(t => {
+    const k0 = mgrData.allKpi[t.id] || {
+      kpiFail: [],
+      lateLeave: 0
+    };
+    const att = mgrData.allAttendance && mgrData.allAttendance[t.id] != null ? mgrData.allAttendance[t.id] : 0;
+    const items = buildScorecard(kpiRoleOf(t), k0.kpiFail);
+    const {
+      kpi
+    } = fullResult({
+      ...t,
+      attendance: att,
+      kpiFail: k0.kpiFail,
+      lateLeave: k0.lateLeave || 0
+    }, mgrData.team, {
+      scorecard: items,
+      lateLeave: k0.lateLeave || 0
+    });
+    return /*#__PURE__*/React.createElement("button", {
+      key: t.id,
+      className: "pwd-mgr-navbtn",
+      onClick: () => onPick(t.id)
+    }, t.name, " \xB7 ", scorecardTotal(items), " \u5206 \xB7 ", Math.round(kpi.ratio * 100), "%");
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot"
+  }, "\u6309\u54E1\u5DE5\u9032\u5165\u8A55\u6838\u3002\u6B64\u5169\u500B\u5D17\u4F4D\u7684 KPI \u53EA\u7531\u7BA1\u7406\u5C64\u8A55\u6838\uFF0C\u5E97\u9577\u5F8C\u53F0\u770B\u4E0D\u5230\u3002"));
+}
 function OwnerOverview({
+  month,
   dash,
   mgrUnlocked,
   mgrData,
   onUnlock
 }) {
+  const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
     action: "verifyOwner",
     title: "\u8001\u95C6\u7E3D\u89BD \xB7 \u9700\u8981\u8001\u95C6\u5BC6\u78BC",
@@ -4571,7 +4618,30 @@ function OwnerOverview({
       color: 'var(--pw-ink-mute)'
     }
   }, "\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u2026"));
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerLongLeave, {
+  const person = evalId != null ? mgrData.staffList.find(s => s.id == evalId) : null;
+  if (person) {
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      className: "pwd-mgr-nav"
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "pwd-mgr-navbtn on",
+      onClick: () => setEvalId(null)
+    }, "\u2039 \u8FD4\u56DE\u8001\u95C6\u7E3D\u89BD")), /*#__PURE__*/React.createElement(OwnerKpiEditor, {
+      key: person.id,
+      month: month,
+      mgrData: mgrData,
+      person: person
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "pwd-mgrgoal-foot",
+      style: {
+        marginTop: 10
+      }
+    }, "\u5132\u5B58\u5F8C\u8FD4\u56DE\u7E3D\u89BD\uFF0C\u6578\u5B57\u6703\u5728\u4E0B\u6B21\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u6642\u66F4\u65B0\u3002"));
+  }
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerKpiEntry, {
+    month: month,
+    mgrData: mgrData,
+    onPick: setEvalId
+  }), /*#__PURE__*/React.createElement(OwnerLongLeave, {
     mgrData: mgrData
   }), /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
     team: mgrData.team
@@ -5331,6 +5401,7 @@ function CommissionApp() {
       PW_KEY = '';
     }
   }), tab === 'owner' && /*#__PURE__*/React.createElement(OwnerOverview, {
+    month: month,
     dash: dash,
     mgrUnlocked: mgrUnlocked,
     mgrData: mgrData,

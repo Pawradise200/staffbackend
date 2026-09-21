@@ -2453,11 +2453,51 @@ function OwnerLongLeave({ mgrData }) {
   );
 }
 
-function OwnerOverview({ dash, mgrUnlocked, mgrData, onUnlock }) {
+// [2026-09-21 老闆要求] 老闆總覽加評核入口：直接評核店長同內容與流量部，
+//   唔使再借店長部機入「店長後台 → 老闆評核」。呢度個老闆密碼閘已經行咗（見下面
+//   mgrUnlocked），所以唔會再問多次密碼。
+//   只用現有 class（pwd-mgr-nav / pwd-mgr-navbtn / pwd-mgrgoal-foot），冇新增 CSS。
+function OwnerKpiEntry({ month, mgrData, onPick }) {
+  const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
+  if (!targets.length) return null;
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">KPI 評核 · 店長與內容及市場推廣專員</div>
+      <div className="pwd-mgr-nav">
+        {targets.map(t => {
+          const k0 = mgrData.allKpi[t.id] || { kpiFail: [], lateLeave: 0 };
+          const att = (mgrData.allAttendance && mgrData.allAttendance[t.id] != null) ? mgrData.allAttendance[t.id] : 0;
+          const items = buildScorecard(kpiRoleOf(t), k0.kpiFail);
+          const { kpi } = fullResult({ ...t, attendance: att, kpiFail: k0.kpiFail, lateLeave: k0.lateLeave || 0 },
+            mgrData.team, { scorecard: items, lateLeave: k0.lateLeave || 0 });
+          return (
+            <button key={t.id} className="pwd-mgr-navbtn" onClick={() => onPick(t.id)}>
+              {t.name} · {scorecardTotal(items)} 分 · {Math.round(kpi.ratio * 100)}%
+            </button>
+          );
+        })}
+      </div>
+      <div className="pwd-mgrgoal-foot">按員工進入評核。此兩個崗位的 KPI 只由管理層評核，店長後台看不到。</div>
+    </div>
+  );
+}
+function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock }) {
+  const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="老闆總覽 · 需要老闆密碼" sub="請輸入老闆密碼" onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
+  const person = evalId != null ? mgrData.staffList.find(s => s.id == evalId) : null;
+  if (person) {
+    return (
+      <>
+        <div className="pwd-mgr-nav"><button className="pwd-mgr-navbtn on" onClick={() => setEvalId(null)}>‹ 返回老闆總覽</button></div>
+        <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} />
+        <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>儲存後返回總覽，數字會在下次載入管理數據時更新。</div>
+      </>
+    );
+  }
   return (
     <>
+      <OwnerKpiEntry month={month} mgrData={mgrData} onPick={setEvalId} />
       <OwnerLongLeave mgrData={mgrData} />
       <OwnerDeptRevenue team={mgrData.team} />
       <OwnerCommissionTable mgrData={mgrData} />
@@ -2942,7 +2982,7 @@ function CommissionApp() {
             onUnlock={unlockMgr} onLock={() => { setMgrUnlocked(false); localStorage.removeItem('pw_mgr_key'); PW_KEY = ''; }} />
         )}
         {tab === 'owner' && (
-          <OwnerOverview dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />
+          <OwnerOverview month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />
         )}
         {tab === 'seats' && (
           <SeatsPanel staffId={staff.id} />
