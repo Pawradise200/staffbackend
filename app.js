@@ -2193,7 +2193,7 @@ function DutyRoster({
     if (r && r.ok) {
       setLlMsg({
         ok: true,
-        text: '已提交，等候老闆批核。批准後會自動記入你的請假記錄。'
+        text: '已提交，等候管理層批核。批准後會自動記入你的請假記錄。'
       });
       setLlStart('');
       setLlEnd('');
@@ -2415,7 +2415,7 @@ function DutyRoster({
       setLlOpen(true);
       setLlMsg(null);
     }
-  }, "\uFF0B \u7533\u8ACB\u9577\u5047\uFF08\u4EA4\u8001\u95C6\u6279\u6838\uFF09"), llOpen && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "\uFF0B \u7533\u8ACB\u9577\u5047\uFF08\u4EA4\u7BA1\u7406\u5C64\u6279\u6838\uFF09"), llOpen && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
   }, "\u7533\u8ACB\u9577\u5047"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-la-types",
@@ -2459,7 +2459,7 @@ function DutyRoster({
     style: {
       marginTop: 10
     }
-  }, "\u63D0\u4EA4\u524D\u8ACB\u5148\u8207\u5E97\u9577\u78BA\u8A8D\u8A72\u6BB5\u65E5\u5B50\u7684\u4EBA\u624B\u5B89\u6392\u3002\u63D0\u4EA4\u5F8C\u7531\u8001\u95C6\u6279\u6838\uFF0C\u986F\u793A\u300C\u5DF2\u6279\u51C6\u300D\u624D\u7B97\u6210\u529F\u3002"), /*#__PURE__*/React.createElement("div", {
+  }, "\u63D0\u4EA4\u524D\u8ACB\u5148\u8207\u5E97\u9577\u78BA\u8A8D\u8A72\u6BB5\u65E5\u5B50\u7684\u4EBA\u624B\u5B89\u6392\u3002\u63D0\u4EA4\u5F8C\u7531\u7BA1\u7406\u5C64\u6279\u6838\uFF0C\u986F\u793A\u300C\u5DF2\u6279\u51C6\u300D\u624D\u7B97\u6210\u529F\u3002"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-club-frow",
     style: {
       marginTop: 10
@@ -2510,7 +2510,7 @@ function DutyRoster({
       className: "pwd-larec-date"
     }, f(r.start), " \u2013 ", f(r.end)), /*#__PURE__*/React.createElement("span", {
       className: 'pwd-mgr-swap-status ' + r.status
-    }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'));
+    }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待管理層批核'));
   })))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2577,7 +2577,7 @@ const MGR_AREAS = [{
   label: '清潔檢查'
 }, {
   key: 'ownerkpi',
-  label: '老闆評核 🔑'
+  label: '管理層評核 🔑'
 }];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
@@ -3497,7 +3497,7 @@ function MgrLeave({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u9577\u5047\u7533\u8ACB (\u4EA4\u8001\u95C6\u6279\u6838)"), /*#__PURE__*/React.createElement("div", {
+  }, "\u9577\u5047\u7533\u8ACB (\u4EA4\u7BA1\u7406\u5C64\u6279\u6838)"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-la-types",
     style: {
       marginTop: 12
@@ -3556,7 +3556,7 @@ function MgrLeave({
     className: "pwd-larec-date"
   }, fmtDate(r.start), " \u2013 ", fmtDate(r.end)), /*#__PURE__*/React.createElement("span", {
     className: 'pwd-mgr-swap-status ' + r.status
-  }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'))), llReqs.filter(r => r.staffId == sel).length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待管理層批核'))), llReqs.filter(r => r.staffId == sel).length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty"
   }, "\u672A\u6709\u9577\u5047\u7533\u8ACB"))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
@@ -3909,7 +3909,7 @@ function ManagerGate({
   onUnlock,
   action = 'verifyMgr',
   title = '團隊管理 · 需要管理密碼',
-  sub = '高敏感操作 · 請輸入只有店長 / 老闆知道的管理密碼'
+  sub = '高敏感操作 · 請輸入只有店長／管理層知道的管理密碼'
 }) {
   const [pin, setPin] = useState('');
   const [err, setErr] = useState(false);
@@ -4343,7 +4343,7 @@ function OwnerKpiEditor({
     className: "pwd-mgr-banner"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-mgr-banner-ico"
-  }, "\uD83D\uDD11"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u8001\u95C6\u8A55\u6838"), /*#__PURE__*/React.createElement("span", null, person.name, " \xB7 ", roleKpi(role).label))), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD11"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u7BA1\u7406\u5C64\u8A55\u6838"), /*#__PURE__*/React.createElement("span", null, person.name, " \xB7 ", roleKpi(role).label))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-kpi-head"
@@ -4411,11 +4411,11 @@ function MgrOwnerKpi({
     style: {
       marginTop: 20
     }
-  }, "\u672A\u6709\u9700\u8981\u8001\u95C6\u8A55\u6838\u7684\u54E1\u5DE5");
+  }, "\u672A\u6709\u9700\u8981\u7BA1\u7406\u5C64\u8A55\u6838\u7684\u54E1\u5DE5");
   if (!unlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
     action: "verifyOwner",
-    title: "\u8001\u95C6\u8A55\u6838 \xB7 \u9700\u8981\u8001\u95C6\u5BC6\u78BC",
-    sub: "\u5E97\u9577\u53CA\u5167\u5BB9\u8207\u6D41\u91CF\u90E8 KPI \u53EA\u53EF\u7531\u8001\u95C6\u8A55\u6838 \xB7 \u8ACB\u8F38\u5165\u8001\u95C6\u5BC6\u78BC",
+    title: "\u7BA1\u7406\u5C64\u8A55\u6838 \xB7 \u9700\u8981\u7BA1\u7406\u5C64\u5BC6\u78BC",
+    sub: "\u5E97\u9577\u53CA\u5167\u5BB9\u8207\u6D41\u91CF\u90E8 KPI \u53EA\u53EF\u7531\u7BA1\u7406\u5C64\u8A55\u6838 \xB7 \u8ACB\u8F38\u5165\u7BA1\u7406\u5C64\u5BC6\u78BC",
     onUnlock: () => setUnlocked(true)
   });
   const person = targets.find(s => s.id == sel) || targets[0];
@@ -4738,8 +4738,8 @@ function OwnerOverview({
   const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
     action: "verifyOwner",
-    title: "\u8001\u95C6\u7E3D\u89BD \xB7 \u9700\u8981\u8001\u95C6\u5BC6\u78BC",
-    sub: "\u8ACB\u8F38\u5165\u8001\u95C6\u5BC6\u78BC",
+    title: "\u7BA1\u7406\u5C64\u7E3D\u89BD \xB7 \u9700\u8981\u7BA1\u7406\u5C64\u5BC6\u78BC",
+    sub: "\u8ACB\u8F38\u5165\u7BA1\u7406\u5C64\u5BC6\u78BC",
     onUnlock: onUnlock
   });
   if (!mgrData) return /*#__PURE__*/React.createElement("div", {
@@ -4763,7 +4763,7 @@ function OwnerOverview({
     }, /*#__PURE__*/React.createElement("button", {
       className: "pwd-mgr-navbtn on",
       onClick: () => setEvalId(null)
-    }, "\u2039 \u8FD4\u56DE\u8001\u95C6\u7E3D\u89BD")), /*#__PURE__*/React.createElement(OwnerKpiEditor, {
+    }, "\u2039 \u8FD4\u56DE\u7BA1\u7406\u5C64\u7E3D\u89BD")), /*#__PURE__*/React.createElement(OwnerKpiEditor, {
       key: person.id,
       month: month,
       mgrData: mgrData,
@@ -5170,7 +5170,7 @@ function ManagerPanel({
     className: "pwd-mgr-banner"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-mgr-banner-ico"
-  }, "\uD83D\uDEE0"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u5718\u968A\u7BA1\u7406"), /*#__PURE__*/React.createElement("span", null, "\u5E97\u9577\u5C08\u7528 \xB7 \u4F60\u7684 KPI \u7531\u8001\u95C6\u8A55\u6838")), /*#__PURE__*/React.createElement("button", {
+  }, "\uD83D\uDEE0"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u5718\u968A\u7BA1\u7406"), /*#__PURE__*/React.createElement("span", null, "\u5E97\u9577\u5C08\u7528 \xB7 \u4F60\u7684 KPI \u7531\u7BA1\u7406\u5C64\u8A55\u6838")), /*#__PURE__*/React.createElement("button", {
     className: "pwd-mgr-lock",
     onClick: onLock
   }, "\uD83D\uDD12 \u9396\u5B9A")), /*#__PURE__*/React.createElement(MgrCleanReminder, null), /*#__PURE__*/React.createElement("div", {
@@ -5597,7 +5597,7 @@ function CommissionApp() {
     onClick: () => setTab('owner')
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tabbtn-ico"
-  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("span", null, "\u8001\u95C6\u7E3D\u89BD"))));
+  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("span", null, "\u7BA1\u7406\u5C64\u7E3D\u89BD"))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement("div", {
   className: "pwd-app"

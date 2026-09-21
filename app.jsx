@@ -1113,7 +1113,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
     const r = await onLongLeave({ start: llStart, end: llEnd, type: llType, note: llNote });
     setLlBusy(false);
     if (r && r.ok) {
-      setLlMsg({ ok: true, text: '已提交，等候老闆批核。批准後會自動記入你的請假記錄。' });
+      setLlMsg({ ok: true, text: '已提交，等候管理層批核。批准後會自動記入你的請假記錄。' });
       setLlStart(''); setLlEnd(''); setLlNote(''); setLlOpen(false);
     } else {
       setLlMsg({ ok: false, text: (r && r.error) ? r.error : '提交失敗，請再試一次' });
@@ -1271,7 +1271,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
         ) : <div className="pwd-ph-empty" style={{ marginTop: 12 }}>本月暫無請假記錄</div>}
         {/* [2026-09-21 老闆定] 員工自助提交長假申請（年假／病假／事假；例假由店長排更直接編，不走此流程）*/}
         <div style={{ marginTop: 14 }}>
-          {!llOpen && <button className="pwd-la-confirm" style={{ width: '100%' }} onClick={() => { setLlOpen(true); setLlMsg(null); }}>＋ 申請長假（交老闆批核）</button>}
+          {!llOpen && <button className="pwd-la-confirm" style={{ width: '100%' }} onClick={() => { setLlOpen(true); setLlMsg(null); }}>＋ 申請長假（交管理層批核）</button>}
           {llOpen && (
             <div>
               <div className="pwd-eyebrow">申請長假</div>
@@ -1291,7 +1291,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
               <div className="pwd-club-frow" style={{ marginTop: 10 }}>
                 <input className="pwd-club-input" placeholder="備註（可留空，例：回鄉）" value={llNote} onChange={(e) => setLlNote(e.target.value)} />
               </div>
-              <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>提交前請先與店長確認該段日子的人手安排。提交後由老闆批核，顯示「已批准」才算成功。</div>
+              <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>提交前請先與店長確認該段日子的人手安排。提交後由管理層批核，顯示「已批准」才算成功。</div>
               <div className="pwd-club-frow" style={{ marginTop: 10 }}>
                 <button className="pwd-swap-cancel" style={{ flex: 1 }} onClick={() => { setLlOpen(false); setLlMsg(null); }}>取消</button>
                 <button className="pwd-la-confirm" style={{ flex: 2 }} disabled={!llStart || !llEnd || llBusy} onClick={sendLongLeave}>{llBusy ? '提交中…' : '提交申請'}</button>
@@ -1311,7 +1311,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
                   <div key={r.id} className="pwd-larec-row">
                     <span className={'pwd-larec-type t-' + r.type}>{r.type}</span>
                     <span className="pwd-larec-date">{f(r.start)} – {f(r.end)}</span>
-                    <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'}</span>
+                    <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待管理層批核'}</span>
                   </div>
                 );
               })}
@@ -1353,7 +1353,7 @@ const MGR_AREAS = [
   { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
   { key: 'clean', label: '清潔檢查' },
-  { key: 'ownerkpi', label: '老闆評核 🔑' },
+  { key: 'ownerkpi', label: '管理層評核 🔑' },
 ];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
@@ -1828,7 +1828,7 @@ function MgrLeave({ month, mgrData }) {
         </div>
       </div>
       <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">長假申請 (交老闆批核)</div>
+        <div className="pwd-eyebrow">長假申請 (交管理層批核)</div>
         {/* [2026-09-08 老闆定] 長假類別只設 年假/病假/事假——例假由店長排更時自己編，唔行申請批核 */}
         <div className="pwd-la-types" style={{ marginTop: 12 }}>
           {['年假', '病假', '事假'].map(t => (
@@ -1854,7 +1854,7 @@ function MgrLeave({ month, mgrData }) {
             <div key={r.id} className="pwd-larec-row">
               <span className={'pwd-larec-type t-' + r.type}>{r.type}</span>
               <span className="pwd-larec-date">{fmtDate(r.start)} – {fmtDate(r.end)}</span>
-              <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待老闆批核'}</span>
+              <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待管理層批核'}</span>
             </div>
           ))}
           {llReqs.filter(r => r.staffId == sel).length === 0 && <div className="pwd-ph-empty">未有長假申請</div>}
@@ -2073,7 +2073,7 @@ function MgrClub({ mgrData }) {
 }
 
 // ── ManagerGate ──
-function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 需要管理密碼', sub = '高敏感操作 · 請輸入只有店長 / 老闆知道的管理密碼' }) {
+function ManagerGate({ onUnlock, action = 'verifyMgr', title = '團隊管理 · 需要管理密碼', sub = '高敏感操作 · 請輸入只有店長／管理層知道的管理密碼' }) {
   const [pin, setPin] = useState('');
   const [err, setErr] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -2302,7 +2302,7 @@ function OwnerKpiEditor({ month, mgrData, person }) {
   function save() { return pwApi('saveKpi', { month, staffId: person.id, lateLeave, kpiFail: fail.join(',') }); }
   return (
     <div className="pwd-mgr-stack">
-      <div className="pwd-mgr-banner"><span className="pwd-mgr-banner-ico">🔑</span><div><b>老闆評核</b><span>{person.name} · {roleKpi(role).label}</span></div></div>
+      <div className="pwd-mgr-banner"><span className="pwd-mgr-banner-ico">🔑</span><div><b>管理層評核</b><span>{person.name} · {roleKpi(role).label}</span></div></div>
       <div className="pwd-card pwd-block">
         <div className="pwd-kpi-head">
           <div>
@@ -2345,8 +2345,8 @@ function MgrOwnerKpi({ month, mgrData }) {
   const [unlocked, setUnlocked] = useState(false);
   const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
   const [sel, setSel] = useState(targets[0] ? targets[0].id : null);
-  if (!targets.length) return <div className="pwd-ph-empty" style={{ marginTop: 20 }}>未有需要老闆評核的員工</div>;
-  if (!unlocked) return <ManagerGate action="verifyOwner" title="老闆評核 · 需要老闆密碼" sub="店長及內容與流量部 KPI 只可由老闆評核 · 請輸入老闆密碼" onUnlock={() => setUnlocked(true)} />;
+  if (!targets.length) return <div className="pwd-ph-empty" style={{ marginTop: 20 }}>未有需要管理層評核的員工</div>;
+  if (!unlocked) return <ManagerGate action="verifyOwner" title="管理層評核 · 需要管理層密碼" sub="店長及內容與流量部 KPI 只可由管理層評核 · 請輸入管理層密碼" onUnlock={() => setUnlocked(true)} />;
   const person = targets.find(s => s.id == sel) || targets[0];
   return (
     <>
@@ -2550,13 +2550,13 @@ function OwnerKpiEntry({ month, mgrData, onPick }) {
 }
 function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock }) {
   const [evalId, setEvalId] = useState(null);
-  if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="老闆總覽 · 需要老闆密碼" sub="請輸入老闆密碼" onUnlock={onUnlock} />;
+  if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="管理層總覽 · 需要管理層密碼" sub="請輸入管理層密碼" onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
   const person = evalId != null ? mgrData.staffList.find(s => s.id == evalId) : null;
   if (person) {
     return (
       <>
-        <div className="pwd-mgr-nav"><button className="pwd-mgr-navbtn on" onClick={() => setEvalId(null)}>‹ 返回老闆總覽</button></div>
+        <div className="pwd-mgr-nav"><button className="pwd-mgr-navbtn on" onClick={() => setEvalId(null)}>‹ 返回管理層總覽</button></div>
         <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} />
         <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>儲存後返回總覽，數字會在下次載入管理數據時更新。</div>
       </>
@@ -2850,7 +2850,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
     <>
       <div className="pwd-mgr-banner">
         <span className="pwd-mgr-banner-ico">🛠</span>
-        <div><b>團隊管理</b><span>店長專用 · 你的 KPI 由老闆評核</span></div>
+        <div><b>團隊管理</b><span>店長專用 · 你的 KPI 由管理層評核</span></div>
         <button className="pwd-mgr-lock" onClick={onLock}>🔒 鎖定</button>
       </div>
       <MgrCleanReminder />
@@ -3085,7 +3085,7 @@ function CommissionApp() {
         )}
         {isOwner && (
           <button className={'pwd-tabbtn' + (tab === 'owner' ? ' on' : '')} onClick={() => setTab('owner')}>
-            <span className="pwd-tabbtn-ico">📊</span><span>老闆總覽</span>
+            <span className="pwd-tabbtn-ico">📊</span><span>管理層總覽</span>
           </button>
         )}
       </div>
