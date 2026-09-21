@@ -1092,11 +1092,33 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
 }
 
 // ═══════════ DutyRoster ═══════════
-function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, longLeave, coworkers, onSwap }) {
+function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, longLeave, coworkers, onSwap, onLongLeave }) {
   const [weekIndex, setWeekIndex] = useState(currentWeekIdx);
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapDone, setSwapDone] = useState(null);
   const [busy, setBusy] = useState(false);
+  // [2026-09-21 老闆定 方案B] 長假申請改員工自助提交 → 老闆批核。
+  //   擺喺「更表」頁「請假記錄」卡下面,同狀態清單貼埋一齊,交完即刻見到自己嗰單。
+  const [llOpen, setLlOpen] = useState(false);
+  const [llType, setLlType] = useState('年假');
+  const [llStart, setLlStart] = useState('');
+  const [llEnd, setLlEnd] = useState('');
+  const [llNote, setLlNote] = useState('');
+  const [llBusy, setLlBusy] = useState(false);
+  const [llMsg, setLlMsg] = useState(null);
+  async function sendLongLeave() {
+    if (!llStart || !llEnd) return;
+    if (llEnd < llStart) { setLlMsg({ ok: false, text: '結束日期早過開始日期' }); return; }
+    setLlBusy(true); setLlMsg(null);
+    const r = await onLongLeave({ start: llStart, end: llEnd, type: llType, note: llNote });
+    setLlBusy(false);
+    if (r && r.ok) {
+      setLlMsg({ ok: true, text: '已提交，等候老闆批核。批准後會自動記入你的請假記錄。' });
+      setLlStart(''); setLlEnd(''); setLlNote(''); setLlOpen(false);
+    } else {
+      setLlMsg({ ok: false, text: (r && r.error) ? r.error : '提交失敗，請再試一次' });
+    }
+  }
   // [2026-08-25] 全隊一週視角：唔理登入緊邊個員工，都睇到呢一週逐日邊幾多人返工。
   // 按需 lazy fetch（揀「全隊」先叫 action），唔掛入 dashboard 拖慢登入。
   const [view, setView] = useState('mine'); // mine | team
@@ -1247,6 +1269,37 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
             ))}
           </div>
         ) : <div className="pwd-ph-empty" style={{ marginTop: 12 }}>本月暫無請假記錄</div>}
+        {/* [2026-09-21 老闆定] 員工自助提交長假申請（年假／病假／事假；例假由店長排更直接編，不走此流程）*/}
+        <div style={{ marginTop: 14 }}>
+          {!llOpen && <button className="pwd-la-confirm" style={{ width: '100%' }} onClick={() => { setLlOpen(true); setLlMsg(null); }}>＋ 申請長假（交老闆批核）</button>}
+          {llOpen && (
+            <div>
+              <div className="pwd-eyebrow">申請長假</div>
+              <div className="pwd-la-types" style={{ marginTop: 10 }}>
+                {['年假', '病假', '事假'].map(t => (
+                  <button key={t} className={'pwd-la-chip' + (llType === t ? ' on' : '')} onClick={() => setLlType(t)}>{t}</button>
+                ))}
+              </div>
+              <div className="pwd-la-daterow">
+                <span className="pwd-la-datelbl">開始日期</span>
+                <input className="pwd-la-date" type="date" value={llStart} onChange={(e) => setLlStart(e.target.value)} />
+              </div>
+              <div className="pwd-la-daterow">
+                <span className="pwd-la-datelbl">結束日期</span>
+                <input className="pwd-la-date" type="date" value={llEnd} onChange={(e) => setLlEnd(e.target.value)} />
+              </div>
+              <div className="pwd-club-frow" style={{ marginTop: 10 }}>
+                <input className="pwd-club-input" placeholder="備註（可留空，例：回鄉）" value={llNote} onChange={(e) => setLlNote(e.target.value)} />
+              </div>
+              <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>提交前請先與店長確認該段日子的人手安排。提交後由老闆批核，顯示「已批准」才算成功。</div>
+              <div className="pwd-club-frow" style={{ marginTop: 10 }}>
+                <button className="pwd-swap-cancel" style={{ flex: 1 }} onClick={() => { setLlOpen(false); setLlMsg(null); }}>取消</button>
+                <button className="pwd-la-confirm" style={{ flex: 2 }} disabled={!llStart || !llEnd || llBusy} onClick={sendLongLeave}>{llBusy ? '提交中…' : '提交申請'}</button>
+              </div>
+            </div>
+          )}
+          {llMsg && <div className={llMsg.ok ? 'pwd-mgrgoal-foot' : 'pwd-warn'} style={{ marginTop: 10 }}>{llMsg.text}</div>}
+        </div>
         {/* [2026-09-08 老闆定] 員工睇到自己長假申請狀態（唯讀）；冇申請就唔顯示，版面零變化 */}
         {longLeave && longLeave.length > 0 && (
           <div style={{ marginTop: 14 }}>
@@ -2419,6 +2472,12 @@ function OwnerLongLeave({ mgrData }) {
   }
   const pending = reqs.filter(r => r.status === 'pending');
   const done = reqs.filter(r => r.status !== 'pending');
+  // [2026-09-21 系統自首] 撞期警告：批准之前自動答「嗰段日子仲有邊個放緊假」,
+  //   唔好靠店長／老闆記得住。計已批准同其他待批核,唔計自己。
+  const overlapOf = (r) => reqs.filter(o =>
+    o.id !== r.id && o.staffId != r.staffId &&
+    (o.status === 'approved' || o.status === 'pending') &&
+    !(o.start > r.end || o.end < r.start));
   return (
     <div className="pwd-card pwd-block">
       <div className="pwd-eyebrow">長假申請批核 ({pending.length})</div>
@@ -2433,6 +2492,11 @@ function OwnerLongLeave({ mgrData }) {
                   <span>{fmtD(r.start)} – {fmtD(r.end)}{r.note ? ' · ' + r.note : ''}</span>
                 </div>
               </div>
+              {overlapOf(r).length > 0 && (
+                <div className="pwd-warn" style={{ marginTop: 8, marginBottom: 8 }}>
+                  ⚠️ 同期已有長假：{overlapOf(r).map(o => `${nameOf(o.staffId)} ${fmtD(o.start)}–${fmtD(o.end)}${o.status === 'pending' ? '（待批核）' : ''}`).join('、')}
+                </div>
+              )}
               <div className="pwd-mgr-swap-acts">
                 <button className="pwd-btn-reject" onClick={() => act(r.id, 'rejected')}>拒絕</button>
                 <button className="pwd-btn-approve" onClick={() => act(r.id, 'approved')}>批准</button>
@@ -2910,6 +2974,12 @@ function CommissionApp() {
   async function submitSwap({ date, shift }) {
     await pwWrite('swap', { staffId: staff.id, date, shift });
   }
+  // [2026-09-21 方案B] 員工自助提交長假申請。成功即重讀 dashboard,狀態清單即刻見到。
+  async function submitLongLeave({ start, end, type, note }) {
+    const r = await pwApi('longLeaveAdd', { staffId: staff.id, start, end, type, note });
+    if (r && r.ok) await reloadDash();
+    return r;
+  }
   async function unlockMgr() {
     setMgrUnlocked(true);
     try { const res = await pwApi('managerData', { month }); if (res.ok) setMgrData(res); } catch (e) {}
@@ -2980,7 +3050,8 @@ function CommissionApp() {
         )}
         {tab === 'duty' && (
           <DutyRoster staff={staff} weeks={dash.weeks} currentWeekIdx={dash.currentWeekIdx} todayDow={dash.todayDow}
-            leave={dash.leave} leaveRecords={dash.leaveRecords} longLeave={dash.longLeave} coworkers={dash.coworkers} onSwap={submitSwap} />
+            leave={dash.leave} leaveRecords={dash.leaveRecords} longLeave={dash.longLeave} coworkers={dash.coworkers}
+            onSwap={submitSwap} onLongLeave={submitLongLeave} />
         )}
         {tab === 'mgr' && (
           <ManagerPanel key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}

@@ -2156,12 +2156,56 @@ function DutyRoster({
   leaveRecords,
   longLeave,
   coworkers,
-  onSwap
+  onSwap,
+  onLongLeave
 }) {
   const [weekIndex, setWeekIndex] = useState(currentWeekIdx);
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapDone, setSwapDone] = useState(null);
   const [busy, setBusy] = useState(false);
+  // [2026-09-21 老闆定 方案B] 長假申請改員工自助提交 → 老闆批核。
+  //   擺喺「更表」頁「請假記錄」卡下面,同狀態清單貼埋一齊,交完即刻見到自己嗰單。
+  const [llOpen, setLlOpen] = useState(false);
+  const [llType, setLlType] = useState('年假');
+  const [llStart, setLlStart] = useState('');
+  const [llEnd, setLlEnd] = useState('');
+  const [llNote, setLlNote] = useState('');
+  const [llBusy, setLlBusy] = useState(false);
+  const [llMsg, setLlMsg] = useState(null);
+  async function sendLongLeave() {
+    if (!llStart || !llEnd) return;
+    if (llEnd < llStart) {
+      setLlMsg({
+        ok: false,
+        text: '結束日期早過開始日期'
+      });
+      return;
+    }
+    setLlBusy(true);
+    setLlMsg(null);
+    const r = await onLongLeave({
+      start: llStart,
+      end: llEnd,
+      type: llType,
+      note: llNote
+    });
+    setLlBusy(false);
+    if (r && r.ok) {
+      setLlMsg({
+        ok: true,
+        text: '已提交，等候老闆批核。批准後會自動記入你的請假記錄。'
+      });
+      setLlStart('');
+      setLlEnd('');
+      setLlNote('');
+      setLlOpen(false);
+    } else {
+      setLlMsg({
+        ok: false,
+        text: r && r.error ? r.error : '提交失敗，請再試一次'
+      });
+    }
+  }
   // [2026-08-25] 全隊一週視角：唔理登入緊邊個員工，都睇到呢一週逐日邊幾多人返工。
   // 按需 lazy fetch（揀「全隊」先叫 action），唔掛入 dashboard 拖慢登入。
   const [view, setView] = useState('mine'); // mine | team
@@ -2358,7 +2402,90 @@ function DutyRoster({
     style: {
       marginTop: 12
     }
-  }, "\u672C\u6708\u66AB\u7121\u8ACB\u5047\u8A18\u9304"), longLeave && longLeave.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "\u672C\u6708\u66AB\u7121\u8ACB\u5047\u8A18\u9304"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14
+    }
+  }, !llOpen && /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    style: {
+      width: '100%'
+    },
+    onClick: () => {
+      setLlOpen(true);
+      setLlMsg(null);
+    }
+  }, "\uFF0B \u7533\u8ACB\u9577\u5047\uFF08\u4EA4\u8001\u95C6\u6279\u6838\uFF09"), llOpen && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u7533\u8ACB\u9577\u5047"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-types",
+    style: {
+      marginTop: 10
+    }
+  }, ['年假', '病假', '事假'].map(t => /*#__PURE__*/React.createElement("button", {
+    key: t,
+    className: 'pwd-la-chip' + (llType === t ? ' on' : ''),
+    onClick: () => setLlType(t)
+  }, t))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-daterow"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-la-datelbl"
+  }, "\u958B\u59CB\u65E5\u671F"), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-la-date",
+    type: "date",
+    value: llStart,
+    onChange: e => setLlStart(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-daterow"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-la-datelbl"
+  }, "\u7D50\u675F\u65E5\u671F"), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-la-date",
+    type: "date",
+    value: llEnd,
+    onChange: e => setLlEnd(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-frow",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "pwd-club-input",
+    placeholder: "\u5099\u8A3B\uFF08\u53EF\u7559\u7A7A\uFF0C\u4F8B\uFF1A\u56DE\u9109\uFF09",
+    value: llNote,
+    onChange: e => setLlNote(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 10
+    }
+  }, "\u63D0\u4EA4\u524D\u8ACB\u5148\u8207\u5E97\u9577\u78BA\u8A8D\u8A72\u6BB5\u65E5\u5B50\u7684\u4EBA\u624B\u5B89\u6392\u3002\u63D0\u4EA4\u5F8C\u7531\u8001\u95C6\u6279\u6838\uFF0C\u986F\u793A\u300C\u5DF2\u6279\u51C6\u300D\u624D\u7B97\u6210\u529F\u3002"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-frow",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "pwd-swap-cancel",
+    style: {
+      flex: 1
+    },
+    onClick: () => {
+      setLlOpen(false);
+      setLlMsg(null);
+    }
+  }, "\u53D6\u6D88"), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    style: {
+      flex: 2
+    },
+    disabled: !llStart || !llEnd || llBusy,
+    onClick: sendLongLeave
+  }, llBusy ? '提交中…' : '提交申請'))), llMsg && /*#__PURE__*/React.createElement("div", {
+    className: llMsg.ok ? 'pwd-mgrgoal-foot' : 'pwd-warn',
+    style: {
+      marginTop: 10
+    }
+  }, llMsg.text)), longLeave && longLeave.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 14
     }
@@ -4503,6 +4630,9 @@ function OwnerLongLeave({
   }
   const pending = reqs.filter(r => r.status === 'pending');
   const done = reqs.filter(r => r.status !== 'pending');
+  // [2026-09-21 系統自首] 撞期警告：批准之前自動答「嗰段日子仲有邊個放緊假」,
+  //   唔好靠店長／老闆記得住。計已批准同其他待批核,唔計自己。
+  const overlapOf = r => reqs.filter(o => o.id !== r.id && o.staffId != r.staffId && (o.status === 'approved' || o.status === 'pending') && !(o.start > r.end || o.end < r.start));
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4523,7 +4653,13 @@ function OwnerLongLeave({
     className: "pwd-mgr-swap-ava"
   }, initOf(r.staffId)), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-swap-info"
-  }, /*#__PURE__*/React.createElement("b", null, nameOf(r.staffId), " \xB7 ", r.type), /*#__PURE__*/React.createElement("span", null, fmtD(r.start), " \u2013 ", fmtD(r.end), r.note ? ' · ' + r.note : ''))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("b", null, nameOf(r.staffId), " \xB7 ", r.type), /*#__PURE__*/React.createElement("span", null, fmtD(r.start), " \u2013 ", fmtD(r.end), r.note ? ' · ' + r.note : ''))), overlapOf(r).length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-warn",
+    style: {
+      marginTop: 8,
+      marginBottom: 8
+    }
+  }, "\u26A0\uFE0F \u540C\u671F\u5DF2\u6709\u9577\u5047\uFF1A", overlapOf(r).map(o => `${nameOf(o.staffId)} ${fmtD(o.start)}–${fmtD(o.end)}${o.status === 'pending' ? '（待批核）' : ''}`).join('、')), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-swap-acts"
   }, /*#__PURE__*/React.createElement("button", {
     className: "pwd-btn-reject",
@@ -5267,6 +5403,23 @@ function CommissionApp() {
       shift
     });
   }
+  // [2026-09-21 方案B] 員工自助提交長假申請。成功即重讀 dashboard,狀態清單即刻見到。
+  async function submitLongLeave({
+    start,
+    end,
+    type,
+    note
+  }) {
+    const r = await pwApi('longLeaveAdd', {
+      staffId: staff.id,
+      start,
+      end,
+      type,
+      note
+    });
+    if (r && r.ok) await reloadDash();
+    return r;
+  }
   async function unlockMgr() {
     setMgrUnlocked(true);
     try {
@@ -5388,7 +5541,8 @@ function CommissionApp() {
     leaveRecords: dash.leaveRecords,
     longLeave: dash.longLeave,
     coworkers: dash.coworkers,
-    onSwap: submitSwap
+    onSwap: submitSwap,
+    onLongLeave: submitLongLeave
   }), tab === 'mgr' && /*#__PURE__*/React.createElement(ManagerPanel, {
     key: month,
     month: month,
