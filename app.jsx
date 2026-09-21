@@ -297,8 +297,14 @@ function fullResult(staff, team, overrides = {}) {
   const lateLeave = overrides.lateLeave != null ? overrides.lateLeave : (staff.lateLeave || 0);
   const dogEscape = overrides.dogEscape != null ? overrides.dogEscape : (team.dogEscape || false);
   let override = false, overrideReason = '';
-  if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
-  else if (lateLeave >= 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`; }
+  // [2026-09-21 老闆定] 內容與流量部唔受「狗狗走失」同「遲到/請假≥3」約束：
+  //   走失事故佢零控制力；出勤上佢可以唔返公司,只對四項內容指標負責。
+  //   (鏡像後端 ccCalcStaff_ 同 KPI 月報,三處必須一致)
+  const isMktgRole = kpiRoleOf(staff) === 'marketing';
+  if (!isMktgRole) {
+    if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
+    else if (lateLeave >= 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`; }
+  }
   // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
   // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
   const commGated = staff.commStart && team.monthKey && team.monthKey < staff.commStart;
@@ -404,12 +410,14 @@ function DonutChart({ parts, total, size = 188, stroke = 24, children }) {
     </div>
   );
 }
-function PayoutLedger({ calc, kpi }) {
+function PayoutLedger({ calc, kpi, isMktg }) {
   const full = kpi.ratio >= 1;
   return (
     <div className="pwd-ledger">
       <div className="pwd-led-row">
-        <span className="pwd-led-lbl">計算佣金 (固定＋項目)</span>
+        {/* [2026-09-21 老闆定] 內容與流量部攞嘅係表現獎金,唔係佣金——
+            成個設計就係要佢同佣金制度分開,最底張表唔可以仲叫佣金。 */}
+        <span className="pwd-led-lbl">{isMktg ? '本月表現獎金 (上限)' : '計算佣金 (固定＋項目)'}</span>
         <span className="pwd-led-val">{money(calc.total)}</span>
       </div>
       <div className="pwd-led-row mul">
@@ -1012,7 +1020,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const compRowsBase = isMgr
     ? [ { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級 (已含學院交付獎)` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
     : isMktg
-    ? [ { pk: 'kpibonus', value: kpi.actualParts[0].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
+    ? [ { pk: 'kpibonus', label: '本月表現獎金', value: kpi.actualParts[0].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
     : isFd
     ? [ { pk: 'base', value: kpi.actualParts[0].value, detail: '每月固定底薪 · 不受 KPI 影響' },
         { pk: 'kpibonus', value: kpi.actualParts[1].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
@@ -1045,7 +1053,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
               <div key={r.pk} className="pwd-comp-row">
                 <span className="pwd-comp-dot" style={{ background: meta.color }} />
                 <span className="pwd-comp-main">
-                  <span className="pwd-comp-label">{meta.label}</span>
+                  <span className="pwd-comp-label">{r.label || meta.label}</span>
                   <span className="pwd-comp-detail">{r.detail}</span>
                 </span>
                 <span className="pwd-comp-pct">{pctOf(r.value)}%</span>
@@ -1064,14 +1072,16 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         onBook={onTrialBook} onCancel={onTrialCancel} />}
       {!isMktg && <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />}
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
-      <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
+      <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由{isMktg ? '管理層' : '店長'}評核</span></div>
       <KpiCard role={kpiRoleOf(staff)} items={items} score={score} kpi={kpi} editable={false} />
-      <KpiClauses lateLeave={lateLeave} dogEscape={dogEscape} />
+      {/* [2026-09-21] 兩條否決條款對內容與流量部都唔適用,所以成張卡唔 render——
+          顯示一張「唔會觸發」嘅警告卡,只會令人以為自己受約束。 */}
+      {!isMktg && <KpiClauses lateLeave={lateLeave} dogEscape={dogEscape} />}
       {/* 年終花紅獎池卡已剷走（老闆 2026-08-12）：呢筆未必會派，唔應該喺員工前台
           做成「扣起嘅錢遲早攞得返」嘅預期。YearEndPool component 保留但唔再 render。 */}
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">計算 → KPI → 實際領取</div>
-        <PayoutLedger calc={calc} kpi={kpi} />
+        <PayoutLedger calc={calc} kpi={kpi} isMktg={isMktg} />
       </div>
       <RateTable role={staff.role} dept={staff.dept} />
     </>
@@ -1287,7 +1297,7 @@ const MGR_AREAS = [
   { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
   { key: 'clean', label: '清潔檢查' },
-  { key: 'ownerkpi', label: '評核店長 🔑' },
+  { key: 'ownerkpi', label: '老闆評核 🔑' },
 ];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
@@ -1473,7 +1483,9 @@ function MgrOps({ month, mgrData }) {
 
 // ── KPI 評核 ──
 function MgrKpi({ month, mgrData }) {
-  const list = mgrData.staffList.filter(s => s.role !== 'manager');
+  // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
+  //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
+  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const k0 = mgrData.allKpi[sel] || { kpiFail: [], lateLeave: 0 };
@@ -1625,7 +1637,9 @@ function MgrSwap({ mgrData }) {
 
 // ── 請假 / 假期結餘 ──
 function MgrLeave({ month, mgrData }) {
-  const list = mgrData.staffList.filter(s => s.role !== 'manager');
+  // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
+  //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
+  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || { annual: 0, statutory: 0, sick: 0 };
@@ -2215,24 +2229,28 @@ function SeatsPanel({ staffId }) {
 }
 
 // ── 老闆評核店長 KPI ──
-function OwnerKpiEditor({ month, mgrData, mgr }) {
-  const k0 = mgrData.allKpi[mgr.id] || { kpiFail: [], lateLeave: 0 };
+// [2026-09-21] 由「只評店長」擴成「老闆親自評核嘅崗位」：店長 ＋ 內容與流量部。
+//   內容四項指標(查詢數/內容質素/產量合規/數據紀律)店長冇基礎判斷,老闆定明由管理層評。
+function OwnerKpiEditor({ month, mgrData, person }) {
+  const role = kpiRoleOf(person);
+  const isMktg = role === 'marketing';
+  const k0 = mgrData.allKpi[person.id] || { kpiFail: [], lateLeave: 0 };
   const [fail, setFail] = useState(() => k0.kpiFail.slice());
   const [lateLeave, setLate] = useState(k0.lateLeave || 0);
-  const att = (mgrData.allAttendance && mgrData.allAttendance[mgr.id] != null) ? mgrData.allAttendance[mgr.id] : 0;
-  const items = buildScorecard('manager', fail);
-  const { calc, kpi } = fullResult({ ...mgr, attendance: att, kpiFail: fail, lateLeave }, mgrData.team, { scorecard: items, lateLeave });
+  const att = (mgrData.allAttendance && mgrData.allAttendance[person.id] != null) ? mgrData.allAttendance[person.id] : 0;
+  const items = buildScorecard(role, fail);
+  const { calc, kpi } = fullResult({ ...person, attendance: att, kpiFail: fail, lateLeave }, mgrData.team, { scorecard: items, lateLeave });
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
-  function save() { return pwApi('saveKpi', { month, staffId: mgr.id, lateLeave, kpiFail: fail.join(',') }); }
+  function save() { return pwApi('saveKpi', { month, staffId: person.id, lateLeave, kpiFail: fail.join(',') }); }
   return (
     <div className="pwd-mgr-stack">
-      <div className="pwd-mgr-banner"><span className="pwd-mgr-banner-ico">🔑</span><div><b>老闆評核店長</b><span>{mgr.name} · 店長 KPI</span></div></div>
+      <div className="pwd-mgr-banner"><span className="pwd-mgr-banner-ico">🔑</span><div><b>老闆評核</b><span>{person.name} · {roleKpi(role).label}</span></div></div>
       <div className="pwd-card pwd-block">
         <div className="pwd-kpi-head">
           <div>
-            <div className="pwd-eyebrow">店長 KPI 評核</div>
+            <div className="pwd-eyebrow">{roleKpi(role).label} KPI 評核</div>
             <div className="pwd-kpi-band">發放比例 <b className={'r-' + tone}>{Math.round(kpi.ratio * 100)}%</b> · {kpi.band}</div>
           </div>
           <div className={'pwd-kpi-score r-' + tone}><span className="n">{score}</span><span className="d">分</span></div>
@@ -2247,28 +2265,45 @@ function OwnerKpiEditor({ month, mgrData, mgr }) {
           ))}
         </div>
       </div>
-      <div className="pwd-card pwd-mgr-late">
-        <div className="pwd-mgr-late-row">
-          <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
-          <Stepper value={lateLeave} suffix="次" onChange={setLate} />
+      {/* 內容與流量部唔受遲到/請假條款約束(老闆 2026-09-21)——唔顯示呢張卡,
+          免得評核時以為改咗個數會影響佢個獎金。 */}
+      {!isMktg && (
+        <div className="pwd-card pwd-mgr-late">
+          <div className="pwd-mgr-late-row">
+            <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
+            <Stepper value={lateLeave} suffix="次" onChange={setLate} />
+          </div>
+          {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {person.name} 本月 KPI 將為 0</div>}
         </div>
-        {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {mgr.name} 本月 KPI 將為 0</div>}
-      </div>
+      )}
       <div className="pwd-card pwd-mgr-result">
-        <div className="pwd-eyebrow">{mgr.name} 本月實際領取</div>
+        <div className="pwd-eyebrow">{person.name} 本月實際領取</div>
         <div className="pwd-mgr-result-num">{money(kpi.actualTotal)}</div>
-        <div className="pwd-mgr-result-sub">店長佣金 {money(calc.total)} × {Math.round(kpi.ratio * 100)}% 發放</div>
+        <div className="pwd-mgr-result-sub">{isMktg ? '表現獎金' : '店長佣金'} {money(calc.total)} × {Math.round(kpi.ratio * 100)}% 發放</div>
       </div>
-      <SaveBtn onSave={save} label={`儲存 ${mgr.name} 的評核`} />
+      <SaveBtn onSave={save} label={`儲存 ${person.name} 的評核`} />
     </div>
   );
 }
 function MgrOwnerKpi({ month, mgrData }) {
   const [unlocked, setUnlocked] = useState(false);
-  const mgr = mgrData.staffList.find(s => s.role === 'manager');
-  if (!mgr) return <div className="pwd-ph-empty" style={{ marginTop: 20 }}>未有店長資料</div>;
-  if (!unlocked) return <ManagerGate action="verifyOwner" title="評核店長 · 需要老闆密碼" sub="只有老闆可評核店長 KPI · 請輸入老闆密碼" onUnlock={() => setUnlocked(true)} />;
-  return <OwnerKpiEditor month={month} mgrData={mgrData} mgr={mgr} />;
+  const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
+  const [sel, setSel] = useState(targets[0] ? targets[0].id : null);
+  if (!targets.length) return <div className="pwd-ph-empty" style={{ marginTop: 20 }}>未有需要老闆評核的員工</div>;
+  if (!unlocked) return <ManagerGate action="verifyOwner" title="老闆評核 · 需要老闆密碼" sub="店長及內容與流量部 KPI 只可由老闆評核 · 請輸入老闆密碼" onUnlock={() => setUnlocked(true)} />;
+  const person = targets.find(s => s.id == sel) || targets[0];
+  return (
+    <>
+      {targets.length > 1 && (
+        <div className="pwd-mgr-nav" style={{ marginBottom: 12 }}>
+          {targets.map(t => (
+            <button key={t.id} className={'pwd-mgr-navbtn' + (t.id == person.id ? ' on' : '')} onClick={() => setSel(t.id)}>{t.name}</button>
+          ))}
+        </div>
+      )}
+      <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} />
+    </>
+  );
 }
 
 // ═══════════ OwnerOverview（2026-08-25，老闆專屬簡易總覽）═══════════

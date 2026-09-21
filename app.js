@@ -777,12 +777,18 @@ function fullResult(staff, team, overrides = {}) {
   const dogEscape = overrides.dogEscape != null ? overrides.dogEscape : team.dogEscape || false;
   let override = false,
     overrideReason = '';
-  if (dogEscape) {
-    override = true;
-    overrideReason = '團隊發生走失狗狗事故';
-  } else if (lateLeave >= 3) {
-    override = true;
-    overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`;
+  // [2026-09-21 老闆定] 內容與流量部唔受「狗狗走失」同「遲到/請假≥3」約束：
+  //   走失事故佢零控制力；出勤上佢可以唔返公司,只對四項內容指標負責。
+  //   (鏡像後端 ccCalcStaff_ 同 KPI 月報,三處必須一致)
+  const isMktgRole = kpiRoleOf(staff) === 'marketing';
+  if (!isMktgRole) {
+    if (dogEscape) {
+      override = true;
+      overrideReason = '團隊發生走失狗狗事故';
+    } else if (lateLeave >= 3) {
+      override = true;
+      overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`;
+    }
   }
   // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
   // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
@@ -992,7 +998,8 @@ function DonutChart({
 }
 function PayoutLedger({
   calc,
-  kpi
+  kpi,
+  isMktg
 }) {
   const full = kpi.ratio >= 1;
   return /*#__PURE__*/React.createElement("div", {
@@ -1001,7 +1008,7 @@ function PayoutLedger({
     className: "pwd-led-row"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-led-lbl"
-  }, "\u8A08\u7B97\u4F63\u91D1 (\u56FA\u5B9A\uFF0B\u9805\u76EE)"), /*#__PURE__*/React.createElement("span", {
+  }, isMktg ? '本月表現獎金 (上限)' : '計算佣金 (固定＋項目)'), /*#__PURE__*/React.createElement("span", {
     className: "pwd-led-val"
   }, money(calc.total))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-led-row mul"
@@ -1999,6 +2006,7 @@ function IndividualView({
     detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級 (已含學院交付獎)` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k`
   }] : isMktg ? [{
     pk: 'kpibonus',
+    label: '本月表現獎金',
     value: kpi.actualParts[0].value,
     detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%`
   }] : isFd ? [{
@@ -2069,7 +2077,7 @@ function IndividualView({
       className: "pwd-comp-main"
     }, /*#__PURE__*/React.createElement("span", {
       className: "pwd-comp-label"
-    }, meta.label), /*#__PURE__*/React.createElement("span", {
+    }, r.label || meta.label), /*#__PURE__*/React.createElement("span", {
       className: "pwd-comp-detail"
     }, r.detail)), /*#__PURE__*/React.createElement("span", {
       className: "pwd-comp-pct"
@@ -2113,13 +2121,13 @@ function IndividualView({
     monthLabel: monthLabel
   }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-kpi-divider"
-  }, /*#__PURE__*/React.createElement("span", null, "KPI \u7D50\u7B97 \xB7 \u6708\u5E95\u7531\u5E97\u9577\u8A55\u6838")), /*#__PURE__*/React.createElement(KpiCard, {
+  }, /*#__PURE__*/React.createElement("span", null, "KPI \u7D50\u7B97 \xB7 \u6708\u5E95\u7531", isMktg ? '管理層' : '店長', "\u8A55\u6838")), /*#__PURE__*/React.createElement(KpiCard, {
     role: kpiRoleOf(staff),
     items: items,
     score: score,
     kpi: kpi,
     editable: false
-  }), /*#__PURE__*/React.createElement(KpiClauses, {
+  }), !isMktg && /*#__PURE__*/React.createElement(KpiClauses, {
     lateLeave: lateLeave,
     dogEscape: dogEscape
   }), /*#__PURE__*/React.createElement("div", {
@@ -2128,7 +2136,8 @@ function IndividualView({
     className: "pwd-eyebrow"
   }, "\u8A08\u7B97 \u2192 KPI \u2192 \u5BE6\u969B\u9818\u53D6"), /*#__PURE__*/React.createElement(PayoutLedger, {
     calc: calc,
-    kpi: kpi
+    kpi: kpi,
+    isMktg: isMktg
   })), /*#__PURE__*/React.createElement(RateTable, {
     role: staff.role,
     dept: staff.dept
@@ -2439,7 +2448,7 @@ const MGR_AREAS = [{
   label: '清潔檢查'
 }, {
   key: 'ownerkpi',
-  label: '評核店長 🔑'
+  label: '老闆評核 🔑'
 }];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
@@ -2799,7 +2808,9 @@ function MgrKpi({
   month,
   mgrData
 }) {
-  const list = mgrData.staffList.filter(s => s.role !== 'manager');
+  // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
+  //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
+  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const k0 = mgrData.allKpi[sel] || {
@@ -3073,7 +3084,9 @@ function MgrLeave({
   month,
   mgrData
 }) {
-  const list = mgrData.staffList.filter(s => s.role !== 'manager');
+  // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
+  //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
+  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || {
@@ -4155,24 +4168,28 @@ function SeatsPanel({
 }
 
 // ── 老闆評核店長 KPI ──
+// [2026-09-21] 由「只評店長」擴成「老闆親自評核嘅崗位」：店長 ＋ 內容與流量部。
+//   內容四項指標(查詢數/內容質素/產量合規/數據紀律)店長冇基礎判斷,老闆定明由管理層評。
 function OwnerKpiEditor({
   month,
   mgrData,
-  mgr
+  person
 }) {
-  const k0 = mgrData.allKpi[mgr.id] || {
+  const role = kpiRoleOf(person);
+  const isMktg = role === 'marketing';
+  const k0 = mgrData.allKpi[person.id] || {
     kpiFail: [],
     lateLeave: 0
   };
   const [fail, setFail] = useState(() => k0.kpiFail.slice());
   const [lateLeave, setLate] = useState(k0.lateLeave || 0);
-  const att = mgrData.allAttendance && mgrData.allAttendance[mgr.id] != null ? mgrData.allAttendance[mgr.id] : 0;
-  const items = buildScorecard('manager', fail);
+  const att = mgrData.allAttendance && mgrData.allAttendance[person.id] != null ? mgrData.allAttendance[person.id] : 0;
+  const items = buildScorecard(role, fail);
   const {
     calc,
     kpi
   } = fullResult({
-    ...mgr,
+    ...person,
     attendance: att,
     kpiFail: fail,
     lateLeave
@@ -4186,7 +4203,7 @@ function OwnerKpiEditor({
   function save() {
     return pwApi('saveKpi', {
       month,
-      staffId: mgr.id,
+      staffId: person.id,
       lateLeave,
       kpiFail: fail.join(',')
     });
@@ -4197,13 +4214,13 @@ function OwnerKpiEditor({
     className: "pwd-mgr-banner"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-mgr-banner-ico"
-  }, "\uD83D\uDD11"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u8001\u95C6\u8A55\u6838\u5E97\u9577"), /*#__PURE__*/React.createElement("span", null, mgr.name, " \xB7 \u5E97\u9577 KPI"))), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD11"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u8001\u95C6\u8A55\u6838"), /*#__PURE__*/React.createElement("span", null, person.name, " \xB7 ", roleKpi(role).label))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-kpi-head"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u5E97\u9577 KPI \u8A55\u6838"), /*#__PURE__*/React.createElement("div", {
+  }, roleKpi(role).label, " KPI \u8A55\u6838"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-kpi-band"
   }, "\u767C\u653E\u6BD4\u4F8B ", /*#__PURE__*/React.createElement("b", {
     className: 'r-' + tone
@@ -4227,7 +4244,7 @@ function OwnerKpiEditor({
     className: "pwd-kpi-team"
   }, "\u5718\u968A")), /*#__PURE__*/React.createElement("span", {
     className: "pwd-kpi-w"
-  }, it.weight))))), /*#__PURE__*/React.createElement("div", {
+  }, it.weight))))), !isMktg && /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-mgr-late"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-late-row"
@@ -4240,17 +4257,17 @@ function OwnerKpiEditor({
     style: {
       marginTop: 12
     }
-  }, "\u5DF2\u8D85\u904E 3 \u6B21 \u2014 ", mgr.name, " \u672C\u6708 KPI \u5C07\u70BA 0")), /*#__PURE__*/React.createElement("div", {
+  }, "\u5DF2\u8D85\u904E 3 \u6B21 \u2014 ", person.name, " \u672C\u6708 KPI \u5C07\u70BA 0")), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-mgr-result"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, mgr.name, " \u672C\u6708\u5BE6\u969B\u9818\u53D6"), /*#__PURE__*/React.createElement("div", {
+  }, person.name, " \u672C\u6708\u5BE6\u969B\u9818\u53D6"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-result-num"
   }, money(kpi.actualTotal)), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-result-sub"
-  }, "\u5E97\u9577\u4F63\u91D1 ", money(calc.total), " \xD7 ", Math.round(kpi.ratio * 100), "% \u767C\u653E")), /*#__PURE__*/React.createElement(SaveBtn, {
+  }, isMktg ? '表現獎金' : '店長佣金', " ", money(calc.total), " \xD7 ", Math.round(kpi.ratio * 100), "% \u767C\u653E")), /*#__PURE__*/React.createElement(SaveBtn, {
     onSave: save,
-    label: `儲存 ${mgr.name} 的評核`
+    label: `儲存 ${person.name} 的評核`
   }));
 }
 function MgrOwnerKpi({
@@ -4258,24 +4275,36 @@ function MgrOwnerKpi({
   mgrData
 }) {
   const [unlocked, setUnlocked] = useState(false);
-  const mgr = mgrData.staffList.find(s => s.role === 'manager');
-  if (!mgr) return /*#__PURE__*/React.createElement("div", {
+  const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
+  const [sel, setSel] = useState(targets[0] ? targets[0].id : null);
+  if (!targets.length) return /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty",
     style: {
       marginTop: 20
     }
-  }, "\u672A\u6709\u5E97\u9577\u8CC7\u6599");
+  }, "\u672A\u6709\u9700\u8981\u8001\u95C6\u8A55\u6838\u7684\u54E1\u5DE5");
   if (!unlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
     action: "verifyOwner",
-    title: "\u8A55\u6838\u5E97\u9577 \xB7 \u9700\u8981\u8001\u95C6\u5BC6\u78BC",
-    sub: "\u53EA\u6709\u8001\u95C6\u53EF\u8A55\u6838\u5E97\u9577 KPI \xB7 \u8ACB\u8F38\u5165\u8001\u95C6\u5BC6\u78BC",
+    title: "\u8001\u95C6\u8A55\u6838 \xB7 \u9700\u8981\u8001\u95C6\u5BC6\u78BC",
+    sub: "\u5E97\u9577\u53CA\u5167\u5BB9\u8207\u6D41\u91CF\u90E8 KPI \u53EA\u53EF\u7531\u8001\u95C6\u8A55\u6838 \xB7 \u8ACB\u8F38\u5165\u8001\u95C6\u5BC6\u78BC",
     onUnlock: () => setUnlocked(true)
   });
-  return /*#__PURE__*/React.createElement(OwnerKpiEditor, {
+  const person = targets.find(s => s.id == sel) || targets[0];
+  return /*#__PURE__*/React.createElement(React.Fragment, null, targets.length > 1 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgr-nav",
+    style: {
+      marginBottom: 12
+    }
+  }, targets.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.id,
+    className: 'pwd-mgr-navbtn' + (t.id == person.id ? ' on' : ''),
+    onClick: () => setSel(t.id)
+  }, t.name))), /*#__PURE__*/React.createElement(OwnerKpiEditor, {
+    key: person.id,
     month: month,
     mgrData: mgrData,
-    mgr: mgr
-  });
+    person: person
+  }));
 }
 
 // ═══════════ OwnerOverview（2026-08-25，老闆專屬簡易總覽）═══════════
