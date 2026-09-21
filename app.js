@@ -93,6 +93,7 @@ const TARGETS = {
   renewalTier: 5,
   packageGoal: 12
 };
+const CC_MARKETING_BONUS = 2200; // 鏡像後端 staff-backend 同名常數
 const ROLE_KPIS = {
   junior: {
     label: '初級寵物照顧員',
@@ -223,6 +224,26 @@ const ROLE_KPIS = {
       text: '保持儀容整潔、穿着整齊制服',
       weight: 5,
       team: false
+    }]
+  },
+  marketing: {
+    label: '內容創作及市場推廣專員',
+    items: [{
+      id: 'c1',
+      text: '新生查詢數:本月經內容帶入之新生查詢達本月設定目標(須經專屬關鍵字或連結歸因)',
+      weight: 30
+    }, {
+      id: 'c2',
+      text: '內容質素:當月出街內容按各型主指標達本月門檻之條數比例,達本月設定水平',
+      weight: 30
+    }, {
+      id: 'c3',
+      text: '產量與合規:按內容月曆準時出街、每循環齊備;出街前檢查表逐項通過,規格違規不超上限',
+      weight: 20
+    }, {
+      id: 'c4',
+      text: '數據紀律與分析:第七日填數100%齊全;三盞燈每週查並填紀錄;月度覆盤報告準時提交',
+      weight: 20
     }]
   },
   frontdesk: {
@@ -485,13 +506,26 @@ function kpiRoleOf(staff) {
 }
 function payoutRatio(score, {
   override = false,
-  overrideReason = ''
+  overrideReason = '',
+  roleKey = ''
 } = {}) {
   if (override) return {
     ratio: 0,
     band: '失格',
     reason: overrideReason || '缺勤 / 紀律 / 安全事故'
   };
+  // [2026-09-21 老闆定] 內容與流量部用「斜坡式」:發放比例＝KPI 分數,50 分以下零。
+  //   該卡只有四項(30/30/20/20),分數落點只有 100/80/70/60/50/40…,懸崖式嘅 81–90 段永遠去唔到。
+  if (roleKey === 'marketing') {
+    if (score >= 50) return {
+      ratio: score / 100,
+      band: '按分數比例'
+    };
+    return {
+      ratio: 0,
+      band: '不發放'
+    };
+  }
   if (score >= 91) return {
     ratio: 1,
     band: '滿額'
@@ -658,6 +692,26 @@ function calcFrontdesk() {
     }]
   };
 }
+// [2026-09-21] 內容與流量部:佣金同其他部門完全分開——冇酒店池/學院池/轉介/會籍池,
+//   只有固定月表現獎金 × 發放比例(斜坡式)。鏡像後端 CC_MARKETING_BONUS。
+function calcMarketing() {
+  const bonus = CC_MARKETING_BONUS;
+  return {
+    isMarketing: true,
+    kpiBonus: bonus,
+    baseFixed: 0,
+    projectCommission: bonus,
+    total: bonus,
+    fixed: 0,
+    fixedOk: true,
+    attendance: 99,
+    attendanceNeed: 0,
+    parts: [{
+      key: 'kpibonus',
+      value: bonus
+    }]
+  };
+}
 function applyKpi(calcResult, score, opts = {}) {
   const {
     ratio,
@@ -701,7 +755,7 @@ function fullResult(staff, team, overrides = {}) {
     storeRevenue: storeRevenueOf(team),
     hotelRevenue: hotelForCommission(team),
     academyRevenue: team.academyRevenue
-  }) : staff.role === 'frontdesk' ? calcFrontdesk() : calc({
+  }) : staff.role === 'frontdesk' ? calcFrontdesk() : kpiRoleOf(staff) === 'marketing' ? calcMarketing() : calc({
     attendance: att,
     trialConv: team.trialConv || 0,
     s1New: staff.s1New != null ? staff.s1New : team.s1New || 0,
@@ -739,7 +793,8 @@ function fullResult(staff, team, overrides = {}) {
   }
   const kpi = applyKpi(c, score, {
     override,
-    overrideReason
+    overrideReason,
+    roleKey: kpiRoleOf(staff)
   });
   if (commGated) kpi.deducted = 0; // 首月唔發唔係 KPI 扣起,唔好當年終池顯示
   return {
@@ -1097,6 +1152,55 @@ function FrontdeskGoal({
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgrgoal-foot"
   }, "\u5E95\u85AA HK$16,000 \u70BA\u56FA\u5B9A\u6536\u5165,\u4E0D\u53D7 KPI \u5F71\u97FF"));
+}
+// [2026-09-21] 內容與流量部:斜坡式發放,冇「解鎖更高佣金」概念,只顯示分數 → 實際獎金
+//   階梯只列四項卡(30/30/20/20)真正到得嘅分數:100/80/70/60/50,其餘一律唔發放。
+function MarketingGoal({
+  kpi,
+  score
+}) {
+  const bands = [100, 80, 70, 60, 50, 0];
+  const curMin = bands.find(b => score >= b);
+  const bonus = Math.round(CC_MARKETING_BONUS * kpi.ratio);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-cur"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-lbl"
+  }, "\u672C\u6708 KPI \u5206\u6578"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-rev"
+  }, score, " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 15
+    }
+  }, "\u5206"))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-amt"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgrgoal-amt-num"
+  }, money(bonus)), /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgrgoal-amt-sub"
+  }, "\u672C\u6708\u8868\u73FE\u734E\u91D1"))), score < 100 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-next"
+  }, "\u56DB\u9805 KPI \u5168\u6578\u9054\u6A19(100 \u5206)\u2192 \u8868\u73FE\u734E\u91D1\u5168\u984D ", /*#__PURE__*/React.createElement("b", null, money(CC_MARKETING_BONUS)), "(\u73FE\u6642 +", money(CC_MARKETING_BONUS - bonus), " \u7A7A\u9593)"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-ladder"
+  }, bands.map(b => {
+    const isCur = b === curMin;
+    return /*#__PURE__*/React.createElement("div", {
+      key: b,
+      className: 'pwd-mgrgoal-step' + (score >= b && b > 0 ? ' hit' : '') + (isCur ? ' cur' : '')
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "pwd-mgrgoal-step-node"
+    }, score >= b && b > 0 ? '✓' : ''), /*#__PURE__*/React.createElement("span", {
+      className: "pwd-mgrgoal-step-min"
+    }, b === 0 ? '低於 50 分' : b + ' 分'), /*#__PURE__*/React.createElement("span", {
+      className: "pwd-mgrgoal-step-amt"
+    }, b === 0 ? '不發放' : money(CC_MARKETING_BONUS * b / 100)), isCur && /*#__PURE__*/React.createElement("span", {
+      className: "pwd-mgrgoal-step-tag"
+    }, "\u73FE\u6642"));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot"
+  }, "\u767C\u653E\u6BD4\u4F8B \uFF1D KPI \u5206\u6578(\u4F8B:70 \u5206\u767C 70%);50 \u5206\u4EE5\u4E0B\u4E0D\u4E88\u767C\u653E\u3002\u5E95\u85AA\u56FA\u5B9A,\u4E0D\u53D7 KPI \u5F71\u97FF\u3002"));
 }
 function ManagerGoal({
   calc
@@ -1882,7 +1986,8 @@ function IndividualView({
   const pctOf = v => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
   const score = scorecardTotal(items);
   const isMgr = calc.isManager,
-    isFd = calc.isFrontdesk;
+    isFd = calc.isFrontdesk,
+    isMktg = calc.isMarketing;
   // 以下三個 detail 只會喺非店長版面用（店長行 mgrtier 分支）——
   // 老闆 2026-08-12：店長以下唔顯示總業績銀碼，只講「達／未達門檻」
   const newDetail = calc.acadGateOk === false ? `學院未達 $50k 門檻 · 學院佣暫不計` : `S1 ${calc.s1New || 0}·S2 ${calc.s2New || 0}·S1+S2 ${calc.comboNew || 0}(個人,歸成交者)`;
@@ -1892,6 +1997,10 @@ function IndividualView({
     pk: 'mgrtier',
     value: kpi.actualParts[1].value,
     detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級 (已含學院交付獎)` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k`
+  }] : isMktg ? [{
+    pk: 'kpibonus',
+    value: kpi.actualParts[0].value,
+    detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%`
   }] : isFd ? [{
     pk: 'base',
     value: kpi.actualParts[0].value,
@@ -1927,7 +2036,7 @@ function IndividualView({
   }] : compRowsBase;
   return /*#__PURE__*/React.createElement(React.Fragment, null, kpi.ratio === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-warn"
-  }, "KPI ", kpi.reason ? kpi.reason : '未達 71 分', " \u2014 ", isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'), /*#__PURE__*/React.createElement("div", {
+  }, "KPI ", kpi.reason ? kpi.reason : isMktg ? '未達 50 分' : '未達 71 分', " \u2014 ", isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : isMktg ? '本月表現獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-heroA"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
@@ -1971,10 +2080,13 @@ function IndividualView({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, isFd ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'), isMgr ? /*#__PURE__*/React.createElement(ManagerGoal, {
+  }, isFd || isMktg ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'), isMgr ? /*#__PURE__*/React.createElement(ManagerGoal, {
     calc: calc
   }) : isFd ? /*#__PURE__*/React.createElement(FrontdeskGoal, {
     calc: calc,
+    kpi: kpi,
+    score: score
+  }) : isMktg ? /*#__PURE__*/React.createElement(MarketingGoal, {
     kpi: kpi,
     score: score
   }) : /*#__PURE__*/React.createElement(GoalUnlock, {
@@ -1982,14 +2094,14 @@ function IndividualView({
     calc: calc,
     role: staff.role,
     dept: staff.dept
-  })), /*#__PURE__*/React.createElement(TrialCard, {
+  })), !isMktg && /*#__PURE__*/React.createElement(TrialCard, {
     staff: staff,
     slots: trialSlots,
     bookings: trialBookings,
     done: trialDone,
     onBook: onTrialBook,
     onCancel: onTrialCancel
-  }), /*#__PURE__*/React.createElement(ClubCard, {
+  }), !isMktg && /*#__PURE__*/React.createElement(ClubCard, {
     staff: staff,
     noms: clubNoms,
     month: month,
@@ -2490,7 +2602,7 @@ function MgrOps({
   };
   const acadTotal = ACAD.reduce((a, it) => a + (acad[it.key] || 0), 0);
   // 舊生續報池按學院職級分(資深=owner不抽池,故排除 manager);冇職級資料時 fallback 平分
-  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.dept !== 'academy');
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'marketing' && s.dept !== 'academy');
   const acadWeightTotal = ACAD_WEIGHT_TOTAL; // 固定分母 5,預留未填份額
   const teamForCalc = {
     ...team,
@@ -2723,7 +2835,7 @@ function MgrKpi({
     setAcadRank(st.acadRank || 'junior');
   }
   const items = buildScorecard(kpiRoleOf(staff), fail);
-  const poolStaff = list.filter(s => s.role !== 'frontdesk' && s.dept !== 'academy');
+  const poolStaff = list.filter(s => s.role !== 'frontdesk' && s.role !== 'marketing' && s.dept !== 'academy');
   const acadWeightTotal = ACAD_WEIGHT_TOTAL; // 固定分母 5,預留未填份額
   const {
     calc,
@@ -4224,7 +4336,7 @@ function OwnerCommissionTable({
   mgrData
 }) {
   const team = mgrData.team;
-  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'owner' && s.dept !== 'academy');
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'owner' && s.role !== 'marketing' && s.dept !== 'academy');
   const teamForCalc = {
     ...team,
     acadWeightTotal: ACAD_WEIGHT_TOTAL,

@@ -75,6 +75,7 @@ const HEADCOUNT = 3;
 // [2026-08-25 老闆定] 新生付費試堂現行收費——顯示用，真正記賬金額由後端 TRIAL_NEW_STUDENT_FEE 決定
 const TRIAL_NEW_STUDENT_FEE = 499;
 const TARGETS = { hotelThreshold: 200000, academyThreshold: 50000, renewalTier: 5, packageGoal: 12 };
+const CC_MARKETING_BONUS = 2200;   // 鏡像後端 staff-backend 同名常數
 const ROLE_KPIS = {
   junior: { label: '初級寵物照顧員', items: [
     { id: 'j1', text: '客戶有效合理投訴 ≤ 1 次 (因疏忽照顧 / 未跟足規則造成意外受傷;以團隊計算)', weight: 30, team: true },
@@ -106,6 +107,12 @@ const ROLE_KPIS = {
     { id: 'a4', text: '影片拍攝:每學員每堂 ≥ 5 條影片交齊畀導師篩選 + 出席記錄齊', weight: 20, team: false },
     { id: 'a5', text: '場地器材清潔:完成指定清潔流程;突擊巡查不合格 ≤ 1 (標準checklist+相片為準)', weight: 15, team: false },
     { id: 'a6', text: '保持儀容整潔、穿着整齊制服', weight: 5, team: false },
+  ] },
+  marketing: { label: '內容創作及市場推廣專員', items: [
+    { id: 'c1', text: '新生查詢數:本月經內容帶入之新生查詢達本月設定目標(須經專屬關鍵字或連結歸因)', weight: 30 },
+    { id: 'c2', text: '內容質素:當月出街內容按各型主指標達本月門檻之條數比例,達本月設定水平', weight: 30 },
+    { id: 'c3', text: '產量與合規:按內容月曆準時出街、每循環齊備;出街前檢查表逐項通過,規格違規不超上限', weight: 20 },
+    { id: 'c4', text: '數據紀律與分析:第七日填數100%齊全;三盞燈每週查並填紀錄;月度覆盤報告準時提交', weight: 20 },
   ] },
   frontdesk: { label: '前台', items: [
     { id: 'f1', text: '招待客戶有效投訴 ≤ 1 人', weight: 30, team: false },
@@ -194,8 +201,14 @@ function kpiRoleOf(staff) {
   if (staff.dept === 'academy') return staff.acadRank === 'assistant' ? 'assistant' : 'tutor';
   return staff.role;
 }
-function payoutRatio(score, { override = false, overrideReason = '' } = {}) {
+function payoutRatio(score, { override = false, overrideReason = '', roleKey = '' } = {}) {
   if (override) return { ratio: 0, band: '失格', reason: overrideReason || '缺勤 / 紀律 / 安全事故' };
+  // [2026-09-21 老闆定] 內容與流量部用「斜坡式」:發放比例＝KPI 分數,50 分以下零。
+  //   該卡只有四項(30/30/20/20),分數落點只有 100/80/70/60/50/40…,懸崖式嘅 81–90 段永遠去唔到。
+  if (roleKey === 'marketing') {
+    if (score >= 50) return { ratio: score / 100, band: '按分數比例' };
+    return { ratio: 0, band: '不發放' };
+  }
   if (score >= 91) return { ratio: 1, band: '滿額' };
   if (score >= 81) return { ratio: score / 100, band: '按完成率' };
   if (score >= 71) return { ratio: 0.5, band: '半額' };
@@ -249,6 +262,14 @@ function calcFrontdesk() {
     fixed: 0, fixedOk: true, attendance: 99, attendanceNeed: 0,
     parts: [ { key: 'base', value: baseSalary, noKpi: true }, { key: 'kpibonus', value: kpiBonus } ] };
 }
+// [2026-09-21] 內容與流量部:佣金同其他部門完全分開——冇酒店池/學院池/轉介/會籍池,
+//   只有固定月表現獎金 × 發放比例(斜坡式)。鏡像後端 CC_MARKETING_BONUS。
+function calcMarketing() {
+  const bonus = CC_MARKETING_BONUS;
+  return { isMarketing: true, kpiBonus: bonus, baseFixed: 0, projectCommission: bonus, total: bonus,
+    fixed: 0, fixedOk: true, attendance: 99, attendanceNeed: 0,
+    parts: [ { key: 'kpibonus', value: bonus } ] };
+}
 function applyKpi(calcResult, score, opts = {}) {
   const { ratio, band, reason } = payoutRatio(score, opts);
   const baseFixed = calcResult.baseFixed || 0;
@@ -268,6 +289,8 @@ function fullResult(staff, team, overrides = {}) {
     ? calcManager({ attendance: att, storeRevenue: storeRevenueOf(team), hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue })
     : staff.role === 'frontdesk'
     ? calcFrontdesk()
+    : kpiRoleOf(staff) === 'marketing'
+    ? calcMarketing()
     : calc({ attendance: att, trialConv: team.trialConv || 0, s1New: (staff.s1New != null ? staff.s1New : (team.s1New || 0)), s2New: (staff.s2New != null ? staff.s2New : (team.s2New || 0)), comboNew: (staff.comboNew != null ? staff.comboNew : (team.comboNew || 0)), renewals: team.renewals, hotelRevenue: hotelForCommission(team), academyRevenue: team.academyRevenue, acadWeight: ACAD_W[staff.acadRank] || 0, acadWeightTotal: team.acadWeightTotal || 0, headcount: team.headcount || HEADCOUNT, dept: staff.dept || '', hotelReferrals: team.hotelReferrals || 0, monthKey: team.monthKey || '' });
   const items = overrides.scorecard || buildScorecard(kpiRoleOf(staff), staff.kpiFail || []);
   const score = scorecardTotal(items);
@@ -280,7 +303,7 @@ function fullResult(staff, team, overrides = {}) {
   // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
   const commGated = staff.commStart && team.monthKey && team.monthKey < staff.commStart;
   if (commGated) { override = true; overrideReason = '入職首月 (佣金由第二個月起計)'; }
-  const kpi = applyKpi(c, score, { override, overrideReason });
+  const kpi = applyKpi(c, score, { override, overrideReason, roleKey: kpiRoleOf(staff) });
   if (commGated) kpi.deducted = 0;   // 首月唔發唔係 KPI 扣起,唔好當年終池顯示
   return { calc: c, items, kpi, lateLeave, dogEscape };
 }
@@ -476,6 +499,44 @@ function FrontdeskGoal({ kpi, score }) {
         })}
       </div>
       <div className="pwd-mgrgoal-foot">底薪 HK$16,000 為固定收入,不受 KPI 影響</div>
+    </div>
+  );
+}
+// [2026-09-21] 內容與流量部:斜坡式發放,冇「解鎖更高佣金」概念,只顯示分數 → 實際獎金
+//   階梯只列四項卡(30/30/20/20)真正到得嘅分數:100/80/70/60/50,其餘一律唔發放。
+function MarketingGoal({ kpi, score }) {
+  const bands = [100, 80, 70, 60, 50, 0];
+  const curMin = bands.find(b => score >= b);
+  const bonus = Math.round(CC_MARKETING_BONUS * kpi.ratio);
+  return (
+    <div className="pwd-mgrgoal">
+      <div className="pwd-mgrgoal-cur">
+        <div>
+          <div className="pwd-mgrgoal-lbl">本月 KPI 分數</div>
+          <div className="pwd-mgrgoal-rev">{score} <span style={{ fontSize: 15 }}>分</span></div>
+        </div>
+        <div className="pwd-mgrgoal-amt">
+          <span className="pwd-mgrgoal-amt-num">{money(bonus)}</span>
+          <span className="pwd-mgrgoal-amt-sub">本月表現獎金</span>
+        </div>
+      </div>
+      {score < 100 && (
+        <div className="pwd-mgrgoal-next">四項 KPI 全數達標(100 分)→ 表現獎金全額 <b>{money(CC_MARKETING_BONUS)}</b>(現時 +{money(CC_MARKETING_BONUS - bonus)} 空間)</div>
+      )}
+      <div className="pwd-mgrgoal-ladder">
+        {bands.map(b => {
+          const isCur = b === curMin;
+          return (
+            <div key={b} className={'pwd-mgrgoal-step' + (score >= b && b > 0 ? ' hit' : '') + (isCur ? ' cur' : '')}>
+              <span className="pwd-mgrgoal-step-node">{score >= b && b > 0 ? '✓' : ''}</span>
+              <span className="pwd-mgrgoal-step-min">{b === 0 ? '低於 50 分' : b + ' 分'}</span>
+              <span className="pwd-mgrgoal-step-amt">{b === 0 ? '不發放' : money(CC_MARKETING_BONUS * b / 100)}</span>
+              {isCur && <span className="pwd-mgrgoal-step-tag">現時</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="pwd-mgrgoal-foot">發放比例 ＝ KPI 分數(例:70 分發 70%);50 分以下不予發放。底薪固定,不受 KPI 影響。</div>
     </div>
   );
 }
@@ -938,7 +999,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const actualParts = clubBonus > 0 ? [...kpi.actualParts, { key: 'club', value: clubBonus }] : kpi.actualParts;
   const pctOf = (v) => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
   const score = scorecardTotal(items);
-  const isMgr = calc.isManager, isFd = calc.isFrontdesk;
+  const isMgr = calc.isManager, isFd = calc.isFrontdesk, isMktg = calc.isMarketing;
   // 以下三個 detail 只會喺非店長版面用（店長行 mgrtier 分支）——
   // 老闆 2026-08-12：店長以下唔顯示總業績銀碼，只講「達／未達門檻」
   const newDetail = (calc.acadGateOk === false)
@@ -950,6 +1011,8 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const hotelDetail = calc.hotelOver > 0 ? '已達門檻 · 超出部分 12% 入池 ÷ 編制 3' : '未達門檻 $200k';
   const compRowsBase = isMgr
     ? [ { pk: 'mgrtier', value: kpi.actualParts[1].value, detail: calc.tierAmt > 0 ? `門店業績 ${money(calc.storeRevenue)} · 達 ${money(calc.tierMin)} 級 (已含學院交付獎)` : `門店業績 ${money(calc.storeRevenue)} · 未達 $320k` } ]
+    : isMktg
+    ? [ { pk: 'kpibonus', value: kpi.actualParts[0].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
     : isFd
     ? [ { pk: 'base', value: kpi.actualParts[0].value, detail: '每月固定底薪 · 不受 KPI 影響' },
         { pk: 'kpibonus', value: kpi.actualParts[1].value, detail: `KPI ${score} 分 · 發放 ${Math.round(kpi.ratio * 100)}%` } ]
@@ -965,7 +1028,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
   const compRows = clubBonus > 0 ? [...compRowsBase, { pk: 'club', value: clubBonus, detail: clubDetail }] : compRowsBase;
   return (
     <>
-      {kpi.ratio === 0 && <div className="pwd-warn">KPI {kpi.reason ? kpi.reason : '未達 71 分'} — {isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'}</div>}
+      {kpi.ratio === 0 && <div className="pwd-warn">KPI {kpi.reason ? kpi.reason : (isMktg ? '未達 50 分' : '未達 71 分')} — {isFd ? '本月 KPI 獎金暫不發放 (底薪不受影響)' : isMktg ? '本月表現獎金暫不發放 (底薪不受影響)' : '本月佣金暫不發放'}</div>}
       <div className="pwd-card pwd-heroA">
         <div className="pwd-eyebrow">{staff.name} · {roleKpi(kpiRoleOf(staff)).label} · 本月實際{isFd ? '收入' : '領取'}</div>
         <DonutChart parts={actualParts} total={actualTotal}>
@@ -993,12 +1056,13 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         </div>
       </div>
       <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">{isFd ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'}</div>
-        {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} dept={staff.dept} />}
+        <div className="pwd-eyebrow">{isFd || isMktg ? 'KPI 獎金達成' : '目標達成 · 解鎖更高佣金'}</div>
+        {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : isMktg ? <MarketingGoal kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} dept={staff.dept} />}
       </div>
-      <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} done={trialDone}
-        onBook={onTrialBook} onCancel={onTrialCancel} />
-      <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />
+      {/* [2026-09-21] 內容與流量部唔參與試堂登記同會籍提名,兩張卡唔 render */}
+      {!isMktg && <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} done={trialDone}
+        onBook={onTrialBook} onCancel={onTrialCancel} />}
+      {!isMktg && <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />}
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} />
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由店長評核</span></div>
       <KpiCard role={kpiRoleOf(staff)} items={items} score={score} kpi={kpi} editable={false} />
@@ -1304,7 +1368,7 @@ function MgrOps({ month, mgrData }) {
   };
   const acadTotal = ACAD.reduce((a, it) => a + (acad[it.key] || 0), 0);
   // 舊生續報池按學院職級分(資深=owner不抽池,故排除 manager);冇職級資料時 fallback 平分
-  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.dept !== 'academy');
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'marketing' && s.dept !== 'academy');
   const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const teamForCalc = { ...team, academyRevenue: acadTotal, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT };
   const storeRev = storeRevenueOf(teamForCalc);
@@ -1429,7 +1493,7 @@ function MgrKpi({ month, mgrData }) {
     setAcadRank(st.acadRank || 'junior');
   }
   const items = buildScorecard(kpiRoleOf(staff), fail);
-  const poolStaff = list.filter(s => s.role !== 'frontdesk' && s.dept !== 'academy');
+  const poolStaff = list.filter(s => s.role !== 'frontdesk' && s.role !== 'marketing' && s.dept !== 'academy');
   const acadWeightTotal = ACAD_WEIGHT_TOTAL;  // 固定分母 5,預留未填份額
   const { calc, kpi } = fullResult({ ...staff, ...sales, acadRank, attendance: att, kpiFail: fail, lateLeave }, { ...mgrData.team, acadWeightTotal, headcount: poolStaff.length || HEADCOUNT }, { scorecard: items, lateLeave });
   const score = scorecardTotal(items);
@@ -2236,7 +2300,7 @@ function OwnerDeptRevenue({ team }) {
 }
 function OwnerCommissionTable({ mgrData }) {
   const team = mgrData.team;
-  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'owner' && s.dept !== 'academy');
+  const poolStaff = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'frontdesk' && s.role !== 'owner' && s.role !== 'marketing' && s.dept !== 'academy');
   const teamForCalc = { ...team, acadWeightTotal: ACAD_WEIGHT_TOTAL, headcount: poolStaff.length || HEADCOUNT };
   const rows = mgrData.staffList.filter(s => s.role !== 'owner').map(s => {
     const k = mgrData.allKpi[s.id] || { kpiFail: [], lateLeave: 0 };
