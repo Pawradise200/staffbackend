@@ -171,9 +171,9 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
       <div class="meta"><span contenteditable>長毛臘腸犬 · 3 歲</span></div>
     </div>
     <div class="photoWrap">
-      <div class="photo empty" id="photoBox" title="點擊上載狗狗大頭相">
+      <div class="photo empty" id="photoBox" title="點擊上載狗狗相片">
         <img id="photoImg" alt="">
-        <div class="ph-hint"><span class="emoji">📷</span>點擊加<br>狗狗大頭相</div>
+        <div class="ph-hint"><span class="emoji">📷</span>點擊上載<br>狗狗相片</div>
       </div>
       <div class="grade" title="行為評級"><div class="g" contenteditable>A</div><div class="gl">評級</div></div>
     </div>
@@ -207,12 +207,12 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
     <img class="daki" src="daki-explore.png" alt="">
     <div class="sec-lab">下學期建議練習方向</div>
     <div class="hw-lines">
-    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日 10 分鐘嗅聞遊戲</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
-    <div class="hw-line"><span class="paw">·</span><span contenteditable>遠距離見狗，冷靜即獎勵</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
-    <div class="hw-line"><span class="paw">·</span><span contenteditable>多獎勵狗狗發呆放空</span><button class="pickbtn" data-bank="hw" title="揀現成句子">▾</button></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>每日進行 10 分鐘嗅聞遊戲</span><button class="pickbtn" data-bank="hw" title="選擇常用句子">▾</button></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>遠距離看見其他狗狗時保持冷靜，即時給予獎勵</span><button class="pickbtn" data-bank="hw" title="選擇常用句子">▾</button></div>
+    <div class="hw-line"><span class="paw">·</span><span contenteditable>多獎勵狗狗安靜放鬆的時刻</span><button class="pickbtn" data-bank="hw" title="選擇常用句子">▾</button></div>
     </div>
     <div class="cta">
-      <div style="display:flex;align-items:center;"><div class="c1" contenteditable style="flex:1;">建議續報 S1・狗狗幼稚園 新學期</div><button class="pickbtn" data-bank="cta" title="揀方案">▾</button></div>
+      <div style="display:flex;align-items:center;"><div class="c1" contenteditable style="flex:1;">建議續報 S1・狗狗幼稚園 新學期</div><button class="pickbtn" data-bank="cta" title="選擇方案">▾</button></div>
       <div class="c2" contenteditable>鞏固社交基礎，向 A+ 穩定社交犬進發</div>
     </div>
   </div>
@@ -229,16 +229,16 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
 
 <div class="toolbar">
   <b>📋 進度報告卡 · 員工使用</b>
-  <div class="tip">直接<b>點住卡上任何文字</b>就可以改（狗名／數字／建議全部得）。三大指標淨係改「學期初／學期末」啲數字，<b>條 bar 同百分比會自動計</b>。改完撳「下載 PNG」直接 WhatsApp 發畀家長。</div>
+  <div class="tip"><b>點選卡上任何文字</b>即可修改（狗狗名字、數字及建議均可修改）。三大指標只需修改「學期初／學期末」的數字，<b>長條及百分比會自動計算</b>。完成後按「下載 PNG」，即可經 WhatsApp 發送給家長。</div>
   <div class="btns">
     <button id="btnPng">⬇️ 下載 PNG</button>
-    <button id="btnReset">↺ 重設做範例</button>
+    <button id="btnReset">↺ 重設為範例</button>
   </div>
 </div>
 
 <div class="toolbar sp">
   <b>💾 儲存到學生專屬頁</b>
-  <div class="tip">揀返呢份報告屬於邊隻狗狗，撳儲存之後，家長喺學生專屬頁即時睇到（仲有跨學期趨勢）。儲存錯咗：喺 CRM「學期報告」分頁將「狀態」改做「撤回」。</div>
+  <div class="tip">選擇此報告所屬的狗狗，按「儲存」後，家長即可在學生專屬頁查閱（並顯示跨學期趨勢）。如儲存有誤，請在 CRM「學期報告」分頁將「狀態」改為「撤回」。</div>
   <div class="sp-who" id="spWho"></div>
   <div class="sp-row">
     <input id="spQ" placeholder="家長電話（4 位以上）或狗狗名字">
@@ -253,10 +253,10 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
   <div class="pr-box">
     <div class="pr-title">✅ 報告卡已生成</div>
     <img id="pngResultImg" alt="進度報告卡">
-    <div class="pr-tip">手機：撳「分享／儲存」直接揀 WhatsApp 發，或<b>長按上面張相</b>儲存落相簿。</div>
+    <div class="pr-tip">手機：按「分享／儲存」並選擇 WhatsApp 發送，或<b>長按上方圖片</b>儲存至相簿。</div>
     <div class="pr-btns">
       <button id="btnShare">📤 分享／儲存</button>
-      <button id="btnSaveAs">⬇️ 存做檔案</button>
+      <button id="btnSaveAs">⬇️ 儲存為檔案</button>
       <button id="btnPngClose">✕ 關閉</button>
     </div>
   </div>
@@ -321,23 +321,23 @@ fitCard();
 // ── 句庫：導師撳「▾」揀現成句，揀完仲可以再改字 ──
 const HW_BANK = {
   '安全感・減壓': [
-    '每日 10 分鐘嗅聞遊戲',
-    '設固定休息角落，自主充電',
+    '每日進行 10 分鐘嗅聞遊戲',
+    '設置固定休息角落，讓狗狗自主休息',
     '外出散步盡量選擇較少刺激的時間和路線',
   ],
   '社交自信': [
-    '遠距離見狗，冷靜即獎勵',
-    '狗狗選擇適合朋友',
+    '遠距離看見其他狗狗時保持冷靜，即時給予獎勵',
+    '讓狗狗選擇合適的玩伴',
     '讓狗狗自主選擇互動節奏',
   ],
   '冷靜・禮儀': [
-    '多獎勵狗狗發呆放空',
-    '回家等狗狗冷靜才接觸',
+    '多獎勵狗狗安靜放鬆的時刻',
+    '回家後待狗狗冷靜下來，再與牠互動',
     '進食前短暫等待',
   ],
   '連結・分離': [
     '每日 5 分鐘眼神接觸練習',
-    '呼喚名字回望即獎勵',
+    '呼喚名字時狗狗回望，即時給予獎勵',
     '分離練習由 1 分鐘開始',
     '狗狗冷靜休息時，避免打擾',
   ],
@@ -346,7 +346,7 @@ const CTA_BANK = [
   { c1: '建議續報 S1・狗狗幼稚園 新學期', c2: '鞏固社交基礎，向 A+ 穩定社交犬進發' },
   { c1: '建議升讀 S2・情緒重建小組班', c2: '針對情緒反應作小組深度重建訓練' },
   { c1: '建議逐步過渡 S1+S2 組合', c2: '幼稚園維持社交，小組班同步重建情緒' },
-  { c1: '建議加入 Explorer 月費計劃', c2: '以固定上學頻率維持社交狀態與校園習慣' },
+  { c1: '建議維持固定上學頻率', c2: '鞏固社交狀態與校園習慣' },   // [2026-09-29 老闆定] 原「建議加入 Explorer 月費計劃」＝Club CTA，已改
 ];
 const menu = document.createElement('div');
 menu.id = 'phraseMenu';
@@ -437,7 +437,7 @@ document.getElementById('btnPngClose').addEventListener('click', () => {
 document.getElementById('btnPng').addEventListener('click', async () => {
   const btn = document.getElementById('btnPng');
   if (typeof html2canvas !== 'function') {
-    alert('圖片工具載入唔到（可能網絡擋咗 cdn.jsdelivr.net）。請換網絡再試，或直接截圖使用。');
+    alert('圖片工具未能載入（網絡可能封鎖了 cdn.jsdelivr.net）。請更換網絡後再試，或直接截圖使用。');
     return;
   }
   btn.disabled = true; btn.textContent = '生成中…';
@@ -463,7 +463,7 @@ document.getElementById('btnPng').addEventListener('click', async () => {
 });
 
 document.getElementById('btnReset').addEventListener('click', () => {
-  if (confirm('重設會清走已輸入嘅資料，還原做範例，確定？')) location.reload();
+  if (confirm('重設將清除已輸入的資料並還原為範例，確定繼續？')) location.reload();
 });
 
 // ── [2026-09-29 老闆批] 儲存到學生專屬頁：用員工後台同一個登入（同網域 localStorage「pw_staff」）
@@ -475,11 +475,14 @@ document.getElementById('btnReset').addEventListener('click', () => {
   try { staff = JSON.parse(localStorage.getItem('pw_staff') || 'null'); } catch (e) {}
   const msg = (t, ok) => { $('spMsg').textContent = t || ''; $('spMsg').style.color = ok ? '#15803D' : '#B91C1C'; };
   if (!staff || !staff.id) {
-    $('spWho').textContent = '未登入：請先喺呢部手機打開員工後台登入，再返嚟呢頁。';
+    $('spWho').textContent = '尚未登入：請先在此裝置登入員工後台，再返回此頁。';
     $('spSearch').disabled = true; $('spQ').disabled = true;
     return;
   }
   $('spWho').textContent = '儲存人：' + (staff.name || staff.id);
+  // [2026-09-29 老闆要求] 卡左下角導師名自動跟登入帳戶，導師唔使每次改（仍可手動再改）
+  const tutorEl = document.querySelector('.tutor');
+  if (tutorEl && staff.name) tutorEl.textContent = '導師 ' + staff.name;
   async function api(action, params){
     const qs = new URLSearchParams(Object.assign({ action: action, staffId: staff.id }, params));
     const r = await fetch(STAFF_API + '?' + qs.toString(), { method: 'GET', redirect: 'follow' });
@@ -493,14 +496,14 @@ document.getElementById('btnReset').addEventListener('click', () => {
     try {
       const r = await api('reportDogs', { q: q });
       if (!r.ok) { msg(r.error || '搜尋失敗'); return; }
-      if (!r.dogs.length) { msg('搵唔到，試下輸入家長電話'); return; }
+      if (!r.dogs.length) { msg('找不到相關狗狗，請嘗試輸入家長電話'); return; }
       msg('');
       $('spList').innerHTML = r.dogs.map((d, i) =>
         `<label><input type="radio" name="spDog" value="${i}"> ${esc(d.dogName)}　<span style="color:#6B7A8F">${esc(d.ownerName)}・${esc(d.phone.slice(0,4))} ${esc(d.phone.slice(4))}・${esc(d.courseLevel || '未有課程')}</span></label>`).join('');
       $('spList').querySelectorAll('input').forEach(el => el.addEventListener('change', () => {
         picked = r.dogs[Number(el.value)]; $('spSave').disabled = false;
       }));
-    } catch (e) { msg('網絡連線異常，請再試'); }
+    } catch (e) { msg('網絡連線異常，請再試一次'); }
   });
   $('spSave').addEventListener('click', async () => {
     if (!picked) return;
@@ -508,11 +511,11 @@ document.getElementById('btnReset').addEventListener('click', () => {
     const ms = document.querySelectorAll('.metric');
     const v = (m, part) => numOf(m.querySelector(part + ' .bv'));
     const vals = [v(ms[0], '.m-start'), v(ms[0], '.m-end'), v(ms[1], '.m-start'), v(ms[1], '.m-end'), v(ms[2], '.m-start'), v(ms[2], '.m-end')];
-    if (vals.some(x => x == null)) { msg('三大指標「學期初／學期末」要有數字先可以儲存'); return; }
+    if (vals.some(x => x == null)) { msg('三大指標「學期初／學期末」必須填寫數字才可儲存'); return; }
     const cardName = txt('.name');
     const warn = cardName.toLowerCase().indexOf(String(picked.dogName).toLowerCase()) === -1
-      ? '\n\n⚠️ 報告卡上名字係「' + cardName + '」，同揀咗嘅「' + picked.dogName + '」唔同，請再核對。' : '';
-    if (!confirm('將呢份報告存入「' + picked.dogName + '」（' + picked.phone + '）嘅學生專屬頁？家長會即時見到。' + warn)) return;
+      ? '\n\n⚠️ 報告卡上的名字為「' + cardName + '」，與所選的「' + picked.dogName + '」不同，請再次核對。' : '';
+    if (!confirm('確定將此報告儲存至「' + picked.dogName + '」（' + picked.phone + '）的學生專屬頁？家長將即時看到。' + warn)) return;
     const hw = Array.from(document.querySelectorAll('.hw-line [contenteditable]')).map(el => el.textContent.trim());
     $('spSave').disabled = true; msg('儲存中⋯⋯', true);
     try {
@@ -522,9 +525,9 @@ document.getElementById('btnReset').addEventListener('click', () => {
         rs: vals[0], re: vals[1], ts: vals[2], te: vals[3], ds: vals[4], de: vals[5],
         hw1: hw[0] || '', hw2: hw[1] || '', hw3: hw[2] || '',
         cta1: txt('.c1'), cta2: txt('.c2'), tutor: txt('.tutor'), issued: txt('.date') });
-      if (r.ok) msg('✅ 已儲存（' + r.reportId + '），家長重新打開學生專屬頁就見到。', true);
+      if (r.ok) msg('✅ 已儲存（' + r.reportId + '），家長重新開啟學生專屬頁即可查閱。', true);
       else { msg(r.error || '儲存失敗'); $('spSave').disabled = false; }
-    } catch (e) { msg('網絡連線異常，未確定有冇存到——請先喺 CRM「學期報告」分頁睇下，唔好即刻再撳'); }
+    } catch (e) { msg('網絡連線異常，未能確認是否已儲存。請先查看 CRM「學期報告」分頁，切勿立即再按儲存。'); }
   });
 })();
 </script>
