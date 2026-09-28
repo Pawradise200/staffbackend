@@ -29,6 +29,19 @@ body{font-family:'Nunito','PingFang TC','Heiti TC',sans-serif;background:#E9E2D5
 #btnReset{background:var(--cream);color:var(--navy);}
 .toolbar .tip{color:var(--ink-mute);font-size:11.5px;margin-top:7px;line-height:1.5;}
 
+/* ── [2026-09-29] 儲存到學生專屬頁 ── */
+.toolbar.sp{margin-top:10px;}
+.sp-who{font-size:11.5px;color:var(--ink-mute);margin-top:6px;}
+.sp-row{display:flex;gap:8px;margin-top:8px;}
+.sp-row input{flex:1;min-width:0;font-family:inherit;font-size:14px;font-weight:700;padding:8px 12px;
+  border:1.5px solid var(--line);border-radius:999px;}
+#spSearch{background:var(--cream);color:var(--navy);}
+#spSave{background:var(--gold);color:var(--navy);margin-top:9px;width:100%;}
+#spSave:disabled{opacity:.45;cursor:default;}
+.sp-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.sp-list label{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700;cursor:pointer;}
+.sp-msg{font-size:12px;font-weight:800;margin-top:8px;line-height:1.5;}
+
 /* ── 生成結果視窗（下載 PNG 之後彈出）── */
 #pngResult{display:none;position:fixed;inset:0;z-index:200;background:rgba(31,53,82,.72);
   align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
@@ -221,6 +234,19 @@ body.hints [contenteditable]:hover{box-shadow:0 0 0 1.5px rgba(224,136,80,.45);}
     <button id="btnPng">⬇️ 下載 PNG</button>
     <button id="btnReset">↺ 重設做範例</button>
   </div>
+</div>
+
+<div class="toolbar sp">
+  <b>💾 儲存到學生專屬頁</b>
+  <div class="tip">揀返呢份報告屬於邊隻狗狗，撳儲存之後，家長喺學生專屬頁即時睇到（仲有跨學期趨勢）。儲存錯咗：喺 CRM「學期報告」分頁將「狀態」改做「撤回」。</div>
+  <div class="sp-who" id="spWho"></div>
+  <div class="sp-row">
+    <input id="spQ" placeholder="家長電話（4 位以上）或狗狗名字">
+    <button id="spSearch">搜尋</button>
+  </div>
+  <div class="sp-list" id="spList"></div>
+  <button id="spSave" disabled>💾 儲存到學生專屬頁</button>
+  <div class="sp-msg" id="spMsg"></div>
 </div>
 
 <div id="pngResult">
@@ -439,6 +465,68 @@ document.getElementById('btnPng').addEventListener('click', async () => {
 document.getElementById('btnReset').addEventListener('click', () => {
   if (confirm('重設會清走已輸入嘅資料，還原做範例，確定？')) location.reload();
 });
+
+// ── [2026-09-29 老闆批] 儲存到學生專屬頁：用員工後台同一個登入（同網域 localStorage「pw_staff」）
+//   → staff-backend termReportSave 寫入 CRM「學期報告」分頁；學生頁由 crm-backend 讀出
+(function(){
+  const STAFF_API = 'https://script.google.com/macros/s/AKfycbwO54JDHOCduudFGsBniyXDW3gh513eTHuoNUA8_jWVBAqM2zT0i3mmZYUXZgSzGVmesA/exec';
+  const $ = id => document.getElementById(id);
+  let staff = null, picked = null;
+  try { staff = JSON.parse(localStorage.getItem('pw_staff') || 'null'); } catch (e) {}
+  const msg = (t, ok) => { $('spMsg').textContent = t || ''; $('spMsg').style.color = ok ? '#15803D' : '#B91C1C'; };
+  if (!staff || !staff.id) {
+    $('spWho').textContent = '未登入：請先喺呢部手機打開員工後台登入，再返嚟呢頁。';
+    $('spSearch').disabled = true; $('spQ').disabled = true;
+    return;
+  }
+  $('spWho').textContent = '儲存人：' + (staff.name || staff.id);
+  async function api(action, params){
+    const qs = new URLSearchParams(Object.assign({ action: action, staffId: staff.id }, params));
+    const r = await fetch(STAFF_API + '?' + qs.toString(), { method: 'GET', redirect: 'follow' });
+    return r.json();
+  }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  $('spSearch').addEventListener('click', async () => {
+    const q = $('spQ').value.trim();
+    if (!q) return;
+    picked = null; $('spSave').disabled = true; msg('搜尋中⋯⋯', true); $('spList').innerHTML = '';
+    try {
+      const r = await api('reportDogs', { q: q });
+      if (!r.ok) { msg(r.error || '搜尋失敗'); return; }
+      if (!r.dogs.length) { msg('搵唔到，試下輸入家長電話'); return; }
+      msg('');
+      $('spList').innerHTML = r.dogs.map((d, i) =>
+        `<label><input type="radio" name="spDog" value="${i}"> ${esc(d.dogName)}　<span style="color:#6B7A8F">${esc(d.ownerName)}・${esc(d.phone.slice(0,4))} ${esc(d.phone.slice(4))}・${esc(d.courseLevel || '未有課程')}</span></label>`).join('');
+      $('spList').querySelectorAll('input').forEach(el => el.addEventListener('change', () => {
+        picked = r.dogs[Number(el.value)]; $('spSave').disabled = false;
+      }));
+    } catch (e) { msg('網絡連線異常，請再試'); }
+  });
+  $('spSave').addEventListener('click', async () => {
+    if (!picked) return;
+    const txt = sel => { const el = document.querySelector(sel); return el ? el.textContent.trim() : ''; };
+    const ms = document.querySelectorAll('.metric');
+    const v = (m, part) => numOf(m.querySelector(part + ' .bv'));
+    const vals = [v(ms[0], '.m-start'), v(ms[0], '.m-end'), v(ms[1], '.m-start'), v(ms[1], '.m-end'), v(ms[2], '.m-start'), v(ms[2], '.m-end')];
+    if (vals.some(x => x == null)) { msg('三大指標「學期初／學期末」要有數字先可以儲存'); return; }
+    const cardName = txt('.name');
+    const warn = cardName.toLowerCase().indexOf(String(picked.dogName).toLowerCase()) === -1
+      ? '\n\n⚠️ 報告卡上名字係「' + cardName + '」，同揀咗嘅「' + picked.dogName + '」唔同，請再核對。' : '';
+    if (!confirm('將呢份報告存入「' + picked.dogName + '」（' + picked.phone + '）嘅學生專屬頁？家長會即時見到。' + warn)) return;
+    const hw = Array.from(document.querySelectorAll('.hw-line [contenteditable]')).map(el => el.textContent.trim());
+    $('spSave').disabled = true; msg('儲存中⋯⋯', true);
+    try {
+      const r = await api('termReportSave', {
+        phone: picked.phone, dogName: picked.dogName,
+        course: txt('.t2').split(' · ')[0], season: txt('.season'), grade: txt('.grade .g'),
+        rs: vals[0], re: vals[1], ts: vals[2], te: vals[3], ds: vals[4], de: vals[5],
+        hw1: hw[0] || '', hw2: hw[1] || '', hw3: hw[2] || '',
+        cta1: txt('.c1'), cta2: txt('.c2'), tutor: txt('.tutor'), issued: txt('.date') });
+      if (r.ok) msg('✅ 已儲存（' + r.reportId + '），家長重新打開學生專屬頁就見到。', true);
+      else { msg(r.error || '儲存失敗'); $('spSave').disabled = false; }
+    } catch (e) { msg('網絡連線異常，未確定有冇存到——請先喺 CRM「學期報告」分頁睇下，唔好即刻再撳'); }
+  });
+})();
 </script>
 </body>
 </html>
