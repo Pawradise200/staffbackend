@@ -2274,7 +2274,7 @@ function SeatsPanel({ staffId }) {
     const ok = await pwWrite('waitlistDelete', { id });
     if (ok) loadAll();
   }
-  if (!status && !items) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入學位數據…</div></div>;
+  if (!status && !items) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>資料下載中，請稍候片刻</div></div>;
   return (
     <>
       <SeatStatusCard status={status} />
@@ -2551,7 +2551,7 @@ function OwnerKpiEntry({ month, mgrData, onPick }) {
 function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock }) {
   const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="管理層總覽 · 需要管理層密碼" sub="請輸入管理層密碼" onUnlock={onUnlock} />;
-  if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
+  if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>資料下載中，請稍候片刻</div></div>;
   const person = evalId != null ? mgrData.staffList.find(s => s.id == evalId) : null;
   if (person) {
     return (
@@ -2751,7 +2751,7 @@ function MgrCleanCheck() {
         <div className="pwd-cc-std" style={{ marginTop: 8 }}>
           本月不合格：🏨 {failThisMonth('酒店部')} 次 · 🎓 {failThisMonth('學院部')} 次（KPI 目標：每部門 ≤ 1）· 點擊記錄可查看逐項結果
         </div>
-        {records === null && <div className="pwd-cc-std" style={{ marginTop: 10 }}>載入中…</div>}
+        {records === null && <div className="pwd-cc-std" style={{ marginTop: 10 }}>資料下載中，請稍候片刻</div>}
         {records !== null && records.length === 0 && <div className="pwd-cc-std" style={{ marginTop: 10 }}>暫無記錄</div>}
         {(records || []).map(r => (
           <React.Fragment key={r.id}>
@@ -2845,7 +2845,7 @@ function CleanCheckSummary() {
 // ── ManagerPanel ──
 function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
-  if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>載入管理數據…</div></div>;
+  if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>資料下載中，請稍候片刻</div></div>;
   return (
     <>
       <div className="pwd-mgr-banner">
@@ -2986,7 +2986,7 @@ function CommissionApp() {
   }
 
   if (screen === 'login') return <Login onLogin={doLogin} />;
-  if (screen === 'loading') return <div className="pwd-loading"><img src="pawradise-logo-full.png" alt="" /><div className="pwd-spinner" /><div className="pwd-loading-txt">載入你的資料…</div></div>;
+  if (screen === 'loading') return <div className="pwd-loading"><img src="pawradise-logo-full.png" alt="" /><div className="pwd-spinner" /><div className="pwd-loading-txt">資料下載中，請稍候片刻</div></div>;
   if (screen === 'error') return (
     <div className="pwd-login">
       <div className="pwd-login-top"><div className="pwd-login-crest"><img src="pawradise-logo-full.png" alt="" /></div></div>
@@ -3086,6 +3086,12 @@ function CommissionApp() {
         {isOwner && (
           <button className={'pwd-tabbtn' + (tab === 'owner' ? ' on' : '')} onClick={() => setTab('owner')}>
             <span className="pwd-tabbtn-ico">📊</span><span>管理層總覽</span>
+          </button>
+        )}
+        {/* [2026-09-29 老闆要求] 學期進度報告卡：學院導師／店長／管理層可見，撳入去直接做報告（同網域，沿用登入） */}
+        {(staff.dept === 'academy' || isManager || isOwner) && (
+          <button className="pwd-tabbtn" onClick={() => { window.location.href = 'progress-card.html'; }}>
+            <span className="pwd-tabbtn-ico">📝</span><span>學期報告</span>
           </button>
         )}
       </div>

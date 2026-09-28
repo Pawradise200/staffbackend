@@ -4283,7 +4283,7 @@ function SeatsPanel({
     style: {
       color: 'var(--pw-ink-mute)'
     }
-  }, "\u8F09\u5165\u5B78\u4F4D\u6578\u64DA\u2026"));
+  }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SeatStatusCard, {
     status: status
   }), /*#__PURE__*/React.createElement(WaitlistAddForm, {
@@ -4755,7 +4755,7 @@ function OwnerOverview({
     style: {
       color: 'var(--pw-ink-mute)'
     }
-  }, "\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u2026"));
+  }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   const person = evalId != null ? mgrData.staffList.find(s => s.id == evalId) : null;
   if (person) {
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
@@ -5034,7 +5034,7 @@ function MgrCleanCheck() {
     style: {
       marginTop: 10
     }
-  }, "\u8F09\u5165\u4E2D\u2026"), records !== null && records.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"), records !== null && records.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-cc-std",
     style: {
       marginTop: 10
@@ -5165,7 +5165,7 @@ function ManagerPanel({
     style: {
       color: 'var(--pw-ink-mute)'
     }
-  }, "\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u2026"));
+  }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-banner"
   }, /*#__PURE__*/React.createElement("span", {
@@ -5441,7 +5441,7 @@ function CommissionApp() {
     className: "pwd-spinner"
   }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-loading-txt"
-  }, "\u8F09\u5165\u4F60\u7684\u8CC7\u6599\u2026"));
+  }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   if (screen === 'error') return /*#__PURE__*/React.createElement("div", {
     className: "pwd-login"
   }, /*#__PURE__*/React.createElement("div", {
@@ -5597,7 +5597,14 @@ function CommissionApp() {
     onClick: () => setTab('owner')
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tabbtn-ico"
-  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("span", null, "\u7BA1\u7406\u5C64\u7E3D\u89BD"))));
+  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("span", null, "\u7BA1\u7406\u5C64\u7E3D\u89BD")), (staff.dept === 'academy' || isManager || isOwner) && /*#__PURE__*/React.createElement("button", {
+    className: "pwd-tabbtn",
+    onClick: () => {
+      window.location.href = 'progress-card.html';
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tabbtn-ico"
+  }, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("span", null, "\u5B78\u671F\u5831\u544A"))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement("div", {
   className: "pwd-app"
