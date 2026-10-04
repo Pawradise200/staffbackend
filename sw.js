@@ -3,7 +3,7 @@
 //   殼（頁面/JS/圖/字體）＝ cache 先行、背景更新（開 app 即開，改版下次開自動生效）
 //   API（script.google.com）＝ 一律行網絡，唔 cache——佣金/更表/檢查記錄必須係最新
 // ⚠️ 改任何殼檔案（index.html / app.js / 圖）都要令 VERSION 行前一格，唔係員工會食舊 cache
-const VERSION = 'pw-v5-20260929c';   // [2026-09-29] 學期報告 tab＋載入字眼「資料下載中，請稍候片刻」
+const VERSION = 'pw-v5-20261004a';   // [2026-10-04] 會籍池 × KPI 比率
 const SHELL = [
   './',
   './index.html',

@@ -1985,7 +1985,7 @@ function IndividualView({
   onTrialBook,
   onTrialCancel
 }) {
-  const clubBonus = clubBonusFor(staff, clubNoms, month);
+  const clubBonus = clubBonusFor(staff, clubNoms, month) * kpi.ratio; // 2026-10-04:會籍池 × KPI 比率
   const actualTotal = kpi.actualTotal + clubBonus;
   const actualParts = clubBonus > 0 ? [...kpi.actualParts, {
     key: 'club',
@@ -2767,7 +2767,7 @@ function MgrOps({
       kpiFail: k.kpiFail,
       lateLeave: k.lateLeave
     }, teamForCalc);
-    return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '');
+    return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '') * kpi.ratio;
   }, 0);
   function save() {
     return pwApi('saveOps', {
@@ -4517,7 +4517,7 @@ function OwnerCommissionTable({
       kpiFail: k.kpiFail,
       lateLeave: k.lateLeave
     }, teamForCalc);
-    const club = clubBonusFor(s, mgrData.allNoms, team.monthKey || '');
+    const club = clubBonusFor(s, mgrData.allNoms, team.monthKey || '') * kpi.ratio;
     return {
       name: s.name,
       role: s.role,

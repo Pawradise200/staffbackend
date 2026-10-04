@@ -1002,7 +1002,7 @@ function CommissionHistory({ history, current, monthLabel, isMktg }) {
 
 // ═══════════ IndividualView ═══════════
 function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, clubNoms, trialSlots, trialBookings, trialDone, history, month, monthLabel, onClubSubmit, onTrialBook, onTrialCancel }) {
-  const clubBonus = clubBonusFor(staff, clubNoms, month);
+  const clubBonus = clubBonusFor(staff, clubNoms, month) * kpi.ratio;   // 2026-10-04:會籍池 × KPI 比率
   const actualTotal = kpi.actualTotal + clubBonus;
   const actualParts = clubBonus > 0 ? [...kpi.actualParts, { key: 'club', value: clubBonus }] : kpi.actualParts;
   const pctOf = (v) => actualTotal > 0 ? Math.round(v / actualTotal * 100) : 0;
@@ -1445,7 +1445,7 @@ function MgrOps({ month, mgrData }) {
     // 個人新生數(allSales)＋會籍獎金要入埋,先同員工個人頁/月結引擎一條數(2026-09-02 修,同 OwnerCommissionTable)
     const sales = (mgrData.allSales && mgrData.allSales[s.id]) || {};
     const { kpi } = fullResult({ ...s, ...sales, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
-    return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '');
+    return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '') * kpi.ratio;
   }, 0);
   function save() {
     return pwApi('saveOps', {
@@ -2399,7 +2399,7 @@ function OwnerCommissionTable({ mgrData }) {
     // 個人新生數(allSales)＋會籍獎金要入埋,先同員工個人頁/月結引擎一條數(2026-09-02 修)
     const sales = (mgrData.allSales && mgrData.allSales[s.id]) || {};
     const { kpi } = fullResult({ ...s, ...sales, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
-    const club = clubBonusFor(s, mgrData.allNoms, team.monthKey || '');
+    const club = clubBonusFor(s, mgrData.allNoms, team.monthKey || '') * kpi.ratio;
     return { name: s.name, role: s.role, amt: kpi.actualTotal + club };
   }).sort((a, b) => b.amt - a.amt);
   const total = rows.reduce((a, r) => a + r.amt, 0);
