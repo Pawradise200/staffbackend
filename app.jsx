@@ -349,10 +349,10 @@ const SHIFTS = {
   off:   { label: '休息', time: '', hrs: 0 },
 };
 const POSITIONS = {
-  academyA: { label: '學院A位', cls: 'academy' },   // 初級導師
+  academyA: { label: '學院IC', cls: 'academy' },   // 初級導師
   academyB: { label: '學院B位', cls: 'academy' },   // 初級導師
-  assist:   { label: '助教', cls: 'academy' },
-  hotelA:  { label: '酒店A位', cls: 'hotelA' },
+  assist:   { label: '學院C位（助教）', cls: 'academy' },
+  hotelA:  { label: '酒店IC', cls: 'hotelA' },
   hotelB:  { label: '酒店B位', cls: 'hotelB' },
   hotelC:  { label: '酒店C位', cls: 'hotelC' },
   academy: { label: '學院', cls: 'academy' },        // 舊資料(未細分前)相容顯示
@@ -1894,7 +1894,7 @@ function MgrRoster({ mgrData }) {
   const [loading, setLoading] = useState(false);
   const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
   const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
-  const POS_LABEL = { academyA: '學院A位', academyB: '學院B位', assist: '助教', hotelA: '酒店A位', hotelB: '酒店B位', hotelC: '酒店C位', academy: '學院', reception: '前台' };
+  const POS_LABEL = { academyA: '學院IC', academyB: '學院B位', assist: '學院C位（助教）', hotelA: '酒店IC', hotelB: '酒店B位', hotelC: '酒店C位', academy: '學院', reception: '前台' };
 
   // 載入所選員工 + 所選週次嗀更表
   useEffect(() => {

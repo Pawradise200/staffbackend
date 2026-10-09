@@ -865,7 +865,7 @@ const SHIFTS = {
 };
 const POSITIONS = {
   academyA: {
-    label: '學院A位',
+    label: '學院IC',
     cls: 'academy'
   },
   // 初級導師
@@ -875,11 +875,11 @@ const POSITIONS = {
   },
   // 初級導師
   assist: {
-    label: '助教',
+    label: '學院C位（助教）',
     cls: 'academy'
   },
   hotelA: {
-    label: '酒店A位',
+    label: '酒店IC',
     cls: 'hotelA'
   },
   hotelB: {
@@ -3623,10 +3623,10 @@ function MgrRoster({
     off: '休息'
   };
   const POS_LABEL = {
-    academyA: '學院A位',
+    academyA: '學院IC',
     academyB: '學院B位',
-    assist: '助教',
-    hotelA: '酒店A位',
+    assist: '學院C位（助教）',
+    hotelA: '酒店IC',
     hotelB: '酒店B位',
     hotelC: '酒店C位',
     academy: '學院',
