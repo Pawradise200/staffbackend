@@ -3667,6 +3667,12 @@ function MgrRoster({
     });
   };
   async function save() {
+    // [2026-10-09 老闆定] 返工日必須揀崗位先准發佈——員工靠崗位知道自己當日責任
+    const missing = WEEKDAYS.filter((wd, i) => cur[i] && cur[i][0] !== 'off' && !cur[i][1]);
+    if (missing.length) return {
+      ok: false,
+      error: '星期' + missing.join('、') + ' 未揀崗位'
+    };
     const r = await pwApi('saveRoster', {
       weekStart,
       staffId: sel,

@@ -1919,6 +1919,9 @@ function MgrRoster({ mgrData }) {
     });
   };
   async function save() {
+    // [2026-10-09 老闆定] 返工日必須揀崗位先准發佈——員工靠崗位知道自己當日責任
+    const missing = WEEKDAYS.filter((wd, i) => cur[i] && cur[i][0] !== 'off' && !cur[i][1]);
+    if (missing.length) return { ok: false, error: '星期' + missing.join('、') + ' 未揀崗位' };
     const r = await pwApi('saveRoster', { weekStart, staffId: sel, shifts: JSON.stringify(cur) });
     // 只有真係寫入咗先當已儲存——否則「未儲存」提示會喺失敗時消失，睇落好似儲好咗
     if (r && r.ok !== false) setSavedShifts(cur);
