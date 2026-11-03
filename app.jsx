@@ -2290,7 +2290,7 @@ function SeatsPanel({ staffId }) {
 // ── 老闆評核店長 KPI ──
 // [2026-09-21] 由「只評店長」擴成「老闆親自評核嘅崗位」：店長 ＋ 內容與流量部。
 //   內容四項指標(查詢數/內容質素/產量合規/數據紀律)店長冇基礎判斷,老闆定明由管理層評。
-function OwnerKpiEditor({ month, mgrData, person }) {
+function OwnerKpiEditor({ month, mgrData, person, onSaved }) {
   const role = kpiRoleOf(person);
   const isMktg = role === 'marketing';
   const k0 = mgrData.allKpi[person.id] || { kpiFail: [], lateLeave: 0 };
@@ -2302,7 +2302,12 @@ function OwnerKpiEditor({ month, mgrData, person }) {
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   const toggle = (id) => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
-  function save() { return pwApi('saveKpi', { month, staffId: person.id, lateLeave, kpiFail: fail.join(',') }); }
+  // [2026-11-03] 儲存成功後重讀管理數據，總覽佣金表即時跟新分數（之前要登出再入先更新）
+  async function save() {
+    const r = await pwApi('saveKpi', { month, staffId: person.id, lateLeave, kpiFail: fail.join(',') });
+    if (r && r.ok !== false && onSaved) { try { await onSaved(); } catch (e) {} }
+    return r;
+  }
   return (
     <div className="pwd-mgr-stack">
       <div className="pwd-mgr-banner"><span className="pwd-mgr-banner-ico">🔑</span><div><b>管理層評核</b><span>{person.name} · {roleKpi(role).label}</span></div></div>
@@ -2344,7 +2349,7 @@ function OwnerKpiEditor({ month, mgrData, person }) {
     </div>
   );
 }
-function MgrOwnerKpi({ month, mgrData }) {
+function MgrOwnerKpi({ month, mgrData, onSaved }) {
   const [unlocked, setUnlocked] = useState(false);
   const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
   const [sel, setSel] = useState(targets[0] ? targets[0].id : null);
@@ -2360,7 +2365,7 @@ function MgrOwnerKpi({ month, mgrData }) {
           ))}
         </div>
       )}
-      <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} />
+      <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} onSaved={onSaved} />
     </>
   );
 }
@@ -2551,7 +2556,7 @@ function OwnerKpiEntry({ month, mgrData, onPick }) {
     </div>
   );
 }
-function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock }) {
+function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock, onSaved }) {
   const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="管理層總覽 · 需要管理層密碼" sub="請輸入管理層密碼" onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>資料下載中，請稍候片刻</div></div>;
@@ -2560,7 +2565,7 @@ function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock }) {
     return (
       <>
         <div className="pwd-mgr-nav"><button className="pwd-mgr-navbtn on" onClick={() => setEvalId(null)}>‹ 返回管理層總覽</button></div>
-        <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} />
+        <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} onSaved={onSaved} />
         <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>儲存後返回總覽，數字會在下次載入管理數據時更新。</div>
       </>
     );
@@ -2846,7 +2851,7 @@ function CleanCheckSummary() {
 }
 
 // ── ManagerPanel ──
-function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange }) {
+function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange, onSaved }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>資料下載中，請稍候片刻</div></div>;
   return (
@@ -2869,7 +2874,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
       {area === 'roster' && <MgrRoster mgrData={mgrData} />}
       {area === 'clean' && <MgrCleanCheck />}
-      {area === 'ownerkpi' && <MgrOwnerKpi month={month} mgrData={mgrData} />}
+      {area === 'ownerkpi' && <MgrOwnerKpi month={month} mgrData={mgrData} onSaved={onSaved} />}
     </>
   );
 }
@@ -2983,6 +2988,9 @@ function CommissionApp() {
     if (r && r.ok) await reloadDash();
     return r;
   }
+  async function reloadMgr() {
+    try { const res = await pwApi('managerData', { month }); if (res.ok) setMgrData(res); } catch (e) {}
+  }
   async function unlockMgr() {
     setMgrUnlocked(true);
     try { const res = await pwApi('managerData', { month }); if (res.ok) setMgrData(res); } catch (e) {}
@@ -3057,12 +3065,12 @@ function CommissionApp() {
             onSwap={submitSwap} onLongLeave={submitLongLeave} />
         )}
         {tab === 'mgr' && (
-          <ManagerPanel key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}
+          <ManagerPanel onSaved={reloadMgr} key={month} month={month} unlocked={mgrUnlocked} mgrData={mgrData}
             area={mgrArea} onAreaChange={setMgrArea}
             onUnlock={unlockMgr} onLock={() => { setMgrUnlocked(false); localStorage.removeItem('pw_mgr_key'); PW_KEY = ''; }} />
         )}
         {tab === 'owner' && (
-          <OwnerOverview month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} />
+          <OwnerOverview month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} onSaved={reloadMgr} />
         )}
         {tab === 'seats' && (
           <SeatsPanel staffId={staff.id} />

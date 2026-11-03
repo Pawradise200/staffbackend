@@ -4308,7 +4308,8 @@ function SeatsPanel({
 function OwnerKpiEditor({
   month,
   mgrData,
-  person
+  person,
+  onSaved
 }) {
   const role = kpiRoleOf(person);
   const isMktg = role === 'marketing';
@@ -4335,13 +4336,20 @@ function OwnerKpiEditor({
   const score = scorecardTotal(items);
   const tone = kpi.ratio >= 1 ? 'full' : kpi.ratio > 0 ? 'mid' : 'zero';
   const toggle = id => setFail(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id]);
-  function save() {
-    return pwApi('saveKpi', {
+  // [2026-11-03] 儲存成功後重讀管理數據，總覽佣金表即時跟新分數（之前要登出再入先更新）
+  async function save() {
+    const r = await pwApi('saveKpi', {
       month,
       staffId: person.id,
       lateLeave,
       kpiFail: fail.join(',')
     });
+    if (r && r.ok !== false && onSaved) {
+      try {
+        await onSaved();
+      } catch (e) {}
+    }
+    return r;
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-stack"
@@ -4407,7 +4415,8 @@ function OwnerKpiEditor({
 }
 function MgrOwnerKpi({
   month,
-  mgrData
+  mgrData,
+  onSaved
 }) {
   const [unlocked, setUnlocked] = useState(false);
   const targets = mgrData.staffList.filter(s => s.role === 'manager' || s.role === 'marketing');
@@ -4438,7 +4447,8 @@ function MgrOwnerKpi({
     key: person.id,
     month: month,
     mgrData: mgrData,
-    person: person
+    person: person,
+    onSaved: onSaved
   }));
 }
 
@@ -4739,7 +4749,8 @@ function OwnerOverview({
   dash,
   mgrUnlocked,
   mgrData,
-  onUnlock
+  onUnlock,
+  onSaved
 }) {
   const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
@@ -4773,7 +4784,8 @@ function OwnerOverview({
       key: person.id,
       month: month,
       mgrData: mgrData,
-      person: person
+      person: person,
+      onSaved: onSaved
     }), /*#__PURE__*/React.createElement("div", {
       className: "pwd-mgrgoal-foot",
       style: {
@@ -5153,7 +5165,8 @@ function ManagerPanel({
   onUnlock,
   onLock,
   area,
-  onAreaChange
+  onAreaChange,
+  onSaved
 }) {
   if (!unlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
     onUnlock: onUnlock
@@ -5202,7 +5215,8 @@ function ManagerPanel({
     mgrData: mgrData
   }), area === 'clean' && /*#__PURE__*/React.createElement(MgrCleanCheck, null), area === 'ownerkpi' && /*#__PURE__*/React.createElement(MgrOwnerKpi, {
     month: month,
-    mgrData: mgrData
+    mgrData: mgrData,
+    onSaved: onSaved
   }));
 }
 
@@ -5426,6 +5440,14 @@ function CommissionApp() {
     if (r && r.ok) await reloadDash();
     return r;
   }
+  async function reloadMgr() {
+    try {
+      const res = await pwApi('managerData', {
+        month
+      });
+      if (res.ok) setMgrData(res);
+    } catch (e) {}
+  }
   async function unlockMgr() {
     setMgrUnlocked(true);
     try {
@@ -5550,6 +5572,7 @@ function CommissionApp() {
     onSwap: submitSwap,
     onLongLeave: submitLongLeave
   }), tab === 'mgr' && /*#__PURE__*/React.createElement(ManagerPanel, {
+    onSaved: reloadMgr,
     key: month,
     month: month,
     unlocked: mgrUnlocked,
@@ -5567,7 +5590,8 @@ function CommissionApp() {
     dash: dash,
     mgrUnlocked: mgrUnlocked,
     mgrData: mgrData,
-    onUnlock: unlockMgr
+    onUnlock: unlockMgr,
+    onSaved: reloadMgr
   }), tab === 'seats' && /*#__PURE__*/React.createElement(SeatsPanel, {
     staffId: staff.id
   })), /*#__PURE__*/React.createElement("div", {
