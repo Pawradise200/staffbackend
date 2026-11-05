@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06c';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2260,7 +2260,7 @@ function WaitlistTable({ items, onUpdate, onDelete }) {
   );
 }
 // [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
-function SeatsPanel({ staffId, tuitionRole, unlocked, onUnlock }) {
+function SeatsPanel({ staffId }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
   async function loadAll() {
@@ -2281,12 +2281,6 @@ function SeatsPanel({ staffId, tuitionRole, unlocked, onUnlock }) {
   return (
     <>
       <SeatStatusCard status={status} />
-      {/* [2026-11-06 Erica 定] 收學費屬客戶資料，放學位頁；只店長／管理層見到，要管理密碼 */}
-      {tuitionRole && (unlocked
-        ? <><MgrTuition /><MgrPackageSale /></>
-        : <ManagerGate onUnlock={onUnlock}
-            action={tuitionRole === 'owner' ? 'verifyOwner' : 'verifyMgr'}
-            title="收學費 · 需要管理密碼" sub="請輸入店長／管理層管理密碼" />)}
       <WaitlistAddForm staffId={staffId} onAdded={loadAll} />
       <WaitlistTable items={items} onUpdate={updateStatus} onDelete={deleteEntry} />
     </>
@@ -2558,7 +2552,7 @@ function OwnerKpiEntry({ month, mgrData, onPick }) {
           );
         })}
       </div>
-      <div className="pwd-mgrgoal-foot">按員工進入評核。此兩個崗位的 KPI 只由管理層評核，店長後台看不到。</div>
+      <div className="pwd-mgrgoal-foot">按員工進入評核。此兩個崗位的 KPI 只由管理層評核，員工管理頁看不到。</div>
     </div>
   );
 }
@@ -3294,9 +3288,13 @@ function CommissionApp() {
         {tab === 'owner' && (
           <OwnerOverview month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} onSaved={reloadMgr} />
         )}
+        {/* [2026-11-06 Erica 定] 收學費＋賣套票獨立一個「收入記錄」分頁；只店長／管理層，要管理密碼 */}
+        {tab === 'income' && (isManager || isOwner) && (mgrUnlocked
+          ? <><MgrTuition /><MgrPackageSale /></>
+          : <ManagerGate onUnlock={unlockMgr} action={isOwner ? 'verifyOwner' : 'verifyMgr'}
+              title="收入記錄 · 需要管理密碼" sub="請輸入店長／管理層管理密碼" />)}
         {tab === 'seats' && (
-          <SeatsPanel staffId={staff.id} tuitionRole={isOwner ? 'owner' : (isManager ? 'manager' : '')}
-            unlocked={mgrUnlocked} onUnlock={unlockMgr} />
+          <SeatsPanel staffId={staff.id} />
         )}
       </div>
 
@@ -3314,7 +3312,12 @@ function CommissionApp() {
         </button>
         {isManager && (
           <button className={'pwd-tabbtn' + (tab === 'mgr' ? ' on' : '')} onClick={() => setTab('mgr')}>
-            <span className="pwd-tabbtn-ico">🗂</span><span>店長後台</span>
+            <span className="pwd-tabbtn-ico">🗂</span><span>員工管理</span>
+          </button>
+        )}
+        {(isManager || isOwner) && (
+          <button className={'pwd-tabbtn' + (tab === 'income' ? ' on' : '')} onClick={() => setTab('income')}>
+            <span className="pwd-tabbtn-ico">💳</span><span>收入記錄</span>
           </button>
         )}
         {isOwner && (

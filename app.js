@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -4250,10 +4250,7 @@ function WaitlistTable({
 }
 // [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
 function SeatsPanel({
-  staffId,
-  tuitionRole,
-  unlocked,
-  onUnlock
+  staffId
 }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
@@ -4294,12 +4291,7 @@ function SeatsPanel({
   }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SeatStatusCard, {
     status: status
-  }), tuitionRole && (unlocked ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MgrTuition, null), /*#__PURE__*/React.createElement(MgrPackageSale, null)) : /*#__PURE__*/React.createElement(ManagerGate, {
-    onUnlock: onUnlock,
-    action: tuitionRole === 'owner' ? 'verifyOwner' : 'verifyMgr',
-    title: "\u6536\u5B78\u8CBB \xB7 \u9700\u8981\u7BA1\u7406\u5BC6\u78BC",
-    sub: "\u8ACB\u8F38\u5165\u5E97\u9577\uFF0F\u7BA1\u7406\u5C64\u7BA1\u7406\u5BC6\u78BC"
-  })), /*#__PURE__*/React.createElement(WaitlistAddForm, {
+  }), /*#__PURE__*/React.createElement(WaitlistAddForm, {
     staffId: staffId,
     onAdded: loadAll
   }), /*#__PURE__*/React.createElement(WaitlistTable, {
@@ -4749,7 +4741,7 @@ function OwnerKpiEntry({
     }, t.name, " \xB7 ", scorecardTotal(items), " \u5206 \xB7 ", Math.round(kpi.ratio * 100), "%");
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgrgoal-foot"
-  }, "\u6309\u54E1\u5DE5\u9032\u5165\u8A55\u6838\u3002\u6B64\u5169\u500B\u5D17\u4F4D\u7684 KPI \u53EA\u7531\u7BA1\u7406\u5C64\u8A55\u6838\uFF0C\u5E97\u9577\u5F8C\u53F0\u770B\u4E0D\u5230\u3002"));
+  }, "\u6309\u54E1\u5DE5\u9032\u5165\u8A55\u6838\u3002\u6B64\u5169\u500B\u5D17\u4F4D\u7684 KPI \u53EA\u7531\u7BA1\u7406\u5C64\u8A55\u6838\uFF0C\u54E1\u5DE5\u7BA1\u7406\u9801\u770B\u4E0D\u5230\u3002"));
 }
 function OwnerOverview({
   month,
@@ -5955,11 +5947,13 @@ function CommissionApp() {
     mgrData: mgrData,
     onUnlock: unlockMgr,
     onSaved: reloadMgr
-  }), tab === 'seats' && /*#__PURE__*/React.createElement(SeatsPanel, {
-    staffId: staff.id,
-    tuitionRole: isOwner ? 'owner' : isManager ? 'manager' : '',
-    unlocked: mgrUnlocked,
-    onUnlock: unlockMgr
+  }), tab === 'income' && (isManager || isOwner) && (mgrUnlocked ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MgrTuition, null), /*#__PURE__*/React.createElement(MgrPackageSale, null)) : /*#__PURE__*/React.createElement(ManagerGate, {
+    onUnlock: unlockMgr,
+    action: isOwner ? 'verifyOwner' : 'verifyMgr',
+    title: "\u6536\u5165\u8A18\u9304 \xB7 \u9700\u8981\u7BA1\u7406\u5BC6\u78BC",
+    sub: "\u8ACB\u8F38\u5165\u5E97\u9577\uFF0F\u7BA1\u7406\u5C64\u7BA1\u7406\u5BC6\u78BC"
+  })), tab === 'seats' && /*#__PURE__*/React.createElement(SeatsPanel, {
+    staffId: staff.id
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tabbar"
   }, !isOwner && /*#__PURE__*/React.createElement("button", {
@@ -5988,7 +5982,12 @@ function CommissionApp() {
     onClick: () => setTab('mgr')
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tabbtn-ico"
-  }, "\uD83D\uDDC2"), /*#__PURE__*/React.createElement("span", null, "\u5E97\u9577\u5F8C\u53F0")), isOwner && /*#__PURE__*/React.createElement("button", {
+  }, "\uD83D\uDDC2"), /*#__PURE__*/React.createElement("span", null, "\u54E1\u5DE5\u7BA1\u7406")), (isManager || isOwner) && /*#__PURE__*/React.createElement("button", {
+    className: 'pwd-tabbtn' + (tab === 'income' ? ' on' : ''),
+    onClick: () => setTab('income')
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tabbtn-ico"
+  }, "\uD83D\uDCB3"), /*#__PURE__*/React.createElement("span", null, "\u6536\u5165\u8A18\u9304")), isOwner && /*#__PURE__*/React.createElement("button", {
     className: 'pwd-tabbtn' + (tab === 'owner' ? ' on' : ''),
     onClick: () => setTab('owner')
   }, /*#__PURE__*/React.createElement("span", {
