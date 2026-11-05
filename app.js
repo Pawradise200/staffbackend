@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -4294,7 +4294,7 @@ function SeatsPanel({
   }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SeatStatusCard, {
     status: status
-  }), tuitionRole && (unlocked ? /*#__PURE__*/React.createElement(MgrTuition, null) : /*#__PURE__*/React.createElement(ManagerGate, {
+  }), tuitionRole && (unlocked ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MgrTuition, null), /*#__PURE__*/React.createElement(MgrPackageSale, null)) : /*#__PURE__*/React.createElement(ManagerGate, {
     onUnlock: onUnlock,
     action: tuitionRole === 'owner' ? 'verifyOwner' : 'verifyMgr',
     title: "\u6536\u5B78\u8CBB \xB7 \u9700\u8981\u7BA1\u7406\u5BC6\u78BC",
@@ -5351,6 +5351,177 @@ function MgrTuition() {
     disabled: !canSubmit,
     onClick: () => submit(false)
   }, busy ? '入數中…' : '確認入數'))));
+}
+
+// ── 賣套票（2026-11-06 Erica 批）──
+// 揀客人 → 揀方案（金額／面值由方案表填，店長唔使打數字）→ 付款方式 → 確認。
+// 系統自動填 Profile 套票類型／總值／餘額／有效期（續購加落現有餘額）。方案表以外交管理層。
+function MgrPackageSale() {
+  const [list, setList] = useState(null);
+  const [plans, setPlans] = useState({});
+  const [pays, setPays] = useState([]);
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const [plan, setPlan] = useState('');
+  const [pay, setPay] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  async function load() {
+    try {
+      const r = await pwApi('packageCustomers');
+      if (r.ok) {
+        setList(r.items);
+        setPlans(r.plans || {});
+        setPays(r.pays || []);
+      } else setErr(r.error || '客人名單載入失敗');
+    } catch (e) {
+      setErr('網絡錯誤：' + (e.message || e));
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+  const qq = q.trim().toLowerCase();
+  const hits = !list || !qq ? [] : list.filter(s => s.dog.toLowerCase().indexOf(qq) >= 0 || s.owner.toLowerCase().indexOf(qq) >= 0 || s.phone.replace(/\D/g, '').indexOf(qq.replace(/\D/g, '') || '§') >= 0).slice(0, 8);
+  const pl = plans[plan];
+  const canSubmit = sel && pl && pay && !busy;
+  function pick(s) {
+    setSel(s);
+    setQ('');
+    setMsg('');
+    setErr('');
+  }
+  function reset() {
+    setSel(null);
+    setPlan('');
+    setPay('');
+  }
+  async function submit(force) {
+    if (!canSubmit) return;
+    if (!force && !window.confirm('確認賣出：' + sel.dog + '（' + sel.owner + '）\n' + pl.label + '\n實收 $' + pl.price.toLocaleString() + '（' + pay + '）')) return;
+    setBusy(true);
+    setMsg('');
+    setErr('');
+    try {
+      const r = await pwApi('packageSave', {
+        phone: sel.phone,
+        dog: sel.dog,
+        plan,
+        pay,
+        date,
+        force: force ? '1' : ''
+      });
+      if (r && r.ok === false && r.dup) {
+        setBusy(false);
+        if (window.confirm(r.error)) return submit(true);
+        return;
+      }
+      if (!r || r.ok === false) setErr(r && r.error || '儲存失敗（未寫入）');else if (!r.synced) {
+        setErr(r.warn);
+        reset();
+        load();
+      } else {
+        setMsg('✓ 已賣出：' + sel.dog + ' ' + pl.label + '（' + pay + '）');
+        reset();
+        load();
+      }
+    } catch (e) {
+      setErr('網絡錯誤：' + (e.message || e) + '。請先喺收入記錄睇吓有冇寫入，唔好即刻再賣。');
+    }
+    setBusy(false);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\uD83C\uDFAB \u8CE3\u5957\u7968"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u63C0\u5BA2\u4EBA \u2192 \u63C0\u65B9\u6848 \u2192 \u63C0\u4ED8\u6B3E\u65B9\u5F0F\u3002\u91D1\u984D\u540C\u9762\u503C\u7531\u7CFB\u7D71\u586B\uFF0C\u5957\u7968\u9918\u984D\u81EA\u52D5\u66F4\u65B0\uFF0C\u5514\u4F7F\u518D\u4EBA\u624B\u5165\u6536\u5165\u8A18\u9304\u3002\u65B9\u6848\u8868\u4EE5\u5916\u5605\u7279\u5225\u5B89\u6392\uFF0C\u4EA4\u7BA1\u7406\u5C64\u3002"), err && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: 'var(--pw-danger)'
+    }
+  }, err), msg && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: 'var(--pw-navy-deep)'
+    }
+  }, msg), list === null && !err && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u5BA2\u4EBA\u540D\u55AE\u8F09\u5165\u4E2D\u2026"), !sel && list !== null && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
+    className: "pwd-tr-input",
+    style: {
+      width: '100%',
+      marginTop: 10
+    },
+    placeholder: "\u641C\u5C0B\u72D7\u540D\uFF0F\u5BB6\u9577\uFF0F\u96FB\u8A71",
+    value: q,
+    onChange: e => setQ(e.target.value)
+  }), hits.map(s => /*#__PURE__*/React.createElement("button", {
+    key: s.phone + s.dog,
+    className: "pwd-mgr-navbtn",
+    style: {
+      display: 'block',
+      width: '100%',
+      textAlign: 'left',
+      marginTop: 6
+    },
+    onClick: () => pick(s)
+  }, /*#__PURE__*/React.createElement("b", null, s.dog), " \xB7 ", s.owner, " \xB7 ", s.phone)), qq && hits.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u6435\u5514\u5230\u3002\u65B0\u5BA2\u8981\u5148\u6709\u5BA2\u6236Profile \u5148\u8CE3\u5F97\u5957\u7968\u3002")), sel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("b", null, sel.dog), "\uFF08", sel.owner, " \xB7 ", sel.phone, "\uFF09", /*#__PURE__*/React.createElement("br", null), "\u73FE\u6709\u5957\u7968\uFF1A", sel.pkgTotal > 0 || sel.pkgLeft > 0 ? (sel.pkgType || '套票') + ' · 餘額 $' + Number(sel.pkgLeft).toLocaleString() + (sel.pkgExpiry ? ' · 到期 ' + sel.pkgExpiry : '') : '冇', ' ', /*#__PURE__*/React.createElement("button", {
+    className: "pwd-mgr-lock",
+    onClick: reset
+  }, "\u63DB\u5BA2\u4EBA")), /*#__PURE__*/React.createElement("select", {
+    className: "pwd-monthsel",
+    style: {
+      width: '100%',
+      marginTop: 10
+    },
+    value: plan,
+    onChange: e => setPlan(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u63C0\u5957\u7968\u65B9\u6848"), Object.keys(plans).map(k => /*#__PURE__*/React.createElement("option", {
+    key: k,
+    value: k
+  }, plans[k].label))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-row",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    className: "pwd-monthsel",
+    value: pay,
+    onChange: e => setPay(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u4ED8\u6B3E\u65B9\u5F0F"), pays.map(x => /*#__PURE__*/React.createElement("option", {
+    key: x,
+    value: x
+  }, x))), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-tr-input",
+    type: "date",
+    value: date,
+    onChange: e => setDate(e.target.value)
+  })), pl && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u5BE6\u6536 ", /*#__PURE__*/React.createElement("b", null, "$", pl.price.toLocaleString()), " \xB7 \u5957\u7968\u9762\u503C ", /*#__PURE__*/React.createElement("b", null, "$", pl.face.toLocaleString()), sel.pkgLeft > 0 ? ' · 賣出後餘額約 $' + (Number(sel.pkgLeft) + pl.face).toLocaleString() : ''), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-formacts"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tr-sub"
+  }, pl ? pl.label : '請揀方案'), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    disabled: !canSubmit,
+    onClick: () => submit(false)
+  }, busy ? '入數中…' : '確認賣出'))));
 }
 
 // ── ManagerPanel ──
