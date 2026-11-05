@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06e'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06f'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -5925,7 +5925,7 @@ function CommissionApp() {
     onClubSubmit: submitClub,
     onTrialBook: submitTrial,
     onTrialCancel: cancelTrial
-  }), /*#__PURE__*/React.createElement("div", {
+  }), kpiRoleOf(staff) !== 'marketing' && /*#__PURE__*/React.createElement(CleanCheckSummary, null), /*#__PURE__*/React.createElement("div", {
     className: "pwd-foot"
   }, "\u4F63\u91D1\u70BA\u9810\u4F30\u503C,\u5BE6\u969B\u4EE5\u6708\u7D50\u516C\u4F48\u70BA\u6E96 \xB7 \u66F4\u65B0 ", team.updatedAt, " \xB7 ", APP_VERSION)), tab === 'duty' && /*#__PURE__*/React.createElement(DutyRoster, {
     staff: staff,

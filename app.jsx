@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06e';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06f';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -3280,7 +3280,8 @@ function CommissionApp() {
               month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
               onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
             {/* [2026-09-21 老闆定] 清潔突擊檢查唔關內容與流量部事 */}
-            {/* [2026-11-06 Erica 定] 清潔突擊檢查結果只放「員工管理」頁 */}
+            {/* [2026-11-06 Erica 定] 清潔突擊檢查結果繼續畀員工睇到 */}
+            {kpiRoleOf(staff) !== 'marketing' && <CleanCheckSummary />}
             <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt} · {APP_VERSION}</div>
           </>
         )}
