@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-05a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2575,15 +2575,9 @@ const MGR_AREAS = [{
 }, {
   key: 'clean',
   label: '清潔檢查'
-}, {
-  key: 'tuition',
-  label: '收學費'
-},
-// [2026-11-05 Erica 批]
-{
-  key: 'ownerkpi',
-  label: '管理層評核 🔑'
-}];
+}
+// [2026-11-06 Erica 定] 管理層評核移走：只喺「管理層總覽」做；店長後台只放管理員工嘅項目
+];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
   const base = new Date(y, m - 1, d);
@@ -4256,7 +4250,10 @@ function WaitlistTable({
 }
 // [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
 function SeatsPanel({
-  staffId
+  staffId,
+  tuitionRole,
+  unlocked,
+  onUnlock
 }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
@@ -4297,7 +4294,12 @@ function SeatsPanel({
   }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SeatStatusCard, {
     status: status
-  }), /*#__PURE__*/React.createElement(WaitlistAddForm, {
+  }), tuitionRole && (unlocked ? /*#__PURE__*/React.createElement(MgrTuition, null) : /*#__PURE__*/React.createElement(ManagerGate, {
+    onUnlock: onUnlock,
+    action: tuitionRole === 'owner' ? 'verifyOwner' : 'verifyMgr',
+    title: "\u6536\u5B78\u8CBB \xB7 \u9700\u8981\u7BA1\u7406\u5BC6\u78BC",
+    sub: "\u8ACB\u8F38\u5165\u5E97\u9577\uFF0F\u7BA1\u7406\u5C64\u7BA1\u7406\u5BC6\u78BC"
+  })), /*#__PURE__*/React.createElement(WaitlistAddForm, {
     staffId: staffId,
     onAdded: loadAll
   }), /*#__PURE__*/React.createElement(WaitlistTable, {
@@ -5407,11 +5409,7 @@ function ManagerPanel({
     mgrData: mgrData
   }), area === 'roster' && /*#__PURE__*/React.createElement(MgrRoster, {
     mgrData: mgrData
-  }), area === 'clean' && /*#__PURE__*/React.createElement(MgrCleanCheck, null), area === 'tuition' && /*#__PURE__*/React.createElement(MgrTuition, null), area === 'ownerkpi' && /*#__PURE__*/React.createElement(MgrOwnerKpi, {
-    month: month,
-    mgrData: mgrData,
-    onSaved: onSaved
-  }));
+  }), area === 'clean' && /*#__PURE__*/React.createElement(MgrCleanCheck, null));
 }
 
 // ═══════════ CommissionApp ═══════════
@@ -5787,7 +5785,10 @@ function CommissionApp() {
     onUnlock: unlockMgr,
     onSaved: reloadMgr
   }), tab === 'seats' && /*#__PURE__*/React.createElement(SeatsPanel, {
-    staffId: staff.id
+    staffId: staff.id,
+    tuitionRole: isOwner ? 'owner' : isManager ? 'manager' : '',
+    unlocked: mgrUnlocked,
+    onUnlock: unlockMgr
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tabbar"
   }, !isOwner && /*#__PURE__*/React.createElement("button", {

@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-05a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1353,8 +1353,7 @@ const MGR_AREAS = [
   { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
   { key: 'clean', label: '清潔檢查' },
-  { key: 'tuition', label: '收學費' },   // [2026-11-05 Erica 批]
-  { key: 'ownerkpi', label: '管理層評核 🔑' },
+  // [2026-11-06 Erica 定] 管理層評核移走：只喺「管理層總覽」做；店長後台只放管理員工嘅項目
 ];
 function datesFromWeekStart(weekStart) {
   const [y, m, d] = weekStart.split('-').map(Number);
@@ -2261,7 +2260,7 @@ function WaitlistTable({ items, onUpdate, onDelete }) {
   );
 }
 // [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
-function SeatsPanel({ staffId }) {
+function SeatsPanel({ staffId, tuitionRole, unlocked, onUnlock }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
   async function loadAll() {
@@ -2282,6 +2281,12 @@ function SeatsPanel({ staffId }) {
   return (
     <>
       <SeatStatusCard status={status} />
+      {/* [2026-11-06 Erica 定] 收學費屬客戶資料，放學位頁；只店長／管理層見到，要管理密碼 */}
+      {tuitionRole && (unlocked
+        ? <MgrTuition />
+        : <ManagerGate onUnlock={onUnlock}
+            action={tuitionRole === 'owner' ? 'verifyOwner' : 'verifyMgr'}
+            title="收學費 · 需要管理密碼" sub="請輸入店長／管理層管理密碼" />)}
       <WaitlistAddForm staffId={staffId} onAdded={loadAll} />
       <WaitlistTable items={items} onUpdate={updateStatus} onDelete={deleteEntry} />
     </>
@@ -2990,8 +2995,6 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
       {area === 'roster' && <MgrRoster mgrData={mgrData} />}
       {area === 'clean' && <MgrCleanCheck />}
-      {area === 'tuition' && <MgrTuition />}
-      {area === 'ownerkpi' && <MgrOwnerKpi month={month} mgrData={mgrData} onSaved={onSaved} />}
     </>
   );
 }
@@ -3190,7 +3193,8 @@ function CommissionApp() {
           <OwnerOverview month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} onSaved={reloadMgr} />
         )}
         {tab === 'seats' && (
-          <SeatsPanel staffId={staff.id} />
+          <SeatsPanel staffId={staff.id} tuitionRole={isOwner ? 'owner' : (isManager ? 'manager' : '')}
+            unlocked={mgrUnlocked} onUnlock={unlockMgr} />
         )}
       </div>
 
