@@ -11,7 +11,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06d'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -5208,7 +5208,7 @@ function MgrTuition() {
   }
   async function submit(force) {
     if (!canSubmit) return;
-    if (!force && (amt < TUITION_LOW || amt > TUITION_HIGH) && !window.confirm('金額 $' + amt.toLocaleString() + (amt < TUITION_LOW ? ' 低過 $' + TUITION_LOW.toLocaleString() : ' 高過 $' + TUITION_HIGH.toLocaleString()) + '，確定冇打錯？')) return;
+    if (!force && (amt < TUITION_LOW || amt > TUITION_HIGH) && !window.confirm('金額 $' + amt.toLocaleString() + (amt < TUITION_LOW ? ' 低於 $' + TUITION_LOW.toLocaleString() : ' 高於 $' + TUITION_HIGH.toLocaleString()) + '，請確認金額無誤。')) return;
     setBusy(true);
     setMsg('');
     setErr('');
@@ -5234,12 +5234,12 @@ function MgrTuition() {
         reset();
         load();
       } else {
-        setMsg('✓ 已入數：' + sel.dog + ' ' + (types[type] || type) + ' $' + amt.toLocaleString() + '（' + pay + '）' + (r.note ? ' · ' + r.note.split('。')[0] : ''));
+        setMsg('✓ 已記錄：' + sel.dog + ' ' + (types[type] || type) + ' $' + amt.toLocaleString() + '（' + pay + '）。堂數及有效期已自動更新。');
         reset();
         load();
       }
     } catch (e) {
-      setErr('網絡錯誤：' + (e.message || e) + '。請先喺收入記錄睇吓有冇寫入，唔好即刻再入。');
+      setErr('網絡錯誤：' + (e.message || e) + '。請先於收入記錄查核是否已寫入，切勿立即重新輸入。');
     }
     setBusy(false);
   }
@@ -5247,9 +5247,9 @@ function MgrTuition() {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\uD83D\uDCB0 \u6536\u5B78\u8CBB"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCB0 \u5B78\u8CBB\u6536\u5165"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, "\u63C0\u5B78\u751F \u2192 \u63C0\u985E\u578B \u2192 \u8F38\u5165\u5BE6\u6536\u91D1\u984D \u2192 \u63C0\u4ED8\u6B3E\u65B9\u5F0F\u3002\u7CFB\u7D71\u6703\u81EA\u52D5\u5BEB\u5165\u6536\u5165\u8A18\u9304\u3001\u52A0\u5802\u53CA\u8A08\u6709\u6548\u671F\uFF0C\u5514\u4F7F\u518D\u4EBA\u624B\u5165\u6536\u5165\u8A18\u9304\u3002"), err && /*#__PURE__*/React.createElement("div", {
+  }, "\u9078\u64C7\u5B78\u751F \u2192 \u9078\u64C7\u985E\u578B \u2192 \u8F38\u5165\u5BE6\u6536\u91D1\u984D \u2192 \u9078\u64C7\u4ED8\u6B3E\u65B9\u5F0F\u3002\u7CFB\u7D71\u5C07\u81EA\u52D5\u5BEB\u5165\u6536\u5165\u8A18\u9304\u3001\u589E\u52A0\u5802\u6578\u53CA\u8A08\u7B97\u6709\u6548\u671F\uFF0C\u6BCB\u9808\u53E6\u884C\u4EBA\u624B\u8F38\u5165\u3002"), err && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       color: 'var(--pw-danger)'
@@ -5282,20 +5282,20 @@ function MgrTuition() {
     onClick: () => pick(s)
   }, /*#__PURE__*/React.createElement("b", null, s.dog), " \xB7 ", s.owner, " \xB7 ", s.phone)), qq && hits.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, "\u6435\u5514\u5230\u3002\u65B0\u751F\u8981\u5148\u6709\u5BA2\u6236Profile \u5148\u5165\u5F97\u5B78\u8CBB\u3002")), sel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "\u627E\u4E0D\u5230\u76F8\u95DC\u8A18\u9304\u3002\u65B0\u751F\u9808\u5148\u5EFA\u7ACB\u5BA2\u6236\u8CC7\u6599\uFF0C\u65B9\u53EF\u8F38\u5165\u5B78\u8CBB\u3002")), sel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       marginTop: 10
     }
-  }, /*#__PURE__*/React.createElement("b", null, sel.dog), "\uFF08", sel.owner, " \xB7 ", sel.phone, "\uFF09", /*#__PURE__*/React.createElement("br", null), "S1 \u5C1A\u9918 ", sel.s1Left, "\uFF0F", sel.s1Total, " \u5802", sel.expiry ? ' · 到期 ' + sel.expiry : '', sel.s2Total > 0 ? ' · S2 尚餘 ' + sel.s2Left + '／' + sel.s2Total : '', /*#__PURE__*/React.createElement("br", null), "\u4E0A\u4E00\u6B21\u5B78\u8CBB\uFF1A", sel.last ? sel.last.date + ' ' + sel.last.svc + ' $' + Number(sel.last.amount).toLocaleString() : '冇記錄', ' ', /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("b", null, sel.dog), "\uFF08", sel.owner, " \xB7 ", sel.phone, "\uFF09", /*#__PURE__*/React.createElement("br", null), "S1 \u5C1A\u9918 ", sel.s1Left, "\uFF0F", sel.s1Total, " \u5802", sel.expiry ? ' · 到期 ' + sel.expiry : '', sel.s2Total > 0 ? ' · S2 尚餘 ' + sel.s2Left + '／' + sel.s2Total : '', /*#__PURE__*/React.createElement("br", null), "\u4E0A\u4E00\u6B21\u5B78\u8CBB\uFF1A", sel.last ? sel.last.date + ' ' + sel.last.svc + ' $' + Number(sel.last.amount).toLocaleString() : '沒有記錄', ' ', /*#__PURE__*/React.createElement("button", {
     className: "pwd-mgr-lock",
     onClick: reset
-  }, "\u63DB\u5B78\u751F")), /*#__PURE__*/React.createElement("div", {
+  }, "\u66F4\u63DB\u5B78\u751F")), /*#__PURE__*/React.createElement("div", {
     className: "pwd-view-toggle",
     style: {
       marginTop: 10
     }
-  }, Object.keys(types).map(k => /*#__PURE__*/React.createElement("button", {
+  }, ['S1_OPEN', 'S1', 'S2'].filter(k => types[k]).concat(Object.keys(types).filter(k => ['S1_OPEN', 'S1', 'S2'].indexOf(k) < 0)).map(k => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: type === k ? 'on' : '',
     onClick: () => setType(k)
@@ -5334,15 +5334,15 @@ function MgrTuition() {
     style: {
       color: 'var(--pw-danger)'
     }
-  }, "\u26A0\uFE0F \u91D1\u984D $", amt.toLocaleString(), " \u5514\u5C0B\u5E38\uFF0C\u8ACB\u518D\u6838\u5C0D"), /*#__PURE__*/React.createElement("div", {
+  }, "\u26A0\uFE0F \u91D1\u984D $", amt.toLocaleString(), " \u8207\u4E00\u822C\u6536\u8CBB\u5DEE\u8DDD\u8F03\u5927\uFF0C\u8ACB\u518D\u6B21\u6838\u5C0D"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-club-formacts"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tr-sub"
-  }, type ? types[type] || '' : '請揀類型'), /*#__PURE__*/React.createElement("button", {
+  }, type ? types[type] || '' : '請選擇類型'), /*#__PURE__*/React.createElement("button", {
     className: "pwd-la-confirm",
     disabled: !canSubmit,
     onClick: () => submit(false)
-  }, busy ? '入數中…' : '確認入數'))));
+  }, busy ? '處理中…' : '確認記錄'))));
 }
 
 // ── 賣套票（2026-11-06 Erica 批）──
@@ -5392,7 +5392,7 @@ function MgrPackageSale() {
   }
   async function submit(force) {
     if (!canSubmit) return;
-    if (!force && !window.confirm('確認賣出：' + sel.dog + '（' + sel.owner + '）\n' + pl.label + '\n實收 $' + pl.price.toLocaleString() + '（' + pay + '）')) return;
+    if (!force && !window.confirm('確認套票購買：' + sel.dog + '（' + sel.owner + '）\n' + pl.label + '\n實收 $' + pl.price.toLocaleString() + '（' + pay + '）')) return;
     setBusy(true);
     setMsg('');
     setErr('');
@@ -5415,12 +5415,12 @@ function MgrPackageSale() {
         reset();
         load();
       } else {
-        setMsg('✓ 已賣出：' + sel.dog + ' ' + pl.label + '（' + pay + '）');
+        setMsg('✓ 已記錄套票購買：' + sel.dog + ' ' + pl.label + '（' + pay + '）');
         reset();
         load();
       }
     } catch (e) {
-      setErr('網絡錯誤：' + (e.message || e) + '。請先喺收入記錄睇吓有冇寫入，唔好即刻再賣。');
+      setErr('網絡錯誤：' + (e.message || e) + '。請先於收入記錄查核是否已寫入，切勿立即重新輸入。');
     }
     setBusy(false);
   }
@@ -5428,9 +5428,9 @@ function MgrPackageSale() {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\uD83C\uDFAB \u8CE3\u5957\u7968"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDFAB \u5957\u7968\u6536\u5165"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, "\u63C0\u5BA2\u4EBA \u2192 \u63C0\u65B9\u6848 \u2192 \u63C0\u4ED8\u6B3E\u65B9\u5F0F\u3002\u91D1\u984D\u540C\u9762\u503C\u7531\u7CFB\u7D71\u586B\uFF0C\u5957\u7968\u9918\u984D\u81EA\u52D5\u66F4\u65B0\uFF0C\u5514\u4F7F\u518D\u4EBA\u624B\u5165\u6536\u5165\u8A18\u9304\u3002\u65B9\u6848\u8868\u4EE5\u5916\u5605\u7279\u5225\u5B89\u6392\uFF0C\u4EA4\u7BA1\u7406\u5C64\u3002"), err && /*#__PURE__*/React.createElement("div", {
+  }, "\u9078\u64C7\u5BA2\u4EBA \u2192 \u9078\u64C7\u65B9\u6848 \u2192 \u9078\u64C7\u4ED8\u6B3E\u65B9\u5F0F \u2192 \u8F38\u5165\u8CFC\u8CB7\u65E5\u671F\u3002\u91D1\u984D\u53CA\u9762\u503C\u7531\u7CFB\u7D71\u6309\u65B9\u6848\u8868\u586B\u5BEB\uFF0C\u5957\u7968\u9918\u984D\u53CA\u6709\u6548\u671F\uFF08\u8CFC\u8CB7\u65E5\u671F\u8D77\u8A08\u5169\u5E74\uFF09\u81EA\u52D5\u66F4\u65B0\uFF0C\u6BCB\u9808\u53E6\u884C\u4EBA\u624B\u8F38\u5165\u3002\u65B9\u6848\u8868\u4EE5\u5916\u7684\u7279\u5225\u5B89\u6392\uFF0C\u8ACB\u4EA4\u7BA1\u7406\u5C64\u8655\u7406\u3002"), err && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       color: 'var(--pw-danger)'
@@ -5463,15 +5463,15 @@ function MgrPackageSale() {
     onClick: () => pick(s)
   }, /*#__PURE__*/React.createElement("b", null, s.dog), " \xB7 ", s.owner, " \xB7 ", s.phone)), qq && hits.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, "\u6435\u5514\u5230\u3002\u65B0\u5BA2\u8981\u5148\u6709\u5BA2\u6236Profile \u5148\u8CE3\u5F97\u5957\u7968\u3002")), sel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "\u627E\u4E0D\u5230\u76F8\u95DC\u8A18\u9304\u3002\u65B0\u5BA2\u9808\u5148\u5EFA\u7ACB\u5BA2\u6236\u8CC7\u6599\uFF0C\u65B9\u53EF\u8CFC\u8CB7\u5957\u7968\u3002")), sel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       marginTop: 10
     }
-  }, /*#__PURE__*/React.createElement("b", null, sel.dog), "\uFF08", sel.owner, " \xB7 ", sel.phone, "\uFF09", /*#__PURE__*/React.createElement("br", null), "\u73FE\u6709\u5957\u7968\uFF1A", sel.pkgTotal > 0 || sel.pkgLeft > 0 ? (sel.pkgType || '套票') + ' · 餘額 $' + Number(sel.pkgLeft).toLocaleString() + (sel.pkgExpiry ? ' · 到期 ' + sel.pkgExpiry : '') : '冇', ' ', /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("b", null, sel.dog), "\uFF08", sel.owner, " \xB7 ", sel.phone, "\uFF09", /*#__PURE__*/React.createElement("br", null), "\u73FE\u6709\u5957\u7968\uFF1A", sel.pkgTotal > 0 || sel.pkgLeft > 0 ? (sel.pkgType || '套票') + ' · 餘額 $' + Number(sel.pkgLeft).toLocaleString() + (sel.pkgExpiry ? ' · 到期 ' + sel.pkgExpiry : '') : '沒有', ' ', /*#__PURE__*/React.createElement("button", {
     className: "pwd-mgr-lock",
     onClick: reset
-  }, "\u63DB\u5BA2\u4EBA")), /*#__PURE__*/React.createElement("select", {
+  }, "\u66F4\u63DB\u5BA2\u4EBA")), /*#__PURE__*/React.createElement("select", {
     className: "pwd-monthsel",
     style: {
       width: '100%',
@@ -5481,7 +5481,7 @@ function MgrPackageSale() {
     onChange: e => setPlan(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u63C0\u5957\u7968\u65B9\u6848"), Object.keys(plans).map(k => /*#__PURE__*/React.createElement("option", {
+  }, "\u9078\u64C7\u5957\u7968\u65B9\u6848"), Object.keys(plans).map(k => /*#__PURE__*/React.createElement("option", {
     key: k,
     value: k
   }, plans[k].label))), /*#__PURE__*/React.createElement("div", {
@@ -5498,22 +5498,26 @@ function MgrPackageSale() {
   }, "\u4ED8\u6B3E\u65B9\u5F0F"), pays.map(x => /*#__PURE__*/React.createElement("option", {
     key: x,
     value: x
-  }, x))), /*#__PURE__*/React.createElement("input", {
+  }, x)))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-row"
+  }, /*#__PURE__*/React.createElement("input", {
     className: "pwd-tr-input",
     type: "date",
     value: date,
     onChange: e => setDate(e.target.value)
-  })), pl && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tr-sub"
+  }, "\u8CFC\u8CB7\u65E5\u671F\uFF08\u6709\u6548\u671F\u7531\u6B64\u65E5\u8D77\u8A08\u5169\u5E74\uFF09")), pl && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, "\u5BE6\u6536 ", /*#__PURE__*/React.createElement("b", null, "$", pl.price.toLocaleString()), " \xB7 \u5957\u7968\u9762\u503C ", /*#__PURE__*/React.createElement("b", null, "$", pl.face.toLocaleString()), sel.pkgLeft > 0 ? ' · 賣出後餘額約 $' + (Number(sel.pkgLeft) + pl.face).toLocaleString() : ''), /*#__PURE__*/React.createElement("div", {
+  }, "\u5BE6\u6536 ", /*#__PURE__*/React.createElement("b", null, "$", pl.price.toLocaleString()), " \xB7 \u5957\u7968\u9762\u503C ", /*#__PURE__*/React.createElement("b", null, "$", pl.face.toLocaleString()), sel.pkgLeft > 0 ? ' · 購買後餘額約 $' + (Number(sel.pkgLeft) + pl.face).toLocaleString() : ''), /*#__PURE__*/React.createElement("div", {
     className: "pwd-club-formacts"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tr-sub"
-  }, pl ? pl.label : '請揀方案'), /*#__PURE__*/React.createElement("button", {
+  }, pl ? pl.label : '請選擇方案'), /*#__PURE__*/React.createElement("button", {
     className: "pwd-la-confirm",
     disabled: !canSubmit,
     onClick: () => submit(false)
-  }, busy ? '入數中…' : '確認賣出'))));
+  }, busy ? '處理中…' : '確認記錄'))));
 }
 
 // ── ManagerPanel ──
