@@ -1,3 +1,4 @@
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 // Pawradise 員工系統前端源碼（JSX）——改呢個檔，唔好直接改 app.js
 // 改完必須行 ./build.sh 重新編譯出 app.js 先 push（index.html 只載 app.js）
 
@@ -11,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06d'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06e'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2103,20 +2104,7 @@ function IndividualView({
     calc: calc,
     role: staff.role,
     dept: staff.dept
-  })), !isMktg && /*#__PURE__*/React.createElement(TrialCard, {
-    staff: staff,
-    slots: trialSlots,
-    bookings: trialBookings,
-    done: trialDone,
-    onBook: onTrialBook,
-    onCancel: onTrialCancel
-  }), !isMktg && /*#__PURE__*/React.createElement(ClubCard, {
-    staff: staff,
-    noms: clubNoms,
-    month: month,
-    bonus: clubBonus,
-    onSubmit: onClubSubmit
-  }), /*#__PURE__*/React.createElement(CommissionHistory, {
+  })), /*#__PURE__*/React.createElement(CommissionHistory, {
     history: history,
     current: actualTotal,
     monthLabel: monthLabel,
@@ -4250,7 +4238,14 @@ function WaitlistTable({
 }
 // [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
 function SeatsPanel({
-  staffId
+  staffId,
+  staff,
+  dash,
+  month,
+  clubBonus,
+  onTrialBook,
+  onTrialCancel,
+  onClubSubmit
 }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
@@ -4291,7 +4286,20 @@ function SeatsPanel({
   }, "\u8CC7\u6599\u4E0B\u8F09\u4E2D\uFF0C\u8ACB\u7A0D\u5019\u7247\u523B"));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SeatStatusCard, {
     status: status
-  }), /*#__PURE__*/React.createElement(WaitlistAddForm, {
+  }), staff && dash && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(TrialCard, {
+    staff: staff,
+    slots: dash.trialSlots,
+    bookings: dash.trialBookings,
+    done: dash.trialDone,
+    onBook: onTrialBook,
+    onCancel: onTrialCancel
+  }), /*#__PURE__*/React.createElement(ClubCard, {
+    staff: staff,
+    noms: dash.clubNoms,
+    month: month,
+    bonus: clubBonus,
+    onSubmit: onClubSubmit
+  })), /*#__PURE__*/React.createElement(WaitlistAddForm, {
     staffId: staffId,
     onAdded: loadAll
   }), /*#__PURE__*/React.createElement(WaitlistTable, {
@@ -5917,7 +5925,7 @@ function CommissionApp() {
     onClubSubmit: submitClub,
     onTrialBook: submitTrial,
     onTrialCancel: cancelTrial
-  }), kpiRoleOf(staff) !== 'marketing' && /*#__PURE__*/React.createElement(CleanCheckSummary, null), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-foot"
   }, "\u4F63\u91D1\u70BA\u9810\u4F30\u503C,\u5BE6\u969B\u4EE5\u6708\u7D50\u516C\u4F48\u70BA\u6E96 \xB7 \u66F4\u65B0 ", team.updatedAt, " \xB7 ", APP_VERSION)), tab === 'duty' && /*#__PURE__*/React.createElement(DutyRoster, {
     staff: staff,
@@ -5956,9 +5964,17 @@ function CommissionApp() {
     action: isOwner ? 'verifyOwner' : 'verifyMgr',
     title: "\u6536\u5165\u8A18\u9304 \xB7 \u9700\u8981\u7BA1\u7406\u5BC6\u78BC",
     sub: "\u8ACB\u8F38\u5165\u5E97\u9577\uFF0F\u7BA1\u7406\u5C64\u7BA1\u7406\u5BC6\u78BC"
-  })), tab === 'seats' && /*#__PURE__*/React.createElement(SeatsPanel, {
+  })), tab === 'seats' && /*#__PURE__*/React.createElement(SeatsPanel, _extends({
     staffId: staff.id
-  })), /*#__PURE__*/React.createElement("div", {
+  }, !isOwner && kpiRoleOf(staff) !== 'marketing' ? {
+    staff,
+    dash,
+    month,
+    clubBonus: clubBonusFor(staff, dash.clubNoms, month) * kpi.ratio,
+    onTrialBook: submitTrial,
+    onTrialCancel: cancelTrial,
+    onClubSubmit: submitClub
+  } : {}))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tabbar"
   }, !isOwner && /*#__PURE__*/React.createElement("button", {
     className: 'pwd-tabbtn' + (tab === 'pay' ? ' on' : ''),

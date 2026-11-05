@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06d';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06e';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1068,9 +1068,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
         {isMgr ? <ManagerGoal calc={calc} /> : isFd ? <FrontdeskGoal calc={calc} kpi={kpi} score={score} /> : isMktg ? <MarketingGoal kpi={kpi} score={score} /> : <GoalUnlock team={team} calc={calc} role={staff.role} dept={staff.dept} />}
       </div>
       {/* [2026-09-21] 內容與流量部唔參與試堂登記同會籍提名,兩張卡唔 render */}
-      {!isMktg && <TrialCard staff={staff} slots={trialSlots} bookings={trialBookings} done={trialDone}
-        onBook={onTrialBook} onCancel={onTrialCancel} />}
-      {!isMktg && <ClubCard staff={staff} noms={clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />}
+      {/* [2026-11-06 Erica 定] 試堂登記、Calm Explorer Club 提名移去「學位」頁；會籍佣金照計入上面圖表及明細 */}
       <CommissionHistory history={history} current={actualTotal} monthLabel={monthLabel} isMktg={isMktg} />
       <div className="pwd-kpi-divider"><span>KPI 結算 · 月底由{isMktg ? '管理層' : '店長'}評核</span></div>
       <KpiCard role={kpiRoleOf(staff)} items={items} score={score} kpi={kpi} editable={false} />
@@ -2260,7 +2258,7 @@ function WaitlistTable({ items, onUpdate, onDelete }) {
   );
 }
 // [2026-08-26 老闆改口] 唔再要店長解鎖先改到候補狀態——導師自己有齊權限。
-function SeatsPanel({ staffId }) {
+function SeatsPanel({ staffId, staff, dash, month, clubBonus, onTrialBook, onTrialCancel, onClubSubmit }) {
   const [status, setStatus] = useState(null);
   const [items, setItems] = useState(null);
   async function loadAll() {
@@ -2281,6 +2279,14 @@ function SeatsPanel({ staffId }) {
   return (
     <>
       <SeatStatusCard status={status} />
+      {/* [2026-11-06 Erica 定] 試堂登記、Calm Explorer Club 提名由「我的佣金」移嚟 */}
+      {staff && dash && (
+        <>
+          <TrialCard staff={staff} slots={dash.trialSlots} bookings={dash.trialBookings} done={dash.trialDone}
+            onBook={onTrialBook} onCancel={onTrialCancel} />
+          <ClubCard staff={staff} noms={dash.clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />
+        </>
+      )}
       <WaitlistAddForm staffId={staffId} onAdded={loadAll} />
       <WaitlistTable items={items} onUpdate={updateStatus} onDelete={deleteEntry} />
     </>
@@ -3274,7 +3280,7 @@ function CommissionApp() {
               month={month} monthLabel={monthLabelShort(month)} onClubSubmit={submitClub}
               onTrialBook={submitTrial} onTrialCancel={cancelTrial} />
             {/* [2026-09-21 老闆定] 清潔突擊檢查唔關內容與流量部事 */}
-            {kpiRoleOf(staff) !== 'marketing' && <CleanCheckSummary />}
+            {/* [2026-11-06 Erica 定] 清潔突擊檢查結果只放「員工管理」頁 */}
             <div className="pwd-foot">佣金為預估值,實際以月結公佈為準 · 更新 {team.updatedAt} · {APP_VERSION}</div>
           </>
         )}
@@ -3297,7 +3303,10 @@ function CommissionApp() {
           : <ManagerGate onUnlock={unlockMgr} action={isOwner ? 'verifyOwner' : 'verifyMgr'}
               title="收入記錄 · 需要管理密碼" sub="請輸入店長／管理層管理密碼" />)}
         {tab === 'seats' && (
-          <SeatsPanel staffId={staff.id} />
+          <SeatsPanel staffId={staff.id}
+            {...((!isOwner && kpiRoleOf(staff) !== 'marketing') ? { staff, dash, month,
+              clubBonus: clubBonusFor(staff, dash.clubNoms, month) * kpi.ratio,
+              onTrialBook: submitTrial, onTrialCancel: cancelTrial, onClubSubmit: submitClub } : {})} />
         )}
       </div>
 
