@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06f'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06g'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2756,6 +2756,47 @@ function MgrOps({
     }, teamForCalc);
     return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '') * kpi.ratio;
   }, 0);
+  // [2026-11-06 Erica 定] 按 CRM 收入記錄重新計算（每月 1、3、15 號系統亦會自動計）
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoMsg, setAutoMsg] = useState('');
+  async function autoFill() {
+    if (!window.confirm('按收入記錄重新計算 ' + month + ' 的業績？\n酒店、學院、接送、美容、套票及其他金額將被覆寫；新生數、舊生續報、酒店轉介及狗狗走失保持不變。')) return;
+    setAutoBusy(true);
+    setAutoMsg('');
+    try {
+      const r = await pwApi('opsAutoFill', {
+        month
+      });
+      if (!r || r.ok === false) {
+        setAutoMsg(r && r.error || '計算失敗');
+      } else {
+        const x = r.result;
+        setTeam(t => ({
+          ...t,
+          hotelRevenue: x.hotelRevenue,
+          academyRevenue: x.academyRevenue,
+          academyItems: {
+            trial: x.trial,
+            s1: x.s1,
+            s2: x.s2,
+            combo: x.combo,
+            monthlyFee: x.monthlyFee
+          },
+          pickup: x.pickup,
+          groomBasic: x.groomBasic,
+          groomStar: x.groomStar,
+          packageRevenue: x.packageRevenue,
+          packages: x.packages,
+          other: x.other
+        }));
+        const others = Object.keys(x.otherSvcs || {});
+        setAutoMsg('✓ 已按 ' + x.rows + ' 筆收入記錄計算並儲存。' + (others.length ? '未能分類而計入「G. 其他」：' + others.join('、') + '。' : ''));
+      }
+    } catch (e) {
+      setAutoMsg('網絡錯誤：' + (e.message || e));
+    }
+    setAutoBusy(false);
+  }
   function save() {
     return pwApi('saveOps', {
       month,
@@ -2784,6 +2825,25 @@ function MgrOps({
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-stack"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\uD83D\uDCCA \u6309\u6536\u5165\u8A18\u9304\u81EA\u52D5\u8A08\u7B97"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u7CFB\u7D71\u6BCF\u6708 1 \u65E5\u53CA 3 \u65E5\u81EA\u52D5\u8A08\u7B97\u4E0A\u6708\u696D\u7E3E\uFF0C15 \u65E5\u8A08\u7B97\u7576\u6708\u81F3\u4ECA\u9032\u5EA6\u3002\u7528\u5957\u7968\u4ED8\u6B3E\u7684\u91D1\u984D\u4EA6\u8A08\u5165\u5404\u9805\u696D\u7E3E\uFF1B\u53D6\u6D88\u53CA\u9000\u6B3E\u81EA\u52D5\u6263\u6E1B\u3002\u65B0\u751F\u6578\u3001\u820A\u751F\u7E8C\u5831\u3001\u9152\u5E97\u8F49\u4ECB\u53CA\u72D7\u72D7\u8D70\u5931\u4ECD\u9808\u5E97\u9577\u586B\u5BEB\u3002\u5E97\u9577\u53EA\u9808\u78BA\u4FDD\u6536\u5165\u8A18\u9304\u9F4A\u5168\u3002"), autoMsg && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: 'var(--pw-navy-deep)'
+    }
+  }, autoMsg), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-formacts"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tr-sub"
+  }, month), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    disabled: autoBusy,
+    onClick: autoFill
+  }, autoBusy ? '計算中…' : '按收入記錄重新計算'))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"

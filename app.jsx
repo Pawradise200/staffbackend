@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06f';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06g';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1445,6 +1445,27 @@ function MgrOps({ month, mgrData }) {
     const { kpi } = fullResult({ ...s, ...sales, attendance: att, kpiFail: k.kpiFail, lateLeave: k.lateLeave }, teamForCalc);
     return a + kpi.actualTotal + clubBonusFor(s, mgrData.allNoms, team.monthKey || '') * kpi.ratio;
   }, 0);
+  // [2026-11-06 Erica 定] 按 CRM 收入記錄重新計算（每月 1、3、15 號系統亦會自動計）
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoMsg, setAutoMsg] = useState('');
+  async function autoFill() {
+    if (!window.confirm('按收入記錄重新計算 ' + month + ' 的業績？\n酒店、學院、接送、美容、套票及其他金額將被覆寫；新生數、舊生續報、酒店轉介及狗狗走失保持不變。')) return;
+    setAutoBusy(true); setAutoMsg('');
+    try {
+      const r = await pwApi('opsAutoFill', { month });
+      if (!r || r.ok === false) { setAutoMsg((r && r.error) || '計算失敗'); }
+      else {
+        const x = r.result;
+        setTeam(t => ({ ...t, hotelRevenue: x.hotelRevenue, academyRevenue: x.academyRevenue,
+          academyItems: { trial: x.trial, s1: x.s1, s2: x.s2, combo: x.combo, monthlyFee: x.monthlyFee },
+          pickup: x.pickup, groomBasic: x.groomBasic, groomStar: x.groomStar,
+          packageRevenue: x.packageRevenue, packages: x.packages, other: x.other }));
+        const others = Object.keys(x.otherSvcs || {});
+        setAutoMsg('✓ 已按 ' + x.rows + ' 筆收入記錄計算並儲存。' + (others.length ? '未能分類而計入「G. 其他」：' + others.join('、') + '。' : ''));
+      }
+    } catch (e) { setAutoMsg('網絡錯誤：' + (e.message || e)); }
+    setAutoBusy(false);
+  }
   function save() {
     return pwApi('saveOps', {
       month, hotelRevenue: team.hotelRevenue, academyRevenue: acadTotal,
@@ -1459,6 +1480,15 @@ function MgrOps({ month, mgrData }) {
   }
   return (
     <div className="pwd-mgr-stack">
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">📊 按收入記錄自動計算</div>
+        <div className="pwd-tr-hint">系統每月 1 日及 3 日自動計算上月業績，15 日計算當月至今進度。用套票付款的金額亦計入各項業績；取消及退款自動扣減。新生數、舊生續報、酒店轉介及狗狗走失仍須店長填寫。店長只須確保收入記錄齊全。</div>
+        {autoMsg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{autoMsg}</div>}
+        <div className="pwd-club-formacts">
+          <span className="pwd-tr-sub">{month}</span>
+          <button className="pwd-la-confirm" disabled={autoBusy} onClick={autoFill}>{autoBusy ? '計算中…' : '按收入記錄重新計算'}</button>
+        </div>
+      </div>
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">A. 酒店總業績 (含基本美容,計佣)</div>
         <MoneyField label="酒店總業績" value={team.hotelRevenue} onChange={(v) => set('hotelRevenue', v)}
