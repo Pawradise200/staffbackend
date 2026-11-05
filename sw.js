@@ -3,7 +3,7 @@
 //   殼（頁面/JS/圖/字體）＝ cache 先行、背景更新（開 app 即開，改版下次開自動生效）
 //   API（script.google.com）＝ 一律行網絡，唔 cache——佣金/更表/檢查記錄必須係最新
 // ⚠️ 改任何殼檔案（index.html / app.js / 圖）都要令 VERSION 行前一格，唔係員工會食舊 cache
-const VERSION = 'pw-v5-20261103a';   // [2026-11-03] 管理層評核儲存後即時重讀總覽數據
+const VERSION = 'pw-v5-20261105a';   // [2026-11-05] 店長頁加「收學費」
 const SHELL = [
   './',
   './index.html',

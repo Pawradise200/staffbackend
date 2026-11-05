@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-09-16a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-05a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1353,6 +1353,7 @@ const MGR_AREAS = [
   { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
   { key: 'clean', label: '清潔檢查' },
+  { key: 'tuition', label: '收學費' },   // [2026-11-05 Erica 批]
   { key: 'ownerkpi', label: '管理層評核 🔑' },
 ];
 function datesFromWeekStart(weekStart) {
@@ -2850,6 +2851,121 @@ function CleanCheckSummary() {
   );
 }
 
+// ── 收學費（2026-11-05 Erica 批）──
+// 揀學生 → 揀類型 → 輸入實收金額 → 揀付款方式 → 確認。
+// 電話／狗名由 Profile 帶出；寫入收入記錄後系統自動加堂、計有效期、計消費、扣套票。
+// 防錯：① 顯示上一次學費金額做參考 ② 金額 < $1,000 或 > $15,000 要再確認
+const TUITION_LOW = 1000, TUITION_HIGH = 15000;
+function MgrTuition() {
+  const [list, setList] = useState(null);
+  const [types, setTypes] = useState({});
+  const [pays, setPays] = useState([]);
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const [type, setType] = useState('');
+  const [amount, setAmount] = useState('');
+  const [pay, setPay] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  async function load() {
+    try {
+      const r = await pwApi('tuitionStudents');
+      if (r.ok) { setList(r.items); setTypes(r.types || {}); setPays(r.pays || []); }
+      else setErr(r.error || '學生名單載入失敗');
+    } catch (e) { setErr('網絡錯誤：' + (e.message || e)); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const qq = q.trim().toLowerCase();
+  const hits = !list || !qq ? [] : list.filter(s =>
+    s.dog.toLowerCase().indexOf(qq) >= 0 || s.owner.toLowerCase().indexOf(qq) >= 0 || s.phone.replace(/\D/g, '').indexOf(qq.replace(/\D/g, '') || '§') >= 0
+  ).slice(0, 8);
+  const amt = Number(amount);
+  const canSubmit = sel && type && amt > 0 && pay && !busy;
+
+  function pick(s) { setSel(s); setQ(''); setMsg(''); setErr(''); }
+  function reset() { setSel(null); setType(''); setAmount(''); setPay(''); }
+
+  async function submit(force) {
+    if (!canSubmit) return;
+    if (!force && (amt < TUITION_LOW || amt > TUITION_HIGH) &&
+        !window.confirm('金額 $' + amt.toLocaleString() + (amt < TUITION_LOW ? ' 低過 $' + TUITION_LOW.toLocaleString() : ' 高過 $' + TUITION_HIGH.toLocaleString()) + '，確定冇打錯？')) return;
+    setBusy(true); setMsg(''); setErr('');
+    try {
+      const r = await pwApi('tuitionSave', { phone: sel.phone, dog: sel.dog, type, amount: amt, pay, date, force: force ? '1' : '' });
+      if (r && r.ok === false && r.dup) {
+        setBusy(false);
+        if (window.confirm(r.error)) return submit(true);
+        return;
+      }
+      if (!r || r.ok === false) { setErr((r && r.error) || '儲存失敗（未寫入）'); }
+      else if (!r.synced) { setErr(r.warn); reset(); load(); }
+      else {
+        setMsg('✓ 已入數：' + sel.dog + ' ' + (types[type] || type) + ' $' + amt.toLocaleString() + '（' + pay + '）' + (r.note ? ' · ' + r.note.split('。')[0] : ''));
+        reset(); load();
+      }
+    } catch (e) { setErr('網絡錯誤：' + (e.message || e) + '。請先喺收入記錄睇吓有冇寫入，唔好即刻再入。'); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">💰 收學費</div>
+      <div className="pwd-tr-hint">揀學生 → 揀類型 → 輸入實收金額 → 揀付款方式。系統會自動寫入收入記錄、加堂及計有效期，唔使再人手入收入記錄。</div>
+      {err && <div className="pwd-tr-hint" style={{ color: 'var(--pw-danger)' }}>{err}</div>}
+      {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
+      {list === null && !err && <div className="pwd-tr-hint">學生名單載入中…</div>}
+
+      {!sel && list !== null && (
+        <>
+          <input className="pwd-tr-input" style={{ width: '100%', marginTop: 10 }} placeholder="搜尋狗名／家長／電話" value={q} onChange={e => setQ(e.target.value)} />
+          {hits.map(s => (
+            <button key={s.phone + s.dog} className="pwd-mgr-navbtn" style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 6 }} onClick={() => pick(s)}>
+              <b>{s.dog}</b> · {s.owner} · {s.phone}
+            </button>
+          ))}
+          {qq && hits.length === 0 && <div className="pwd-tr-hint">搵唔到。新生要先有客戶Profile 先入得學費。</div>}
+        </>
+      )}
+
+      {sel && (
+        <>
+          <div className="pwd-tr-hint" style={{ marginTop: 10 }}>
+            <b>{sel.dog}</b>（{sel.owner} · {sel.phone}）<br />
+            S1 尚餘 {sel.s1Left}／{sel.s1Total} 堂{sel.expiry ? ' · 到期 ' + sel.expiry : ''}{sel.s2Total > 0 ? ' · S2 尚餘 ' + sel.s2Left + '／' + sel.s2Total : ''}<br />
+            上一次學費：{sel.last ? sel.last.date + ' ' + sel.last.svc + ' $' + Number(sel.last.amount).toLocaleString() : '冇記錄'}
+            {' '}<button className="pwd-mgr-lock" onClick={reset}>換學生</button>
+          </div>
+          <div className="pwd-view-toggle" style={{ marginTop: 10 }}>
+            {Object.keys(types).map(k => (
+              <button key={k} className={type === k ? 'on' : ''} onClick={() => setType(k)}>{types[k].replace('學院學期費', '')}</button>
+            ))}
+          </div>
+          <div className="pwd-tr-row" style={{ marginTop: 10 }}>
+            <input className="pwd-tr-input" type="number" inputMode="decimal" placeholder="實收金額 $" value={amount} onChange={e => setAmount(e.target.value)} />
+            <select className="pwd-monthsel" value={pay} onChange={e => setPay(e.target.value)}>
+              <option value="">付款方式</option>
+              {pays.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="pwd-tr-row">
+            <input className="pwd-tr-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <span className="pwd-tr-sub">繳費日期</span>
+          </div>
+          {amt > 0 && (amt < TUITION_LOW || amt > TUITION_HIGH) && <div className="pwd-tr-hint" style={{ color: 'var(--pw-danger)' }}>⚠️ 金額 ${amt.toLocaleString()} 唔尋常，請再核對</div>}
+          <div className="pwd-club-formacts">
+            <span className="pwd-tr-sub">{type ? (types[type] || '') : '請揀類型'}</span>
+            <button className="pwd-la-confirm" disabled={!canSubmit} onClick={() => submit(false)}>{busy ? '入數中…' : '確認入數'}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── ManagerPanel ──
 function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange, onSaved }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
@@ -2874,6 +2990,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
       {area === 'leave' && <MgrLeave month={month} mgrData={mgrData} />}
       {area === 'roster' && <MgrRoster mgrData={mgrData} />}
       {area === 'clean' && <MgrCleanCheck />}
+      {area === 'tuition' && <MgrTuition />}
       {area === 'ownerkpi' && <MgrOwnerKpi month={month} mgrData={mgrData} onSaved={onSaved} />}
     </>
   );
