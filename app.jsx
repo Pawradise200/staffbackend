@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06g';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06i';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -756,14 +756,15 @@ function Login({ onLogin }) {
 
 // ═══════════ TrialCard ═══════════
 // 試堂登記：酒店客免費體驗／新生付費試堂統一喺呢度幫家長留位。名額同正常入學位分開計（每個幼稚園日 2 個）。
-function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
+function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
   const [sel, setSel] = useState('');
   const [dog, setDog] = useState('');
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   // [2026-08-25 老闆定] 統一喺呢度留位：酒店客免費體驗 vs 新生要收 $499（同步入收入記錄）。
-  const [customerType, setCustomerType] = useState('hotel'); // hotel | new
+  // [2026-11-06 Erica 定] 酒店客免費體驗已停，只留新生試堂
+  const [customerType] = useState('new');
   const [ownerName, setOwnerName] = useState('');
   const [payMethod, setPayMethod] = useState('現金');
   // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
@@ -775,7 +776,9 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
   // 已完成試堂（最近 14 日，最近嘅排前）——純唯讀。跟進記錄統一喺 Leads 主表做，唔喺呢度填。
   const doneList = (done || []);
   const isNew = customerType === 'new';
-  const canSubmit = sel && dog.trim() && !busy && (!isNew || (ownerName.trim() && payMethod));
+  // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
+  const newBlocked = isNew && s1Full;
+  const canSubmit = sel && dog.trim() && !busy && !newBlocked && (!isNew || (ownerName.trim() && payMethod));
   async function submit() {
     if (!canSubmit) return;
     setBusy(true); setMsg('');
@@ -814,14 +817,12 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel }) {
             })}
           </div>
           <div className="pwd-tr-form">
-            <div className="pwd-view-toggle">
-              <button className={!isNew ? 'on' : ''} onClick={() => setCustomerType('hotel')}>🏨 酒店客（免費）</button>
-              <button className={isNew ? 'on' : ''} onClick={() => setCustomerType('new')}>🆕 新生（${TRIAL_NEW_STUDENT_FEE}）</button>
-            </div>
+            <div className="pwd-tr-sub">🆕 新生試堂（${TRIAL_NEW_STUDENT_FEE}）</div>
             <div className="pwd-tr-row" style={{ marginTop: 10 }}>
               <input className="pwd-tr-input" placeholder="狗狗名稱" value={dog} onChange={e => setDog(e.target.value)} />
               <input className="pwd-tr-input" type="tel" inputMode="tel" placeholder="家長電話" value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
+            {newBlocked && <div className="pwd-tr-hint" style={{ color: 'var(--pw-danger)' }}>幼稚園（S1）學位已滿（已計算已登記的新生試堂），暫停新生試堂。請為家長登記候補名單，有學位時再安排試堂。</div>}
             {isNew && (
               <div className="pwd-tr-row">
                 <input className="pwd-tr-input" placeholder="家長姓名（入收入記錄用）" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
@@ -2183,6 +2184,7 @@ function SeatStatusCard({ status }) {
   return (
     <div className="pwd-card pwd-block">
       <QuotaBar label="幼稚園 (S1) 學位" data={status.s1} capped={true} />
+      {status.s1.pendingTrials > 0 && <div className="pwd-tr-hint" style={{ marginTop: 6 }}>尚餘學位已扣除 {status.s1.pendingTrials} 個已登記、未上的新生試堂。</div>}
       <QuotaBar label="Ultimate Explorer 會籍" data={status.ultimate} capped={true} />
       <div className="pwd-eyebrow" style={{ marginTop: 18 }}>Calm Explorer Club（全部層級）</div>
       <div className="pwd-mgr-result-num" style={{ marginTop: 6, fontSize: 22 }}>{status.club.members} 位會員</div>
@@ -2313,7 +2315,7 @@ function SeatsPanel({ staffId, staff, dash, month, clubBonus, onTrialBook, onTri
       {staff && dash && (
         <>
           <TrialCard staff={staff} slots={dash.trialSlots} bookings={dash.trialBookings} done={dash.trialDone}
-            onBook={onTrialBook} onCancel={onTrialCancel} />
+            onBook={onTrialBook} onCancel={onTrialCancel} s1Full={!!(status && status.s1 && status.s1.full)} />
           <ClubCard staff={staff} noms={dash.clubNoms} month={month} bonus={clubBonus} onSubmit={onClubSubmit} />
         </>
       )}

@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06g'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-06i'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1576,7 +1576,8 @@ function TrialCard({
   bookings,
   done,
   onBook,
-  onCancel
+  onCancel,
+  s1Full
 }) {
   const [sel, setSel] = useState('');
   const [dog, setDog] = useState('');
@@ -1584,7 +1585,8 @@ function TrialCard({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   // [2026-08-25 老闆定] 統一喺呢度留位：酒店客免費體驗 vs 新生要收 $499（同步入收入記錄）。
-  const [customerType, setCustomerType] = useState('hotel'); // hotel | new
+  // [2026-11-06 Erica 定] 酒店客免費體驗已停，只留新生試堂
+  const [customerType] = useState('new');
   const [ownerName, setOwnerName] = useState('');
   const [payMethod, setPayMethod] = useState('現金');
   // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
@@ -1596,7 +1598,9 @@ function TrialCard({
   // 已完成試堂（最近 14 日，最近嘅排前）——純唯讀。跟進記錄統一喺 Leads 主表做，唔喺呢度填。
   const doneList = done || [];
   const isNew = customerType === 'new';
-  const canSubmit = sel && dog.trim() && !busy && (!isNew || ownerName.trim() && payMethod);
+  // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
+  const newBlocked = isNew && s1Full;
+  const canSubmit = sel && dog.trim() && !busy && !newBlocked && (!isNew || ownerName.trim() && payMethod);
   async function submit() {
     if (!canSubmit) return;
     setBusy(true);
@@ -1655,14 +1659,8 @@ function TrialCard({
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-form"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "pwd-view-toggle"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: !isNew ? 'on' : '',
-    onClick: () => setCustomerType('hotel')
-  }, "\uD83C\uDFE8 \u9152\u5E97\u5BA2\uFF08\u514D\u8CBB\uFF09"), /*#__PURE__*/React.createElement("button", {
-    className: isNew ? 'on' : '',
-    onClick: () => setCustomerType('new')
-  }, "\uD83C\uDD95 \u65B0\u751F\uFF08$", TRIAL_NEW_STUDENT_FEE, "\uFF09")), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-sub"
+  }, "\uD83C\uDD95 \u65B0\u751F\u8A66\u5802\uFF08$", TRIAL_NEW_STUDENT_FEE, "\uFF09"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-row",
     style: {
       marginTop: 10
@@ -1679,7 +1677,12 @@ function TrialCard({
     placeholder: "\u5BB6\u9577\u96FB\u8A71",
     value: phone,
     onChange: e => setPhone(e.target.value)
-  })), isNew && /*#__PURE__*/React.createElement("div", {
+  })), newBlocked && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: 'var(--pw-danger)'
+    }
+  }, "\u5E7C\u7A1A\u5712\uFF08S1\uFF09\u5B78\u4F4D\u5DF2\u6EFF\uFF08\u5DF2\u8A08\u7B97\u5DF2\u767B\u8A18\u7684\u65B0\u751F\u8A66\u5802\uFF09\uFF0C\u66AB\u505C\u65B0\u751F\u8A66\u5802\u3002\u8ACB\u70BA\u5BB6\u9577\u767B\u8A18\u5019\u88DC\u540D\u55AE\uFF0C\u6709\u5B78\u4F4D\u6642\u518D\u5B89\u6392\u8A66\u5802\u3002"), isNew && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-row"
   }, /*#__PURE__*/React.createElement("input", {
     className: "pwd-tr-input",
@@ -4093,7 +4096,12 @@ function SeatStatusCard({
     label: "\u5E7C\u7A1A\u5712 (S1) \u5B78\u4F4D",
     data: status.s1,
     capped: true
-  }), /*#__PURE__*/React.createElement(QuotaBar, {
+  }), status.s1.pendingTrials > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      marginTop: 6
+    }
+  }, "\u5C1A\u9918\u5B78\u4F4D\u5DF2\u6263\u9664 ", status.s1.pendingTrials, " \u500B\u5DF2\u767B\u8A18\u3001\u672A\u4E0A\u7684\u65B0\u751F\u8A66\u5802\u3002"), /*#__PURE__*/React.createElement(QuotaBar, {
     label: "Ultimate Explorer \u6703\u7C4D",
     data: status.ultimate,
     capped: true
@@ -4352,7 +4360,8 @@ function SeatsPanel({
     bookings: dash.trialBookings,
     done: dash.trialDone,
     onBook: onTrialBook,
-    onCancel: onTrialCancel
+    onCancel: onTrialCancel,
+    s1Full: !!(status && status.s1 && status.s1.full)
   }), /*#__PURE__*/React.createElement(ClubCard, {
     staff: staff,
     noms: dash.clubNoms,
