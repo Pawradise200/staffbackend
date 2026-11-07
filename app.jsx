@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-06i';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2906,6 +2906,7 @@ function MgrTuition() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [hist, setHist] = useState(null);   // [2026-11-08] 學費記錄＋取消續報
 
   async function load() {
     try {
@@ -2923,8 +2924,26 @@ function MgrTuition() {
   const amt = Number(amount);
   const canSubmit = sel && type && amt > 0 && pay && !busy;
 
-  function pick(s) { setSel(s); setQ(''); setMsg(''); setErr(''); }
-  function reset() { setSel(null); setType(''); setAmount(''); setPay(''); }
+  async function loadHist(s) {
+    setHist(null);
+    try { const r = await pwApi('tuitionHistory', { phone: s.phone, dog: s.dog }); setHist(r && r.ok ? r.items : []); }
+    catch (e) { setHist([]); }
+  }
+  function pick(s) { setSel(s); setQ(''); setMsg(''); setErr(''); loadHist(s); }
+  function reset() { setSel(null); setType(''); setAmount(''); setPay(''); setHist(null); }
+
+  async function cancelTuition(h) {
+    const label = h.svc.replace('學院學期費', '');
+    if (!window.confirm('確定取消 ' + sel.dog + ' 的 ' + h.date + ' ' + label + ' 續報（$' + Number(h.amount).toLocaleString() + '，套票）？\n\n' +
+      '系統會：退回套票 $' + Number(h.amount).toLocaleString() + '、扣返續報加的堂數、有效期還原至上一期。\n此操作不可復原。')) return;
+    setBusy(true); setMsg(''); setErr('');
+    try {
+      const r = await pwApi('tuitionCancel', { row: h.row, phone: sel.phone, dog: sel.dog });
+      if (!r || r.ok === false) setErr((r && r.error) || '取消失敗');
+      else { setMsg('✓ 已取消續報：' + sel.dog + ' 套票退回 $' + Number(r.refund).toLocaleString() + '，' + r.level + ' 扣返 ' + r.lessons + ' 堂。' + (r.expiry || '')); reset(); load(); }
+    } catch (e) { setErr('網絡錯誤：' + (e.message || e) + '。請先查核收入記錄，切勿重複取消。'); }
+    setBusy(false);
+  }
 
   async function submit(force) {
     if (!canSubmit) return;
@@ -2997,6 +3016,17 @@ function MgrTuition() {
             <span className="pwd-tr-sub">{type ? (types[type] || '') : '請選擇類型'}</span>
             <button className="pwd-la-confirm" disabled={!canSubmit} onClick={() => submit(false)}>{busy ? '處理中…' : '確認記錄'}</button>
           </div>
+          <div className="pwd-tr-hint" style={{ marginTop: 14 }}><b>學費記錄</b>：只限以套票付款的續報可以取消（退回套票）；其他付款方式不設退款，如有特殊情況交管理層。</div>
+          {hist === null && <div className="pwd-tr-hint">載入中…</div>}
+          {hist && hist.length === 0 && <div className="pwd-tr-hint">沒有學費記錄</div>}
+          {hist && hist.map(h => (
+            <div key={h.row} className="pwd-tr-row" style={{ justifyContent: 'space-between' }}>
+              <span className="pwd-tr-sub">{h.date} {h.svc.replace('學院學期費', '')} ${Number(h.amount).toLocaleString()}（{h.pay}）</span>
+              {h.canCancel
+                ? <button className="pwd-mgr-lock" disabled={busy} onClick={() => cancelTuition(h)}>取消續報</button>
+                : <span className="pwd-tr-sub">{h.reason}</span>}
+            </div>
+          ))}
         </>
       )}
     </div>
