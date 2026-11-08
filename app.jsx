@@ -1768,10 +1768,11 @@ function MgrSwap({ mgrData }) {
 
 // ── 請假 / 假期結餘 ──
 const PROOF_T = ['病假', '恩恤假', '工傷病假'], NOTICE_T = ['病假', '突發事假'];
-function MgrLeave({ month, mgrData }) {
+function MgrLeave({ month, mgrData, roles }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
-  const list = mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing');   // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
+  const list = roles ? mgrData.staffList.filter(s => roles.includes(s.role))   // [2026-11-08] 管理層頁：店長＋內容專員
+    : mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing');   // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || { annual: 0, statutory: 0, sick: 0 };
@@ -1909,18 +1910,25 @@ function MgrLeave({ month, mgrData }) {
           {[ { key: 'annual', lbl: '尚餘年假', step: 1 }, { key: 'sick', lbl: '累積有薪病假', step: 0.5 } ].map(c => (
             <div key={c.key} className="pwd-leave-cell">
               <div className="pwd-leave-cell-lbl">{c.lbl}</div>
+              {/* [2026-11-08] 累積有薪病假由系統按入職日自動計，唔可以人手改 */}
+              {c.key === 'sick' && (mgrData.allLeaveBal[sel] || {}).sickAuto ? (
+                <div className="pwd-leave-edit" style={{ justifyContent: 'center' }}>
+                  <span className="pwd-leave-val">{(mgrData.allLeaveBal[sel] || {}).sick}<i>日</i></span>
+                </div>
+              ) : (
               <div className="pwd-leave-edit">
                 <button onClick={() => adj(c.key, -c.step)}>−</button>
                 <span className="pwd-leave-val">{bal[c.key]}<i>日</i></span>
                 <button onClick={() => adj(c.key, c.step)}>＋</button>
-              </div>
+              </div>)}
             </div>
           ))}
         </div>
+        {(mgrData.allLeaveBal[sel] || {}).sickAuto && <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>累積有薪病假由系統按入職日期自動計算（首 12 個月每月 2 日，其後每月 4 日，上限 120 日；已放的有薪病假自動扣減）。</div>}
         <div style={{ marginTop: 14 }}><SaveBtn onSave={saveBal} label="儲存結餘" /></div>
       </div>
       <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">出勤記錄（店長登記）</div>
+        <div className="pwd-eyebrow">出勤記錄（{roles ? '管理層' : '店長'}登記）</div>
         <div className="pwd-mgrgoal-foot" style={{ marginTop: 6 }}>病假、突發事假、工傷病假、遲到及無通知缺勤由店長在此登記。年假、事假及恩恤假由同事於「請假申請」提交，批准後自動記錄。</div>
         <div className="pwd-la-types" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           {/* 「公眾假期」冇喺呢度（老闆 2026-08-12）：公眾假期唯一入口＝下面「待放公眾假期」，
@@ -2742,24 +2750,30 @@ function OwnerKpiEntry({ month, mgrData, onPick }) {
     </div>
   );
 }
-function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock, onSaved }) {
+function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock, onSaved, view = 'perf' }) {
   const [evalId, setEvalId] = useState(null);
-  if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="管理層總覽 · 需要管理層密碼" sub="請輸入管理層密碼" onUnlock={onUnlock} />;
+  if (!mgrUnlocked) return <ManagerGate action="verifyOwner" title="管理層頁面 · 需要管理層密碼" sub="請輸入管理層密碼" onUnlock={onUnlock} />;
   if (!mgrData) return <div className="pwd-loading" style={{ minHeight: 200, background: 'transparent' }}><div className="pwd-spinner" /><div className="pwd-loading-txt" style={{ color: 'var(--pw-ink-mute)' }}>資料下載中，請稍候片刻</div></div>;
   const person = evalId != null ? mgrData.staffList.find(s => s.id == evalId) : null;
   if (person) {
     return (
       <>
-        <div className="pwd-mgr-nav"><button className="pwd-mgr-navbtn on" onClick={() => setEvalId(null)}>‹ 返回管理層總覽</button></div>
+        <div className="pwd-mgr-nav"><button className="pwd-mgr-navbtn on" onClick={() => setEvalId(null)}>‹ 返回員工管理</button></div>
         <OwnerKpiEditor key={person.id} month={month} mgrData={mgrData} person={person} onSaved={onSaved} />
         <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>儲存後返回總覽，數字會在下次載入管理數據時更新。</div>
       </>
     );
   }
-  return (
+  // [2026-11-08 Erica 定] 管理層頁分開「員工管理」（評核、請假批核、店長／內容專員假期）同「業績總覽」
+  if (view === 'staff') return (
     <>
       <OwnerKpiEntry month={month} mgrData={mgrData} onPick={setEvalId} />
       <OwnerLongLeave mgrData={mgrData} />
+      <MgrLeave month={month} mgrData={mgrData} roles={['manager', 'marketing']} />
+    </>
+  );
+  return (
+    <>
       <OwnerDeptRevenue team={mgrData.team} />
       <OwnerCommissionTable mgrData={mgrData} />
       <OwnerTrialSummary slots={dash.trialSlots} bookings={dash.trialBookings} done={dash.trialDone} />
@@ -3462,7 +3476,7 @@ function CommissionApp() {
       </div>
 
       <div className="pwd-body">
-        {(tab === 'pay' || tab === 'owner' || (tab === 'mgr' && mgrArea !== 'roster')) && (
+        {(tab === 'pay' || tab === 'owner' || tab === 'ownerStaff' || (tab === 'mgr' && mgrArea !== 'roster')) && (
           <div className="pwd-monthbar">
             <span className="pwd-monthbar-lbl">查看月份</span>
             <select className="pwd-monthsel" value={month} onChange={(e) => changeMonth(e.target.value)}>
@@ -3508,6 +3522,9 @@ function CommissionApp() {
         {tab === 'owner' && (
           <OwnerOverview month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} onSaved={reloadMgr} />
         )}
+        {tab === 'ownerStaff' && isOwner && (
+          <OwnerOverview view="staff" month={month} dash={dash} mgrUnlocked={mgrUnlocked} mgrData={mgrData} onUnlock={unlockMgr} onSaved={reloadMgr} />
+        )}
         {/* [2026-11-06 Erica 定] 收學費＋賣套票獨立一個「收入記錄」分頁；只店長／管理層，要管理密碼 */}
         {tab === 'income' && (isManager || isOwner) && (mgrUnlocked
           ? <><MgrTuition /><MgrPackageSale /></>
@@ -3544,8 +3561,13 @@ function CommissionApp() {
           </button>
         )}
         {isOwner && (
+          <button className={'pwd-tabbtn' + (tab === 'ownerStaff' ? ' on' : '')} onClick={() => setTab('ownerStaff')}>
+            <span className="pwd-tabbtn-ico">🗂</span><span>員工管理</span>
+          </button>
+        )}
+        {isOwner && (
           <button className={'pwd-tabbtn' + (tab === 'owner' ? ' on' : '')} onClick={() => setTab('owner')}>
-            <span className="pwd-tabbtn-ico">📊</span><span>管理層總覽</span>
+            <span className="pwd-tabbtn-ico">📊</span><span>業績總覽</span>
           </button>
         )}
         {/* [2026-09-29 老闆要求] 學期進度報告卡：學院導師／店長／管理層可見，撳入去直接做報告（同網域，沿用登入） */}

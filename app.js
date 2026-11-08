@@ -3360,11 +3360,13 @@ const PROOF_T = ['病假', '恩恤假', '工傷病假'],
   NOTICE_T = ['病假', '突發事假'];
 function MgrLeave({
   month,
-  mgrData
+  mgrData,
+  roles
 }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
-  const list = mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing'); // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
+  const list = roles ? mgrData.staffList.filter(s => roles.includes(s.role)) // [2026-11-08] 管理層頁：店長＋內容專員
+  : mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing'); // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || {
@@ -3678,7 +3680,14 @@ function MgrLeave({
     className: "pwd-leave-cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-cell-lbl"
-  }, c.lbl), /*#__PURE__*/React.createElement("div", {
+  }, c.lbl), c.key === 'sick' && (mgrData.allLeaveBal[sel] || {}).sickAuto ? /*#__PURE__*/React.createElement("div", {
+    className: "pwd-leave-edit",
+    style: {
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-leave-val"
+  }, (mgrData.allLeaveBal[sel] || {}).sick, /*#__PURE__*/React.createElement("i", null, "\u65E5"))) : /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-edit"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => adj(c.key, -c.step)
@@ -3686,7 +3695,12 @@ function MgrLeave({
     className: "pwd-leave-val"
   }, bal[c.key], /*#__PURE__*/React.createElement("i", null, "\u65E5")), /*#__PURE__*/React.createElement("button", {
     onClick: () => adj(c.key, c.step)
-  }, "\uFF0B"))))), /*#__PURE__*/React.createElement("div", {
+  }, "\uFF0B"))))), (mgrData.allLeaveBal[sel] || {}).sickAuto && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 10
+    }
+  }, "\u7D2F\u7A4D\u6709\u85AA\u75C5\u5047\u7531\u7CFB\u7D71\u6309\u5165\u8077\u65E5\u671F\u81EA\u52D5\u8A08\u7B97\uFF08\u9996 12 \u500B\u6708\u6BCF\u6708 2 \u65E5\uFF0C\u5176\u5F8C\u6BCF\u6708 4 \u65E5\uFF0C\u4E0A\u9650 120 \u65E5\uFF1B\u5DF2\u653E\u7684\u6709\u85AA\u75C5\u5047\u81EA\u52D5\u6263\u6E1B\uFF09\u3002"), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 14
     }
@@ -3697,7 +3711,7 @@ function MgrLeave({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u51FA\u52E4\u8A18\u9304\uFF08\u5E97\u9577\u767B\u8A18\uFF09"), /*#__PURE__*/React.createElement("div", {
+  }, "\u51FA\u52E4\u8A18\u9304\uFF08", roles ? '管理層' : '店長', "\u767B\u8A18\uFF09"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgrgoal-foot",
     style: {
       marginTop: 6
@@ -5173,12 +5187,13 @@ function OwnerOverview({
   mgrUnlocked,
   mgrData,
   onUnlock,
-  onSaved
+  onSaved,
+  view = 'perf'
 }) {
   const [evalId, setEvalId] = useState(null);
   if (!mgrUnlocked) return /*#__PURE__*/React.createElement(ManagerGate, {
     action: "verifyOwner",
-    title: "\u7BA1\u7406\u5C64\u7E3D\u89BD \xB7 \u9700\u8981\u7BA1\u7406\u5C64\u5BC6\u78BC",
+    title: "\u7BA1\u7406\u5C64\u9801\u9762 \xB7 \u9700\u8981\u7BA1\u7406\u5C64\u5BC6\u78BC",
     sub: "\u8ACB\u8F38\u5165\u7BA1\u7406\u5C64\u5BC6\u78BC",
     onUnlock: onUnlock
   });
@@ -5203,7 +5218,7 @@ function OwnerOverview({
     }, /*#__PURE__*/React.createElement("button", {
       className: "pwd-mgr-navbtn on",
       onClick: () => setEvalId(null)
-    }, "\u2039 \u8FD4\u56DE\u7BA1\u7406\u5C64\u7E3D\u89BD")), /*#__PURE__*/React.createElement(OwnerKpiEditor, {
+    }, "\u2039 \u8FD4\u56DE\u54E1\u5DE5\u7BA1\u7406")), /*#__PURE__*/React.createElement(OwnerKpiEditor, {
       key: person.id,
       month: month,
       mgrData: mgrData,
@@ -5216,13 +5231,19 @@ function OwnerOverview({
       }
     }, "\u5132\u5B58\u5F8C\u8FD4\u56DE\u7E3D\u89BD\uFF0C\u6578\u5B57\u6703\u5728\u4E0B\u6B21\u8F09\u5165\u7BA1\u7406\u6578\u64DA\u6642\u66F4\u65B0\u3002"));
   }
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerKpiEntry, {
+  // [2026-11-08 Erica 定] 管理層頁分開「員工管理」（評核、請假批核、店長／內容專員假期）同「業績總覽」
+  if (view === 'staff') return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerKpiEntry, {
     month: month,
     mgrData: mgrData,
     onPick: setEvalId
   }), /*#__PURE__*/React.createElement(OwnerLongLeave, {
     mgrData: mgrData
-  }), /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
+  }), /*#__PURE__*/React.createElement(MgrLeave, {
+    month: month,
+    mgrData: mgrData,
+    roles: ['manager', 'marketing']
+  }));
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(OwnerDeptRevenue, {
     team: mgrData.team
   }), /*#__PURE__*/React.createElement(OwnerCommissionTable, {
     mgrData: mgrData
@@ -6369,7 +6390,7 @@ function CommissionApp() {
     className: "pwd-h-ava"
   }, staff.initial))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-body"
-  }, (tab === 'pay' || tab === 'owner' || tab === 'mgr' && mgrArea !== 'roster') && /*#__PURE__*/React.createElement("div", {
+  }, (tab === 'pay' || tab === 'owner' || tab === 'ownerStaff' || tab === 'mgr' && mgrArea !== 'roster') && /*#__PURE__*/React.createElement("div", {
     className: "pwd-monthbar"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-monthbar-lbl"
@@ -6438,6 +6459,14 @@ function CommissionApp() {
     mgrData: mgrData,
     onUnlock: unlockMgr,
     onSaved: reloadMgr
+  }), tab === 'ownerStaff' && isOwner && /*#__PURE__*/React.createElement(OwnerOverview, {
+    view: "staff",
+    month: month,
+    dash: dash,
+    mgrUnlocked: mgrUnlocked,
+    mgrData: mgrData,
+    onUnlock: unlockMgr,
+    onSaved: reloadMgr
   }), tab === 'income' && (isManager || isOwner) && (mgrUnlocked ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MgrTuition, null), /*#__PURE__*/React.createElement(MgrPackageSale, null)) : /*#__PURE__*/React.createElement(ManagerGate, {
     onUnlock: unlockMgr,
     action: isOwner ? 'verifyOwner' : 'verifyMgr',
@@ -6487,11 +6516,16 @@ function CommissionApp() {
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tabbtn-ico"
   }, "\uD83D\uDCB3"), /*#__PURE__*/React.createElement("span", null, "\u6536\u5165\u8A18\u9304")), isOwner && /*#__PURE__*/React.createElement("button", {
+    className: 'pwd-tabbtn' + (tab === 'ownerStaff' ? ' on' : ''),
+    onClick: () => setTab('ownerStaff')
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tabbtn-ico"
+  }, "\uD83D\uDDC2"), /*#__PURE__*/React.createElement("span", null, "\u54E1\u5DE5\u7BA1\u7406")), isOwner && /*#__PURE__*/React.createElement("button", {
     className: 'pwd-tabbtn' + (tab === 'owner' ? ' on' : ''),
     onClick: () => setTab('owner')
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-tabbtn-ico"
-  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("span", null, "\u7BA1\u7406\u5C64\u7E3D\u89BD")), (staff.dept === 'academy' || isManager || isOwner) && /*#__PURE__*/React.createElement("button", {
+  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("span", null, "\u696D\u7E3E\u7E3D\u89BD")), (staff.dept === 'academy' || isManager || isOwner) && /*#__PURE__*/React.createElement("button", {
     className: "pwd-tabbtn",
     onClick: () => {
       window.location.href = 'progress-card.html';
