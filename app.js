@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08e'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08f'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -956,13 +956,22 @@ const POSITIONS = {
   } // 舊資料相容,已不再喺選單
 };
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
+const fmtIsoMD = iso => {
+  const p = (iso || '').split('-');
+  return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso;
+};
 function buildWeekDays(week, wi, currentWeekIdx, todayDow) {
   const shifts = week && week.shifts || [];
   return WEEKDAYS.map((wd, i) => {
     const r = shifts[i] || ['off', null];
     const key = r[0] || 'off';
-    const sh = SHIFTS[key] || SHIFTS.off;
-    const posKey = r[1] || null;
+    const isPh = key === 'off' && r[1] === 'ph'; // [2026-11-08] 補假＝休息日加 ph 標記
+    const sh = isPh ? {
+      label: '補假',
+      time: '',
+      hrs: 0
+    } : SHIFTS[key] || SHIFTS.off;
+    const posKey = isPh ? null : r[1] || null;
     return {
       weekday: wd,
       date: week.dates[i],
@@ -2594,7 +2603,7 @@ function DutyRoster({
     className: "pwd-eyebrow"
   }, "\u5047\u671F / \u7D50\u9918"), /*#__PURE__*/React.createElement("span", {
     className: "pwd-leave-by"
-  }, "\u7CFB\u7D71\u81EA\u52D5\u8A08\u7B97")), false && /*#__PURE__*/React.createElement("div", {
+  }, "\u7CFB\u7D71\u81EA\u52D5\u8A08\u7B97")), /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-lbl"
@@ -2603,9 +2612,9 @@ function DutyRoster({
   }, leave.ph.map((p, i) => /*#__PURE__*/React.createElement("span", {
     key: i,
     className: "pwd-ph-chip"
-  }, "\uD83C\uDF8C ", p.name, " \xB7 ", p.date))) : /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDF8C ", p.name, " \xB7 ", p.date, p.deadline ? ` · 須於 ${fmtIsoMD(p.deadline)}前補假` : '', p.deadline && p.deadline < isoToday() ? ' ⚠️' : ''))) : /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty"
-  }, "\u672C\u6708\u66AB\u7121\u5F85\u653E\u516C\u773E\u5047\u671F")), /*#__PURE__*/React.createElement("div", {
+  }, "\u66AB\u7121\u5F85\u653E\u516C\u773E\u5047\u671F")), /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-grid",
     style: {
       gridTemplateColumns: "1fr 1fr"
@@ -3628,17 +3637,22 @@ function MgrLeave({
       ds = fmtDate(phDate),
       keep = phDate;
     setPhs(p => [...p, {
+      month: phDate.slice(0, 7),
       name: nm,
-      date: ds
+      date: ds,
+      deadline: isoAddDays(phDate, 60),
+      usedOn: ''
     }]);
     setPhName('');
     setPhDate('');
     await write('addPH', {
-      month,
+      month: phDate.slice(0, 7),
       staffId: sel,
       name: nm,
       date: ds
-    }, () => {
+    },
+    // [2026-11-08] 年月跟假期日子
+    () => {
       setPhs(p => p.filter(x => !(x.name === nm && x.date === ds)));
       setPhName(nm);
       setPhDate(keep);
@@ -3649,10 +3663,10 @@ function MgrLeave({
   // 就唔會出現「入錯想刪都製造咗假嘅放假記錄」呢個問題。
   async function delPH(p, i) {
     const who = staff ? staff.name : '該員工';
-    if (!window.confirm('確認移走 ' + who + ' 嘅「' + p.name + ' ' + p.date + '」？\n\n即係已經放咗，或者入錯想刪。')) return;
+    if (!window.confirm('確認刪除 ' + who + ' 嘅「' + p.name + ' ' + p.date + '」？\n\n只限入錯時使用。已補假請在排更揀「補假」，系統會自動抵銷。')) return;
     setPhs(arr => arr.filter((_, j) => j !== i));
     await write('deletePH', {
-      month,
+      month: p.month || month,
       staffId: sel,
       name: p.name,
       date: p.date
@@ -3991,7 +4005,12 @@ function MgrLeave({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u5F85\u653E\u516C\u773E\u5047\u671F (\u54E1\u5DE5\u9801\u986F\u793A)"), /*#__PURE__*/React.createElement("div", {
+  }, "\u516C\u773E\u5047\u671F\u88DC\u5047\uFF08\u54E1\u5DE5\u9801\u986F\u793A\uFF09"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 6
+    }
+  }, "\u540C\u4E8B\u65BC\u516C\u773E\u5047\u671F\u4E0A\u73ED\uFF0C\u5728\u6B64\u767B\u8A18\u3002\u88DC\u5047\u65E5\u5728\u300C\u6392\u66F4\u300D\u63C0\u300C\u88DC\u5047\u300D\uFF0C\u7CFB\u7D71\u81EA\u52D5\u62B5\u92B7\u3002\u9808\u65BC\u5047\u671F\u524D\u5F8C 60 \u65E5\u5167\u88DC\u5047\u3002"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-club-frow",
     style: {
       marginTop: 12
@@ -4014,7 +4033,7 @@ function MgrLeave({
     },
     disabled: !phName.trim() || !phDate,
     onClick: addPH
-  }, "\uFF0B \u70BA ", staff.name, " \u767B\u8A18\u5F85\u653E\u516C\u773E\u5047\u671F"), /*#__PURE__*/React.createElement("div", {
+  }, "\uFF0B \u70BA ", staff.name, " \u767B\u8A18\u516C\u773E\u5047\u671F\u4E0A\u73ED"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-larec",
     style: {
       marginTop: 14
@@ -4026,12 +4045,19 @@ function MgrLeave({
     className: "pwd-larec-type"
   }, "\uD83C\uDF8C ", p.name), /*#__PURE__*/React.createElement("span", {
     className: "pwd-larec-date"
-  }, p.date), /*#__PURE__*/React.createElement("button", {
+  }, p.date), p.usedOn ? /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-status approved"
+  }, "\u5DF2\u88DC ", fmtIsoMD(p.usedOn)) : /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-mgr-swap-status ' + (p.deadline && p.deadline < isoToday() ? 'rejected' : 'pending')
+  }, p.deadline && p.deadline < isoToday() ? '⚠️ 已過期限' : `待補 · ${fmtIsoMD(p.deadline)}前`), /*#__PURE__*/React.createElement("button", {
     className: "pwd-larec-del",
+    style: {
+      marginLeft: 'auto'
+    },
     onClick: () => delPH(p, i)
   }, "\u2715"))), phs.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty"
-  }, "\u672A\u6709\u767B\u8A18\u5F85\u653E\u516C\u773E\u5047\u671F"))));
+  }, "\u672A\u6709\u767B\u8A18\u516C\u773E\u5047\u671F"))));
 }
 
 // ── 排更 ──
@@ -4044,12 +4070,13 @@ function MgrRoster({
   const [shifts, setShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : null);
   const [savedShifts, setSavedShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : DEFAULT_WEEK());
   const [loading, setLoading] = useState(false);
-  const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
+  const SHIFT_CYCLE = ['early', 'mid', 'full', 'off', 'ph'];
   const SHIFT_LABEL = {
     early: '早更',
     mid: '午更',
     full: '全日更',
-    off: '休息'
+    off: '休息',
+    ph: '補假'
   };
   const POS_LABEL = {
     academyA: '學院IC',
@@ -4091,7 +4118,7 @@ function MgrRoster({
   const setDay = (i, shift, pos) => {
     setShifts(prev => {
       const next = normWeek(prev || DEFAULT_WEEK());
-      next[i] = [shift, shift === 'off' ? null : pos];
+      next[i] = shift === 'ph' ? ['off', 'ph'] : [shift, shift === 'off' ? null : pos]; // 補假存做休息日＋ph
       return next;
     });
   };
@@ -4167,8 +4194,8 @@ function MgrRoster({
       className: "pwd-mgr-selwrap"
     }, /*#__PURE__*/React.createElement("select", {
       className: "pwd-mgr-sel",
-      value: r[0],
-      onChange: e => setDay(i, e.target.value, r[1])
+      value: off && r[1] === 'ph' ? 'ph' : r[0],
+      onChange: e => setDay(i, e.target.value, r[1] === 'ph' ? null : r[1])
     }, SHIFT_CYCLE.map(k => /*#__PURE__*/React.createElement("option", {
       key: k,
       value: k
@@ -4193,7 +4220,49 @@ function MgrRoster({
     label: "\u767C\u4F48\u672C\u9031\u6392\u66F4"
   }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-rostersave"
-  }, "\u767C\u4F48\u5F8C\u54E1\u5DE5\u5373\u6642\u770B\u5230"));
+  }, "\u767C\u4F48\u5F8C\u54E1\u5DE5\u5373\u6642\u770B\u5230"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, (list.find(x => x.id == sel) || {}).name, " \xB7 \u516C\u773E\u5047\u671F\u88DC\u5047"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 6
+    }
+  }, "\u6CD5\u5B9A\u5047\u65E5\u7576\u65E5\u8FD4\u5DE5\u6216\u9069\u9022\u4F11\u606F\u65E5\uFF0C\u7CFB\u7D71\u81EA\u52D5\u8A18\u70BA\u6B20\u4E00\u65E5\uFF0811 \u6708 1 \u65E5\u8D77\u7684\u5047\u671F\uFF09\u3002\u88DC\u5047\u7576\u65E5\u5728\u4E0A\u9762\u63C0\u300C\u88DC\u5047\u300D\uFF0C\u7CFB\u7D71\u81EA\u52D5\u62B5\u92B7\u6700\u65E9\u4E00\u65E5\u3002\u9808\u65BC\u5047\u671F\u524D\u5F8C 60 \u65E5\u5167\u88DC\u5047\u3002"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-larec",
+    style: {
+      marginTop: 12
+    }
+  }, (mgrData.allPH && mgrData.allPH[sel] || []).map((p, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "pwd-larec-row",
+    style: {
+      flexWrap: 'wrap',
+      rowGap: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-larec-type"
+  }, "\uD83C\uDF8C ", p.name), /*#__PURE__*/React.createElement("span", {
+    className: "pwd-larec-date"
+  }, p.date), p.usedOn ? /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-status approved",
+    style: {
+      marginLeft: 'auto'
+    }
+  }, "\u5DF2\u88DC ", fmtIsoMD(p.usedOn)) : /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-mgr-swap-status ' + (p.deadline < isoToday() ? 'rejected' : 'pending'),
+    style: {
+      marginLeft: 'auto'
+    }
+  }, p.deadline < isoToday() ? '⚠️ 已過期限' : `待補 · ${fmtIsoMD(p.deadline)}前`))), !(mgrData.allPH && mgrData.allPH[sel] || []).length && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-ph-empty"
+  }, "\u66AB\u7121\u6B20\u88DC\u7684\u516C\u773E\u5047\u671F")), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 8
+    }
+  }, "\u767C\u4F48\u66F4\u8868\u5F8C\uFF0C\u91CD\u65B0\u8F09\u5165\u9801\u9762\u66F4\u65B0\u3002")));
 }
 
 // ── 會籍提名審批 ──

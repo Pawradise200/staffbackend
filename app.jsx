@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08e';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08f';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -382,13 +382,15 @@ const POSITIONS = {
   reception: { label: '前台', cls: 'reception' },     // 舊資料相容,已不再喺選單
 };
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
+const fmtIsoMD = (iso) => { const p = (iso || '').split('-'); return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso; };
 function buildWeekDays(week, wi, currentWeekIdx, todayDow) {
   const shifts = (week && week.shifts) || [];
   return WEEKDAYS.map((wd, i) => {
     const r = shifts[i] || ['off', null];
     const key = r[0] || 'off';
-    const sh = SHIFTS[key] || SHIFTS.off;
-    const posKey = r[1] || null;
+    const isPh = key === 'off' && r[1] === 'ph';   // [2026-11-08] 補假＝休息日加 ph 標記
+    const sh = isPh ? { label: '補假', time: '', hrs: 0 } : (SHIFTS[key] || SHIFTS.off);
+    const posKey = isPh ? null : (r[1] || null);
     return {
       weekday: wd, date: week.dates[i],
       today: wi === currentWeekIdx && i === todayDow,
@@ -1362,15 +1364,15 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
           <div className="pwd-eyebrow">假期 / 結餘</div>
           <span className="pwd-leave-by">系統自動計算</span>
         </div>
-        {/* [2026-11-08 老闆定] 公眾假期補假由店長編更時直接安排，唔再另外登記；資料保留喺 Sheet */}
-        {false && <div className="pwd-ph">
+        {/* [2026-11-08 老闆定] 待放公眾假期：店長登記；更表排「補假」系統自動抵銷；法例須於假期前後 60 日內補 */}
+        <div className="pwd-ph">
           <div className="pwd-ph-lbl">待放公眾假期</div>
           {leave.ph && leave.ph.length ? (
             <div className="pwd-ph-list">
-              {leave.ph.map((p, i) => <span key={i} className="pwd-ph-chip">🎌 {p.name} · {p.date}</span>)}
+              {leave.ph.map((p, i) => <span key={i} className="pwd-ph-chip">🎌 {p.name} · {p.date}{p.deadline ? ` · 須於 ${fmtIsoMD(p.deadline)}前補假` : ''}{p.deadline && p.deadline < isoToday() ? ' ⚠️' : ''}</span>)}
             </div>
-          ) : <div className="pwd-ph-empty">本月暫無待放公眾假期</div>}
-        </div>}
+          ) : <div className="pwd-ph-empty">暫無待放公眾假期</div>}
+        </div>
         <div className="pwd-leave-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
           {[ { key: 'annual', lbl: '尚餘年假' }, { key: 'sick', lbl: '累積有薪病假' } ].map(c => (
             <div key={c.key} className="pwd-leave-cell">
@@ -1887,9 +1889,9 @@ function MgrLeave({ month, mgrData, roles }) {
   async function addPH() {
     if (!phName.trim() || !phDate) return;
     const nm = phName.trim(), ds = fmtDate(phDate), keep = phDate;
-    setPhs(p => [...p, { name: nm, date: ds }]);
+    setPhs(p => [...p, { month: phDate.slice(0, 7), name: nm, date: ds, deadline: isoAddDays(phDate, 60), usedOn: '' }]);
     setPhName(''); setPhDate('');
-    await write('addPH', { month, staffId: sel, name: nm, date: ds },
+    await write('addPH', { month: phDate.slice(0, 7), staffId: sel, name: nm, date: ds },   // [2026-11-08] 年月跟假期日子
       () => { setPhs(p => p.filter(x => !(x.name === nm && x.date === ds)));
               setPhName(nm); setPhDate(keep); });   // 打返嘅字唔好蒸發,即刻可以重試
   }
@@ -1898,9 +1900,9 @@ function MgrLeave({ month, mgrData, roles }) {
   // 就唔會出現「入錯想刪都製造咗假嘅放假記錄」呢個問題。
   async function delPH(p, i) {
     const who = staff ? staff.name : '該員工';
-    if (!window.confirm('確認移走 ' + who + ' 嘅「' + p.name + ' ' + p.date + '」？\n\n即係已經放咗，或者入錯想刪。')) return;
+    if (!window.confirm('確認刪除 ' + who + ' 嘅「' + p.name + ' ' + p.date + '」？\n\n只限入錯時使用。已補假請在排更揀「補假」，系統會自動抵銷。')) return;
     setPhs(arr => arr.filter((_, j) => j !== i));
-    await write('deletePH', { month, staffId: sel, name: p.name, date: p.date },
+    await write('deletePH', { month: p.month || month, staffId: sel, name: p.name, date: p.date },
       () => setPhs(arr => { const c = arr.slice(); c.splice(i, 0, p); return c; }));
   }
   return (
@@ -2055,24 +2057,28 @@ function MgrLeave({ month, mgrData, roles }) {
           {llReqs.filter(r => r.staffId == sel).length === 0 && <div className="pwd-ph-empty">未有請假申請</div>}
         </div>
       </div>
+      {/* [2026-11-08 Erica 定] 公眾假期改由更表自動計，唔喺請假假期登記；狀態見「排更」 */}
       {false && <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">待放公眾假期 (員工頁顯示)</div>
+        <div className="pwd-eyebrow">公眾假期補假（員工頁顯示）</div>
+        <div className="pwd-mgrgoal-foot" style={{ marginTop: 6 }}>同事於公眾假期上班，在此登記。補假日在「排更」揀「補假」，系統自動抵銷。須於假期前後 60 日內補假。</div>
         <div className="pwd-club-frow" style={{ marginTop: 12 }}>
           <input className="pwd-club-input" placeholder="假期名稱(例:勞動節)" value={phName} onChange={(e) => setPhName(e.target.value)} />
           <input className="pwd-la-date" type="date" value={phDate} onChange={(e) => setPhDate(e.target.value)} />
         </div>
         <button className="pwd-la-confirm" style={{ marginTop: 12, width: '100%' }} disabled={!phName.trim() || !phDate} onClick={addPH}>
-          ＋ 為 {staff.name} 登記待放公眾假期
+          ＋ 為 {staff.name} 登記公眾假期上班
         </button>
         <div className="pwd-larec" style={{ marginTop: 14 }}>
           {phs.map((p, i) => (
             <div key={i} className="pwd-larec-row">
               <span className="pwd-larec-type">🎌 {p.name}</span>
               <span className="pwd-larec-date">{p.date}</span>
-              <button className="pwd-larec-del" onClick={() => delPH(p, i)}>✕</button>
+              {p.usedOn ? <span className="pwd-mgr-swap-status approved">已補 {fmtIsoMD(p.usedOn)}</span>
+                : <span className={'pwd-mgr-swap-status ' + (p.deadline && p.deadline < isoToday() ? 'rejected' : 'pending')}>{p.deadline && p.deadline < isoToday() ? '⚠️ 已過期限' : `待補 · ${fmtIsoMD(p.deadline)}前`}</span>}
+              <button className="pwd-larec-del" style={{ marginLeft: 'auto' }} onClick={() => delPH(p, i)}>✕</button>
             </div>
           ))}
-          {phs.length === 0 && <div className="pwd-ph-empty">未有登記待放公眾假期</div>}
+          {phs.length === 0 && <div className="pwd-ph-empty">未有登記公眾假期</div>}
         </div>
       </div>}
     </div>
@@ -2087,8 +2093,8 @@ function MgrRoster({ mgrData }) {
   const [shifts, setShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : null);
   const [savedShifts, setSavedShifts] = useState(() => weekStart === mgrData.weekStart && mgrData.allRosters[sel] ? normWeek(mgrData.allRosters[sel]) : DEFAULT_WEEK());
   const [loading, setLoading] = useState(false);
-  const SHIFT_CYCLE = ['early', 'mid', 'full', 'off'];
-  const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息' };
+  const SHIFT_CYCLE = ['early', 'mid', 'full', 'off', 'ph'];
+  const SHIFT_LABEL = { early: '早更', mid: '午更', full: '全日更', off: '休息', ph: '補假' };
   const POS_LABEL = { academyA: '學院IC', academyB: '學院B位', assist: '學院C位（助教）', hotelA: '酒店IC', hotelB: '酒店B位', hotelC: '酒店C位', academy: '學院', reception: '前台' };
 
   // 載入所選員工 + 所選週次嗀更表
@@ -2109,7 +2115,7 @@ function MgrRoster({ mgrData }) {
   const setDay = (i, shift, pos) => {
     setShifts(prev => {
       const next = normWeek(prev || DEFAULT_WEEK());
-      next[i] = [shift, shift === 'off' ? null : pos];
+      next[i] = shift === 'ph' ? ['off', 'ph'] : [shift, shift === 'off' ? null : pos];   // 補假存做休息日＋ph
       return next;
     });
   };
@@ -2148,7 +2154,7 @@ function MgrRoster({ mgrData }) {
               <div key={i} className={'pwd-duty-row' + (off ? ' off' : '')}>
                 <div className="pwd-duty-date"><span className="pwd-duty-wd">{wd}</span><span className="pwd-duty-num">{dates[i]}</span></div>
                 <div className="pwd-mgr-selwrap">
-                  <select className="pwd-mgr-sel" value={r[0]} onChange={(e) => setDay(i, e.target.value, r[1])}>
+                  <select className="pwd-mgr-sel" value={off && r[1] === 'ph' ? 'ph' : r[0]} onChange={(e) => setDay(i, e.target.value, r[1] === 'ph' ? null : r[1])}>
                     {SHIFT_CYCLE.map(k => <option key={k} value={k}>{SHIFT_LABEL[k]}</option>)}
                   </select>
                 </div>
@@ -2168,6 +2174,23 @@ function MgrRoster({ mgrData }) {
       </div>
       <SaveBtn onSave={save} label="發佈本週排更" />
       <div className="pwd-mgr-rostersave">發佈後員工即時看到</div>
+      {/* [2026-11-08 Erica 定] 公眾假期補假：系統按更表自動計——法定假日當日返工或休息＝欠一日；排「補假」自動抵銷最早一日 */}
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">{(list.find(x => x.id == sel) || {}).name} · 公眾假期補假</div>
+        <div className="pwd-mgrgoal-foot" style={{ marginTop: 6 }}>法定假日當日返工或適逢休息日，系統自動記為欠一日（11 月 1 日起的假期）。補假當日在上面揀「補假」，系統自動抵銷最早一日。須於假期前後 60 日內補假。</div>
+        <div className="pwd-larec" style={{ marginTop: 12 }}>
+          {((mgrData.allPH && mgrData.allPH[sel]) || []).map((p, i) => (
+            <div key={i} className="pwd-larec-row" style={{ flexWrap: 'wrap', rowGap: 6 }}>
+              <span className="pwd-larec-type">🎌 {p.name}</span>
+              <span className="pwd-larec-date">{p.date}</span>
+              {p.usedOn ? <span className="pwd-mgr-swap-status approved" style={{ marginLeft: 'auto' }}>已補 {fmtIsoMD(p.usedOn)}</span>
+                : <span className={'pwd-mgr-swap-status ' + (p.deadline < isoToday() ? 'rejected' : 'pending')} style={{ marginLeft: 'auto' }}>{p.deadline < isoToday() ? '⚠️ 已過期限' : `待補 · ${fmtIsoMD(p.deadline)}前`}</span>}
+            </div>
+          ))}
+          {!((mgrData.allPH && mgrData.allPH[sel]) || []).length && <div className="pwd-ph-empty">暫無欠補的公眾假期</div>}
+        </div>
+        <div className="pwd-mgrgoal-foot" style={{ marginTop: 8 }}>發佈更表後，重新載入頁面更新。</div>
+      </div>
     </div>
   );
 }
