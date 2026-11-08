@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08c';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08e';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1256,7 +1256,8 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
         )}
       </div>
 
-      <div className="pwd-card pwd-block">
+      {/* [2026-11-08 Erica 定] 員工頁換更申請拎走：換更以 WhatsApp 通知店長，店長改更表（PAW-SOP-016） */}
+      {false && <div className="pwd-card pwd-block">
         <div className="pwd-swap-head">
           <div className="pwd-eyebrow">換更 / 調更申請</div>
           {!swapOpen && <button className="pwd-swap-toggle" onClick={() => { setSwapOpen(true); setSwapDone(null); }}>＋ 申請</button>}
@@ -1274,9 +1275,9 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
               </button>
             ))}
             <button className="pwd-swap-cancel" onClick={() => setSwapOpen(false)}>取消</button>
-          </div>
+          </div>}
         )}
-      </div>
+      </div>}
 
       <div className="pwd-card pwd-block">
         <div className="pwd-swap-head">
@@ -1359,7 +1360,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
       <div className="pwd-card pwd-block">
         <div className="pwd-leave-head">
           <div className="pwd-eyebrow">假期 / 結餘</div>
-          <span className="pwd-leave-by">由店長更新</span>
+          <span className="pwd-leave-by">系統自動計算</span>
         </div>
         {/* [2026-11-08 老闆定] 公眾假期補假由店長編更時直接安排，唔再另外登記；資料保留喺 Sheet */}
         {false && <div className="pwd-ph">
@@ -1378,6 +1379,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
             </div>
           ))}
         </div>
+        <AnnualDue due={leave.annualDue} />
       </div>
       <div className="pwd-foot">更表如有調動,以店長公佈為準</div>
     </>
@@ -1767,12 +1769,19 @@ function MgrSwap({ mgrData }) {
 }
 
 // ── 請假 / 假期結餘 ──
+// [2026-11-08] 年假期限提示：90 日內到期加 ⚠️
+function AnnualDue({ due }) {
+  if (!due || !(due.days > 0)) return null;
+  const soon = due.deadline <= isoAddDays(isoToday(), 90);
+  const [y, m, d] = due.deadline.split('-');
+  return <div className={soon ? 'pwd-warn' : 'pwd-mgrgoal-foot'} style={{ marginTop: 10 }}>{soon ? '⚠️ ' : ''}其中 {due.days} 日年假須於 {y} 年 {+m} 月 {+d} 日前放完</div>;
+}
 const PROOF_T = ['病假', '恩恤假', '工傷病假'], NOTICE_T = ['病假', '突發事假'];
 function MgrLeave({ month, mgrData, roles }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
   const list = roles ? mgrData.staffList.filter(s => roles.includes(s.role))   // [2026-11-08] 管理層頁：店長＋內容專員
-    : mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing');   // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
+    : mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing' && s.role !== 'manager');   // [2026-11-08] 店長本人假期由管理層處理   // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || { annual: 0, statutory: 0, sick: 0 };
@@ -1905,15 +1914,15 @@ function MgrLeave({ month, mgrData, roles }) {
       </div>
       {err && <div className="pwd-warn">⚠️ {err}</div>}
       <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">{staff.name} · 假期結餘 (可調整)</div>
+        <div className="pwd-eyebrow">{staff.name} · 假期結餘（系統自動計算）</div>
         <div className="pwd-leave-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
           {[ { key: 'annual', lbl: '尚餘年假', step: 1 }, { key: 'sick', lbl: '累積有薪病假', step: 0.5 } ].map(c => (
             <div key={c.key} className="pwd-leave-cell">
               <div className="pwd-leave-cell-lbl">{c.lbl}</div>
               {/* [2026-11-08] 累積有薪病假由系統按入職日自動計，唔可以人手改 */}
-              {c.key === 'sick' && (mgrData.allLeaveBal[sel] || {}).sickAuto ? (
+              {(mgrData.allLeaveBal[sel] || {})[c.key + 'Auto'] ? (
                 <div className="pwd-leave-edit" style={{ justifyContent: 'center' }}>
-                  <span className="pwd-leave-val">{(mgrData.allLeaveBal[sel] || {}).sick}<i>日</i></span>
+                  <span className="pwd-leave-val">{(mgrData.allLeaveBal[sel] || {})[c.key]}<i>日</i></span>
                 </div>
               ) : (
               <div className="pwd-leave-edit">
@@ -1924,8 +1933,9 @@ function MgrLeave({ month, mgrData, roles }) {
             </div>
           ))}
         </div>
-        {(mgrData.allLeaveBal[sel] || {}).sickAuto && <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>累積有薪病假由系統按入職日期自動計算（首 12 個月每月 2 日，其後每月 4 日，上限 120 日；已放的有薪病假自動扣減）。</div>}
-        <div style={{ marginTop: 14 }}><SaveBtn onSave={saveBal} label="儲存結餘" /></div>
+        <AnnualDue due={(mgrData.allLeaveBal[sel] || {}).annualDue} />
+        {(mgrData.allLeaveBal[sel] || {}).sickAuto && <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>由系統按入職日期自動計算。年假：每滿一年按《僱傭條例》加應得日數，已批的年假自動扣減。累積有薪病假：首 12 個月每月 2 日，其後每月 4 日，上限 120 日；已放的有薪病假自動扣減。</div>}
+        {!((mgrData.allLeaveBal[sel] || {}).sickAuto && (mgrData.allLeaveBal[sel] || {}).annualAuto) && <div style={{ marginTop: 14 }}><SaveBtn onSave={saveBal} label="儲存結餘" /></div>}
       </div>
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">出勤記錄（{roles ? '管理層' : '店長'}登記）</div>

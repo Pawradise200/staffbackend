@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08d'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2594,7 +2594,7 @@ function DutyRoster({
     className: "pwd-eyebrow"
   }, "\u5047\u671F / \u7D50\u9918"), /*#__PURE__*/React.createElement("span", {
     className: "pwd-leave-by"
-  }, "\u7531\u5E97\u9577\u66F4\u65B0")), false && /*#__PURE__*/React.createElement("div", {
+  }, "\u7CFB\u7D71\u81EA\u52D5\u8A08\u7B97")), false && /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-lbl"
@@ -2623,7 +2623,9 @@ function DutyRoster({
     className: "pwd-leave-cell-lbl"
   }, c.lbl), /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-val big"
-  }, leave[c.key], /*#__PURE__*/React.createElement("i", null, "\u65E5")))))), /*#__PURE__*/React.createElement("div", {
+  }, leave[c.key], /*#__PURE__*/React.createElement("i", null, "\u65E5"))))), /*#__PURE__*/React.createElement(AnnualDue, {
+    due: leave.annualDue
+  })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-foot"
   }, "\u66F4\u8868\u5982\u6709\u8ABF\u52D5,\u4EE5\u5E97\u9577\u516C\u4F48\u70BA\u6E96"));
 }
@@ -3356,6 +3358,20 @@ function MgrSwap({
 }
 
 // ── 請假 / 假期結餘 ──
+// [2026-11-08] 年假期限提示：90 日內到期加 ⚠️
+function AnnualDue({
+  due
+}) {
+  if (!due || !(due.days > 0)) return null;
+  const soon = due.deadline <= isoAddDays(isoToday(), 90);
+  const [y, m, d] = due.deadline.split('-');
+  return /*#__PURE__*/React.createElement("div", {
+    className: soon ? 'pwd-warn' : 'pwd-mgrgoal-foot',
+    style: {
+      marginTop: 10
+    }
+  }, soon ? '⚠️ ' : '', "\u5176\u4E2D ", due.days, " \u65E5\u5E74\u5047\u9808\u65BC ", y, " \u5E74 ", +m, " \u6708 ", +d, " \u65E5\u524D\u653E\u5B8C");
+}
 const PROOF_T = ['病假', '恩恤假', '工傷病假'],
   NOTICE_T = ['病假', '突發事假'];
 function MgrLeave({
@@ -3366,7 +3382,7 @@ function MgrLeave({
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
   const list = roles ? mgrData.staffList.filter(s => roles.includes(s.role)) // [2026-11-08] 管理層頁：店長＋內容專員
-  : mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing'); // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
+  : mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing' && s.role !== 'manager'); // [2026-11-08] 店長本人假期由管理層處理   // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || {
@@ -3662,7 +3678,7 @@ function MgrLeave({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, staff.name, " \xB7 \u5047\u671F\u7D50\u9918 (\u53EF\u8ABF\u6574)"), /*#__PURE__*/React.createElement("div", {
+  }, staff.name, " \xB7 \u5047\u671F\u7D50\u9918\uFF08\u7CFB\u7D71\u81EA\u52D5\u8A08\u7B97\uFF09"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-grid",
     style: {
       gridTemplateColumns: "1fr 1fr"
@@ -3680,14 +3696,14 @@ function MgrLeave({
     className: "pwd-leave-cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-cell-lbl"
-  }, c.lbl), c.key === 'sick' && (mgrData.allLeaveBal[sel] || {}).sickAuto ? /*#__PURE__*/React.createElement("div", {
+  }, c.lbl), (mgrData.allLeaveBal[sel] || {})[c.key + 'Auto'] ? /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-edit",
     style: {
       justifyContent: 'center'
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-leave-val"
-  }, (mgrData.allLeaveBal[sel] || {}).sick, /*#__PURE__*/React.createElement("i", null, "\u65E5"))) : /*#__PURE__*/React.createElement("div", {
+  }, (mgrData.allLeaveBal[sel] || {})[c.key], /*#__PURE__*/React.createElement("i", null, "\u65E5"))) : /*#__PURE__*/React.createElement("div", {
     className: "pwd-leave-edit"
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => adj(c.key, -c.step)
@@ -3695,12 +3711,14 @@ function MgrLeave({
     className: "pwd-leave-val"
   }, bal[c.key], /*#__PURE__*/React.createElement("i", null, "\u65E5")), /*#__PURE__*/React.createElement("button", {
     onClick: () => adj(c.key, c.step)
-  }, "\uFF0B"))))), (mgrData.allLeaveBal[sel] || {}).sickAuto && /*#__PURE__*/React.createElement("div", {
+  }, "\uFF0B"))))), /*#__PURE__*/React.createElement(AnnualDue, {
+    due: (mgrData.allLeaveBal[sel] || {}).annualDue
+  }), (mgrData.allLeaveBal[sel] || {}).sickAuto && /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgrgoal-foot",
     style: {
       marginTop: 10
     }
-  }, "\u7D2F\u7A4D\u6709\u85AA\u75C5\u5047\u7531\u7CFB\u7D71\u6309\u5165\u8077\u65E5\u671F\u81EA\u52D5\u8A08\u7B97\uFF08\u9996 12 \u500B\u6708\u6BCF\u6708 2 \u65E5\uFF0C\u5176\u5F8C\u6BCF\u6708 4 \u65E5\uFF0C\u4E0A\u9650 120 \u65E5\uFF1B\u5DF2\u653E\u7684\u6709\u85AA\u75C5\u5047\u81EA\u52D5\u6263\u6E1B\uFF09\u3002"), /*#__PURE__*/React.createElement("div", {
+  }, "\u7531\u7CFB\u7D71\u6309\u5165\u8077\u65E5\u671F\u81EA\u52D5\u8A08\u7B97\u3002\u5E74\u5047\uFF1A\u6BCF\u6EFF\u4E00\u5E74\u6309\u300A\u50F1\u50AD\u689D\u4F8B\u300B\u52A0\u61C9\u5F97\u65E5\u6578\uFF0C\u5DF2\u6279\u7684\u5E74\u5047\u81EA\u52D5\u6263\u6E1B\u3002\u7D2F\u7A4D\u6709\u85AA\u75C5\u5047\uFF1A\u9996 12 \u500B\u6708\u6BCF\u6708 2 \u65E5\uFF0C\u5176\u5F8C\u6BCF\u6708 4 \u65E5\uFF0C\u4E0A\u9650 120 \u65E5\uFF1B\u5DF2\u653E\u7684\u6709\u85AA\u75C5\u5047\u81EA\u52D5\u6263\u6E1B\u3002"), !((mgrData.allLeaveBal[sel] || {}).sickAuto && (mgrData.allLeaveBal[sel] || {}).annualAuto) && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 14
     }
