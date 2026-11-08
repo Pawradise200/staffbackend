@@ -1275,7 +1275,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
               </button>
             ))}
             <button className="pwd-swap-cancel" onClick={() => setSwapOpen(false)}>取消</button>
-          </div>}
+          </div>
         )}
       </div>}
 
