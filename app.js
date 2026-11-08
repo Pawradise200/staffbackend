@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-09a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-09b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -6112,6 +6112,63 @@ function MgrPackageSale() {
   }, busy ? '處理中…' : '確認記錄'))));
 }
 
+// [2026-11-09] 店長頁「待處理」：未交證明、年假／公眾假期補假／補鐘將到期、待批會籍提名（後端 todoItems_）
+function MgrTodo({
+  items
+}) {
+  const [open, setOpen] = useState(false);
+  const list = items || [];
+  const urgent = list.filter(r => /⚠️/.test(r[0])).length;
+  const shown = open ? list : list.slice(0, 4);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block",
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-swap-head"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\uD83D\uDCCB \u5F85\u8655\u7406\uFF08", list.length, "\uFF09", urgent ? ` · ⚠️ ${urgent} 項已過期` : '')), list.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "pwd-ph-empty",
+    style: {
+      marginTop: 10
+    }
+  }, "\u66AB\u6642\u5187\u5F85\u8655\u7406\u4E8B\u9805") : /*#__PURE__*/React.createElement("div", {
+    className: "pwd-larec",
+    style: {
+      marginTop: 10
+    }
+  }, shown.map((r, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "pwd-larec-row",
+    style: {
+      flexWrap: 'wrap',
+      rowGap: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-mgr-swap-status ' + (/⚠️/.test(r[0]) ? 'rejected' : r[0] === '法例期限' ? 'pending' : 'approved')
+  }, r[0]), /*#__PURE__*/React.createElement("span", {
+    className: "pwd-larec-date",
+    style: {
+      flex: 1,
+      minWidth: 140
+    }
+  }, r[2], " \xB7 ", r[1], r[3] ? '（' + r[3] + '）' : ''), /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: '100%',
+      fontSize: 11,
+      color: 'var(--pw-ink-mute)'
+    }
+  }, "\u2192 ", r[4]))), list.length > 4 && /*#__PURE__*/React.createElement("button", {
+    className: "pwd-swap-toggle",
+    style: {
+      marginTop: 6
+    },
+    onClick: () => setOpen(o => !o)
+  }, open ? '收起' : `顯示全部 ${list.length} 項`)));
+}
+
 // ── ManagerPanel ──
 function ManagerPanel({
   month,
@@ -6147,7 +6204,9 @@ function ManagerPanel({
   }, "\uD83D\uDEE0"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u5718\u968A\u7BA1\u7406"), /*#__PURE__*/React.createElement("span", null, "\u5E97\u9577\u5C08\u7528 \xB7 \u4F60\u7684 KPI \u7531\u7BA1\u7406\u5C64\u8A55\u6838")), /*#__PURE__*/React.createElement("button", {
     className: "pwd-mgr-lock",
     onClick: onLock
-  }, "\uD83D\uDD12 \u9396\u5B9A")), /*#__PURE__*/React.createElement(MgrCleanReminder, null), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD12 \u9396\u5B9A")), /*#__PURE__*/React.createElement(MgrCleanReminder, null), /*#__PURE__*/React.createElement(MgrTodo, {
+    items: mgrData.mgrTodo
+  }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-nav"
   }, MGR_AREAS.map(a => /*#__PURE__*/React.createElement("button", {
     key: a.key,

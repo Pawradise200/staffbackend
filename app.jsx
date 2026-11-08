@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-09a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-09b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -3333,6 +3333,33 @@ function MgrPackageSale() {
   );
 }
 
+// [2026-11-09] 店長頁「待處理」：未交證明、年假／公眾假期補假／補鐘將到期、待批會籍提名（後端 todoItems_）
+function MgrTodo({ items }) {
+  const [open, setOpen] = useState(false);
+  const list = items || [];
+  const urgent = list.filter(r => /⚠️/.test(r[0])).length;
+  const shown = open ? list : list.slice(0, 4);
+  return (
+    <div className="pwd-card pwd-block" style={{ marginBottom: 12 }}>
+      <div className="pwd-swap-head">
+        <div className="pwd-eyebrow">📋 待處理（{list.length}）{urgent ? ` · ⚠️ ${urgent} 項已過期` : ''}</div>
+      </div>
+      {list.length === 0 ? <div className="pwd-ph-empty" style={{ marginTop: 10 }}>暫時冇待處理事項</div> : (
+        <div className="pwd-larec" style={{ marginTop: 10 }}>
+          {shown.map((r, i) => (
+            <div key={i} className="pwd-larec-row" style={{ flexWrap: 'wrap', rowGap: 4 }}>
+              <span className={'pwd-mgr-swap-status ' + (/⚠️/.test(r[0]) ? 'rejected' : r[0] === '法例期限' ? 'pending' : 'approved')}>{r[0]}</span>
+              <span className="pwd-larec-date" style={{ flex: 1, minWidth: 140 }}>{r[2]} · {r[1]}{r[3] ? '（' + r[3] + '）' : ''}</span>
+              <span style={{ width: '100%', fontSize: 11, color: 'var(--pw-ink-mute)' }}>→ {r[4]}</span>
+            </div>
+          ))}
+          {list.length > 4 && <button className="pwd-swap-toggle" style={{ marginTop: 6 }} onClick={() => setOpen(o => !o)}>{open ? '收起' : `顯示全部 ${list.length} 項`}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ManagerPanel ──
 function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onAreaChange, onSaved }) {
   if (!unlocked) return <ManagerGate onUnlock={onUnlock} />;
@@ -3345,6 +3372,7 @@ function ManagerPanel({ month, unlocked, mgrData, onUnlock, onLock, area, onArea
         <button className="pwd-mgr-lock" onClick={onLock}>🔒 鎖定</button>
       </div>
       <MgrCleanReminder />
+      <MgrTodo items={mgrData.mgrTodo} />
       <div className="pwd-mgr-nav">
         {MGR_AREAS.map(a => (
           <button key={a.key} className={'pwd-mgr-navbtn' + (area === a.key ? ' on' : '')} onClick={() => onAreaChange(a.key)}>{a.label}</button>
