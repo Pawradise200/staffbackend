@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -26,6 +26,29 @@ async function pwApi(action, params = {}) {
 // 之前多個寫入係「樂觀更新 + await 但唔 check」——授權過期後端回「未授權」乜都唔寫，
 // 畫面照樣顯示成功，用戶一 reload 就發現嘢唔見咗（2026-07-06 更表事故同一種病）。
 // 規矩：寫入失敗 → 回滾樂觀更新 ＋ 報後端真實原因。onErr 唔傳就用 alert（保證睇得見）。
+// [2026-11-08] 請假證明相片上載（相片太大唔可以行 GET → POST；text/plain 避 CORS preflight）
+async function pwUploadProof(params, file) {
+  const data = await new Promise((resolve, reject) => {
+    if (file.type === 'application/pdf') {
+      const fr = new FileReader(); fr.onload = () => resolve(String(fr.result).split(',')[1]); fr.onerror = reject; fr.readAsDataURL(file); return;
+    }
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = reject; img.src = url;
+  });
+  const res = await fetch(window.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'leaveProofUpload', key: PW_KEY, mime: file.type === 'application/pdf' ? 'application/pdf' : 'image/jpeg', data, ...params }) });
+  return res.json();
+}
+const isoToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const isoAddDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); const t = new Date(y, m - 1, d + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
+const isoDays = (a, b) => { const [y1, m1, d1] = a.split('-').map(Number), [y2, m2, d2] = b.split('-').map(Number); return Math.round((new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1)) / 86400000) + 1; };
+
 async function pwWrite(action, params, revert, onErr) {
   const show = onErr || function (m) { window.alert(m); };
   try {
@@ -303,7 +326,7 @@ function fullResult(staff, team, overrides = {}) {
   const isMktgRole = kpiRoleOf(staff) === 'marketing';
   if (!isMktgRole) {
     if (dogEscape) { override = true; overrideReason = '團隊發生走失狗狗事故'; }
-    else if (lateLeave >= 3) { override = true; overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`; }
+    else if (lateLeave >= 3) { override = true; overrideReason = `當月累積遲到 / 無假紙或無通知缺勤 ${lateLeave} 次 (3 次或以上)`; }
   }
   // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
   // 佣金以 0 計。行 override 路徑,員工見到原因句而唔係無啦啦 $0;會籍池喺 clubBonusFor 同步 gate。
@@ -669,7 +692,7 @@ function KpiClauses({ lateLeave, dogEscape }) {
       <div className={'pwd-clause' + (lateTriggered ? ' hit' : '')}>
         <span className="pwd-clause-dot" />
         <div className="pwd-clause-text">
-          <b>當月累積遲到或請假 3 次或以上</b>
+          <b>當月累積遲到、無假紙或無通知缺勤 3 次或以上</b>
           <span className="pwd-clause-sub">個人 · 本月已累積 {lateLeave} 次</span>
         </div>
         <span className={'pwd-clause-tag' + (lateTriggered ? ' hit' : '')}>{lateTriggered ? '已觸發' : `尚餘 ${Math.max(0, 3 - lateLeave)} 次`}</span>
@@ -1091,7 +1114,7 @@ function IndividualView({ staff, calc, items, kpi, team, lateLeave, dogEscape, c
 }
 
 // ═══════════ DutyRoster ═══════════
-function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, longLeave, coworkers, onSwap, onLongLeave }) {
+function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecords, longLeave, leaveStats, comp, coworkers, onSwap, onLongLeave }) {
   const [weekIndex, setWeekIndex] = useState(currentWeekIdx);
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapDone, setSwapDone] = useState(null);
@@ -1108,6 +1131,10 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
   async function sendLongLeave() {
     if (!llStart || !llEnd) return;
     if (llEnd < llStart) { setLlMsg({ ok: false, text: '結束日期早過開始日期' }); return; }
+    // [2026-11-08 PAW-SOP-016] 事假最少提前 7 日；連續 3 日或以上最少提前一個月（特殊情況由店長代為提交）
+    const t0 = isoToday();
+    if (llType === '事假' && llStart < isoAddDays(t0, 7)) { setLlMsg({ ok: false, text: '事假須最少提前 7 日申請。突發事情請最遲開工前 2 小時直接通知店長本人。' }); return; }
+    if (isoDays(llStart, llEnd) >= 3 && llStart < isoAddDays(t0, 30)) { setLlMsg({ ok: false, text: '連續 3 日或以上的假期須最少提前一個月申請。如有特殊情況，請直接與店長商討。' }); return; }
     setLlBusy(true); setLlMsg(null);
     const r = await onLongLeave({ start: llStart, end: llEnd, type: llType, note: llNote });
     setLlBusy(false);
@@ -1264,18 +1291,28 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
               <div key={i} className="pwd-larec-row">
                 <span className={'pwd-larec-type t-' + rec.type}>{rec.type}</span>
                 <span className="pwd-larec-date">{rec.date}</span>
+                {rec.proof === '未交' && <span className="pwd-mgr-swap-status rejected">待交醫生證明書</span>}
               </div>
             ))}
           </div>
         ) : <div className="pwd-ph-empty" style={{ marginTop: 12 }}>本月暫無請假記錄</div>}
+        {/* [2026-11-08 PAW-SOP-016] 今年事假日數＋補鐘結餘 */}
+        {(leaveStats || comp) && staff.role !== 'marketing' && (
+          <div className="pwd-mgrgoal-foot" style={{ marginTop: 12 }}>
+            {leaveStats && <>今年事假：{leaveStats.personalYear} / {leaveStats.personalCap} 日</>}
+            {comp && <>{leaveStats ? ' · ' : ''}補鐘結餘：{comp.balance} 小時</>}
+            {comp && comp.expiring && comp.expiring.length > 0 && <><br />⚠️ {comp.expiring.map(x => `${x.hours} 小時於 ${x.expiry} 到期`).join('、')}，請與店長安排使用</>}
+          </div>
+        )}
         {/* [2026-09-21 老闆定] 員工自助提交長假申請（年假／病假／事假；例假由店長排更直接編，不走此流程）*/}
         <div style={{ marginTop: 14 }}>
-          {!llOpen && <button className="pwd-la-confirm" style={{ width: '100%' }} onClick={() => { setLlOpen(true); setLlMsg(null); }}>＋ 申請長假（交管理層批核）</button>}
+          {!llOpen && <button className="pwd-la-confirm" style={{ width: '100%' }} onClick={() => { setLlOpen(true); setLlMsg(null); }}>＋ 申請請假（{staff.role === 'marketing' ? '年假／恩恤假' : '年假／事假／恩恤假'}，交管理層批核）</button>}
           {llOpen && (
             <div>
-              <div className="pwd-eyebrow">申請長假</div>
+              <div className="pwd-eyebrow">申請請假</div>
+              {staff.role !== 'marketing' && <div className="pwd-mgrgoal-foot" style={{ marginTop: 6 }}>病假或突發事情：最遲開工前 2 小時直接致電或 WhatsApp 店長本人，毋須在此申請。</div>}
               <div className="pwd-la-types" style={{ marginTop: 10 }}>
-                {['年假', '病假', '事假'].map(t => (
+                {(staff.role === 'marketing' ? ['年假', '恩恤假'] : ['年假', '事假', '恩恤假']).map(t => (
                   <button key={t} className={'pwd-la-chip' + (llType === t ? ' on' : '')} onClick={() => setLlType(t)}>{t}</button>
                 ))}
               </div>
@@ -1302,7 +1339,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
         {/* [2026-09-08 老闆定] 員工睇到自己長假申請狀態（唯讀）；冇申請就唔顯示，版面零變化 */}
         {longLeave && longLeave.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <div className="pwd-eyebrow">長假申請</div>
+            <div className="pwd-eyebrow">我的請假申請</div>
             <div className="pwd-larec" style={{ marginTop: 8 }}>
               {longLeave.map(r => {
                 const f = (iso) => { const p = (iso || '').split('-'); return p.length === 3 ? `${+p[1]}月${+p[2]}日` : iso; };
@@ -1324,16 +1361,17 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
           <div className="pwd-eyebrow">假期 / 結餘</div>
           <span className="pwd-leave-by">由店長更新</span>
         </div>
-        <div className="pwd-ph">
+        {/* [2026-11-08 老闆定] 公眾假期補假由店長編更時直接安排，唔再另外登記；資料保留喺 Sheet */}
+        {false && <div className="pwd-ph">
           <div className="pwd-ph-lbl">待放公眾假期</div>
           {leave.ph && leave.ph.length ? (
             <div className="pwd-ph-list">
               {leave.ph.map((p, i) => <span key={i} className="pwd-ph-chip">🎌 {p.name} · {p.date}</span>)}
             </div>
           ) : <div className="pwd-ph-empty">本月暫無待放公眾假期</div>}
-        </div>
-        <div className="pwd-leave-grid">
-          {[ { key: 'annual', lbl: '尚餘年假' }, { key: 'statutory', lbl: '例假結餘' }, { key: 'sick', lbl: '累積有薪病假' } ].map(c => (
+        </div>}
+        <div className="pwd-leave-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          {[ { key: 'annual', lbl: '尚餘年假' }, { key: 'sick', lbl: '累積有薪病假' } ].map(c => (
             <div key={c.key} className="pwd-leave-cell">
               <div className="pwd-leave-cell-lbl">{c.lbl}</div>
               <div className="pwd-leave-val big">{leave[c.key]}<i>日</i></div>
@@ -1570,7 +1608,7 @@ function MgrOps({ month, mgrData }) {
 function MgrKpi({ month, mgrData }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
-  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
+  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing' && s.role !== 'owner');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const k0 = mgrData.allKpi[sel] || { kpiFail: [], lateLeave: 0 };
@@ -1627,10 +1665,18 @@ function MgrKpi({ month, mgrData }) {
       </div>
       <div className="pwd-card pwd-mgr-late">
         <div className="pwd-mgr-late-row">
-          <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
+          <div><b>當月遲到 / 無假紙或無通知缺勤次數</b><span>3 次或以上 → KPI 直接為 0（有醫生紙的病假不計）</span></div>
           <Stepper value={lateLeave} suffix="次" onChange={setLate} />
         </div>
-        {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {staff.name} 本月 KPI 將為 0</div>}
+        {/* [2026-11-08] 系統按「登記請假」記錄計（PAW-SOP-015 第七節），店長可套用或人手調整 */}
+        {mgrData.allLeaveStats && mgrData.allLeaveStats[sel] && (
+          <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>
+            系統按請假記錄計：<b>{mgrData.allLeaveStats[sel].kpiAuto}</b> 次
+            {mgrData.allLeaveStats[sel].flags.filter(f => f.kpi).map((f, i) => <span key={i}><br />· {f.date} {f.type}：{f.kpiWhy}</span>)}
+            {mgrData.allLeaveStats[sel].kpiAuto !== lateLeave && <><br /><button className="pwd-swap-toggle" style={{ marginTop: 6 }} onClick={() => setLate(mgrData.allLeaveStats[sel].kpiAuto)}>套用系統計數</button></>}
+          </div>
+        )}
+        {lateLeave >= 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已達 3 次 — {staff.name} 本月 KPI 將為 0</div>}
       </div>
       {staff.role !== 'frontdesk' && (
         <div className="pwd-card pwd-block">
@@ -1721,17 +1767,27 @@ function MgrSwap({ mgrData }) {
 }
 
 // ── 請假 / 假期結餘 ──
+const PROOF_T = ['病假', '恩恤假', '工傷病假'], NOTICE_T = ['病假', '突發事假'];
 function MgrLeave({ month, mgrData }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
-  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
+  const list = mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing');   // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || { annual: 0, statutory: 0, sick: 0 };
   const [bal, setBal] = useState({ annual: b0.annual, statutory: b0.statutory, sick: b0.sick });
   const [recs, setRecs] = useState(() => (mgrData.allLeaveRec[sel] || []).slice());
-  const [type, setType] = useState('年假');
+  const [type, setType] = useState('病假');
   const [date, setDate] = useState('');
+  const [notice, setNotice] = useState('準時');   // [2026-11-08] 病假／突發事假
+  const [proof, setProof] = useState('未交');     // [2026-11-08] 病假／恩恤假／工傷病假
+  const [upBusy, setUpBusy] = useState('');
+  const st0 = (mgrData.allLeaveStats && mgrData.allLeaveStats[sel]) || null;
+  const [comp, setComp] = useState(() => (mgrData.allComp && mgrData.allComp[sel]) || { balance: 0, expiring: [], recent: [] });
+  const [cDir, setCDir] = useState('取得');
+  const [cDate, setCDate] = useState('');
+  const [cHours, setCHours] = useState('');
+  const [cNote, setCNote] = useState('');
   const [phs, setPhs] = useState(() => ((mgrData.allPH && mgrData.allPH[sel]) || []).slice());
   const [phName, setPhName] = useState('');
   const [phDate, setPhDate] = useState('');
@@ -1747,6 +1803,7 @@ function MgrLeave({ month, mgrData }) {
     setSel(id); setBal({ annual: b.annual, statutory: b.statutory, sick: b.sick });
     setRecs((mgrData.allLeaveRec[id] || []).slice()); setDate('');
     setPhs(((mgrData.allPH && mgrData.allPH[id]) || []).slice()); setPhName(''); setPhDate(''); setErr('');
+    setComp((mgrData.allComp && mgrData.allComp[id]) || { balance: 0, expiring: [], recent: [] }); setCDate(''); setCHours(''); setCNote('');
     setLlStart(''); setLlEnd(''); setLlNote('');
   }
   // ⚠️ 2026-08-12 幽靈條目事故：呢版嘅寫入全部係樂觀更新，之前完全冇 check 後端回咩——
@@ -1763,15 +1820,48 @@ function MgrLeave({ month, mgrData }) {
   async function addRec() {
     if (!date) return;
     const ds = fmtDate(date), t = type, keep = date;
-    setRecs(r => [...r, { date: ds, type: t }]);
+    const pf = PROOF_T.includes(t) ? proof : '', nt = NOTICE_T.includes(t) ? notice : '';
+    setRecs(r => [...r, { date: ds, type: t, proof: pf, notice: nt }]);
     setDate('');
-    await write('addLeaveRec', { month, staffId: sel, date: ds, type: t },
+    await write('addLeaveRec', { month, staffId: sel, date: ds, type: t, proof: pf, notice: nt },
       () => { setRecs(r => r.filter(x => !(x.date === ds && x.type === t))); setDate(keep); });
   }
   async function delRec(rec, i) {
     setRecs(r => r.filter((_, j) => j !== i));
     await write('deleteLeaveRec', { month, staffId: sel, date: rec.date, type: rec.type },
       () => setRecs(r => { const c = r.slice(); c.splice(i, 0, rec); return c; }));
+  }
+  async function markProof(rec, i) {
+    setRecs(r => r.map((x, j) => j === i ? { ...x, proof: '已交' } : x));
+    await write('leaveProofSet', { month, staffId: sel, date: rec.date, type: rec.type, proof: '已交' },
+      () => setRecs(r => r.map((x, j) => j === i ? { ...x, proof: '未交' } : x)));
+  }
+  async function uploadProof(rec, i, file) {
+    if (!file) return;
+    setUpBusy(rec.date + rec.type); setErr('');
+    try {
+      const r = await pwUploadProof({ month, staffId: sel, date: rec.date, type: rec.type }, file);
+      if (r && r.ok) setRecs(rs => rs.map((x, j) => j === i ? { ...x, proof: '已交', link: r.link } : x));
+      else setErr(((r && r.error) || '上載失敗') + '（未上載）');
+    } catch (e) { setErr('上載失敗：網絡錯誤，請再試一次'); }
+    setUpBusy('');
+  }
+  async function addComp() {
+    const h = Number(cHours);
+    if (!cDate || !(h > 0)) return;
+    setErr('');
+    try {
+      const r = await pwApi('compAdd', { staffId: sel, date: cDate, hours: cDir === '使用' ? -h : h, note: cNote.trim() });
+      if (r && r.ok) { setComp(r.summary); setCDate(''); setCHours(''); setCNote(''); }
+      else setErr(/未授權/.test((r && r.error) || '') ? '授權過期：請撳「🔒 鎖定」後重新輸入管理密碼，再試一次' : ((r && r.error) || '儲存失敗') + '（未寫入）');
+    } catch (e) { setErr('儲存失敗：網絡錯誤（未寫入）'); }
+  }
+  async function delComp(en) {
+    if (!window.confirm('確認刪除 ' + en.date + ' ' + (en.hours > 0 ? '+' : '') + en.hours + ' 小時？')) return;
+    try {
+      const r = await pwApi('compDelete', { staffId: sel, id: en.id });
+      if (r && r.ok) setComp(r.summary); else setErr(((r && r.error) || '刪除失敗') + '（未刪除）');
+    } catch (e) { setErr('刪除失敗：網絡錯誤'); }
   }
   async function addLongLeave() {
     if (!llStart || !llEnd) return;
@@ -1815,8 +1905,8 @@ function MgrLeave({ month, mgrData }) {
       {err && <div className="pwd-warn">⚠️ {err}</div>}
       <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">{staff.name} · 假期結餘 (可調整)</div>
-        <div className="pwd-leave-grid">
-          {[ { key: 'annual', lbl: '尚餘年假', step: 1 }, { key: 'statutory', lbl: '例假結餘', step: 1 }, { key: 'sick', lbl: '累積有薪病假', step: 0.5 } ].map(c => (
+        <div className="pwd-leave-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          {[ { key: 'annual', lbl: '尚餘年假', step: 1 }, { key: 'sick', lbl: '累積有薪病假', step: 0.5 } ].map(c => (
             <div key={c.key} className="pwd-leave-cell">
               <div className="pwd-leave-cell-lbl">{c.lbl}</div>
               <div className="pwd-leave-edit">
@@ -1830,15 +1920,32 @@ function MgrLeave({ month, mgrData }) {
         <div style={{ marginTop: 14 }}><SaveBtn onSave={saveBal} label="儲存結餘" /></div>
       </div>
       <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">登記請假</div>
-        <div className="pwd-la-types" style={{ marginTop: 12 }}>
+        <div className="pwd-eyebrow">出勤記錄（店長登記）</div>
+        <div className="pwd-mgrgoal-foot" style={{ marginTop: 6 }}>病假、突發事假、工傷病假、遲到及無通知缺勤由店長在此登記。年假、事假及恩恤假由同事於「請假申請」提交，批准後自動記錄。</div>
+        <div className="pwd-la-types" style={{ marginTop: 12, flexWrap: 'wrap' }}>
           {/* 「公眾假期」冇喺呢度（老闆 2026-08-12）：公眾假期唯一入口＝下面「待放公眾假期」，
               放咗就喺嗰度撳 ✕ 移走。兩個入口會令店長兩頭入變重複。
               .t-公眾假期 樣式保留，萬一有舊記錄照樣顯示到。 */}
-          {['年假', '例假', '病假', '事假'].map(t => (
-            <button key={t} className={'pwd-la-chip' + (type === t ? ' on' : '')} onClick={() => setType(t)}>{t}</button>
+          {/* [2026-11-08 PAW-SOP-015] 加 突發事假／恩恤假／工傷病假／遲到／無通知缺勤 */}
+          {['病假', '突發事假', '工傷病假', '遲到', '無通知缺勤'].map(t => (
+            <button key={t} className={'pwd-la-chip' + (type === t ? ' on' : '')} style={{ flex: '0 0 auto', padding: '8px 13px' }} onClick={() => setType(t)}>{t}</button>
           ))}
         </div>
+        {NOTICE_T.includes(type) && (
+          <div className="pwd-la-types" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+            {[['準時', '準時通知'], ['遲或無通知', '遲通知／無通知']].map(([v, l]) => (
+              <button key={v} className={'pwd-la-chip' + (notice === v ? ' on' : '')} style={{ padding: '8px 6px' }} onClick={() => setNotice(v)}>{l}</button>
+            ))}
+          </div>
+        )}
+        {PROOF_T.includes(type) && (
+          <div className="pwd-la-types" style={{ marginTop: 10 }}>
+            {[['未交', '證明未交'], ['已交', '證明已交']].map(([v, l]) => (
+              <button key={v} className={'pwd-la-chip' + (proof === v ? ' on' : '')} style={{ padding: '8px 6px' }} onClick={() => setProof(v)}>{l}</button>
+            ))}
+          </div>
+        )}
+        {st0 && <div className="pwd-mgrgoal-foot" style={{ marginTop: 10 }}>今年事假已用 {st0.personalYear} / {st0.personalCap} 日 · 本月計入 KPI {st0.kpiAuto} 次（重新整理後更新）</div>}
         <div className="pwd-la-daterow">
           <span className="pwd-la-datelbl">請假日期</span>
           <input className="pwd-la-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -1848,19 +1955,60 @@ function MgrLeave({ month, mgrData }) {
         </button>
         <div className="pwd-larec" style={{ marginTop: 14 }}>
           {recs.map((rec, i) => (
-            <div key={i} className="pwd-larec-row">
+            <div key={i} className="pwd-larec-row" style={{ flexWrap: 'wrap', rowGap: 8 }}>
               <span className={'pwd-larec-type t-' + rec.type}>{rec.type}</span>
-              <span className="pwd-larec-date">{rec.date}</span>
-              <button className="pwd-larec-del" onClick={() => delRec(rec, i)}>✕</button>
+              <span className="pwd-larec-date" style={{ whiteSpace: 'nowrap' }}>{rec.date}</span>
+              {rec.notice === '遲或無通知' && <span className="pwd-mgr-swap-status rejected">遲或無通知</span>}
+              {rec.proof === '未交' && <>
+                <button className="pwd-swap-toggle" style={{ whiteSpace: 'nowrap' }} onClick={() => markProof(rec, i)}>已交</button>
+                <label className="pwd-swap-toggle" style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>{upBusy === rec.date + rec.type ? '上載中…' : '拍照上載'}
+                  <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} disabled={!!upBusy} onChange={(e) => uploadProof(rec, i, e.target.files[0])} /></label>
+              </>}
+              {rec.proof === '已交' && (rec.link ? <a className="pwd-mgr-swap-status approved" href={rec.link} target="_blank" rel="noopener">證明 ↗</a> : <span className="pwd-mgr-swap-status approved">證明已交</span>)}
+              <button className="pwd-larec-del" style={{ marginLeft: 'auto' }} onClick={() => delRec(rec, i)}>✕</button>
             </div>
           ))}
         </div>
       </div>
+      {/* [2026-11-08 PAW-SOP-015 第四節] 補鐘：以小時計、可分拆、一年內有效（先到期先用） */}
       <div className="pwd-card pwd-block">
-        <div className="pwd-eyebrow">長假申請 (交管理層批核)</div>
+        <div className="pwd-eyebrow">{staff.name} · 補鐘記錄</div>
+        <div className="pwd-mgrgoal-foot" style={{ marginTop: 8 }}>
+          結餘 <b>{comp.balance}</b> 小時
+          {comp.expiring && comp.expiring.length > 0 && <> · ⚠️ {comp.expiring.map(x => `${x.hours} 小時於 ${x.expiry} 到期`).join('、')}</>}
+        </div>
+        <div className="pwd-la-types" style={{ marginTop: 10 }}>
+          {[['取得', '取得'], ['使用', '使用']].map(([v, l]) => (
+            <button key={v} className={'pwd-la-chip' + (cDir === v ? ' on' : '')} onClick={() => setCDir(v)}>{l}</button>
+          ))}
+        </div>
+        <div className="pwd-la-daterow">
+          <span className="pwd-la-datelbl">日期</span>
+          <input className="pwd-la-date" type="date" value={cDate} onChange={(e) => setCDate(e.target.value)} />
+        </div>
+        <div className="pwd-club-frow" style={{ marginTop: 10 }}>
+          <input className="pwd-club-input" type="number" min="0.5" step="0.5" placeholder="小時" value={cHours} onChange={(e) => setCHours(e.target.value)} style={{ maxWidth: 90 }} />
+          <input className="pwd-club-input" placeholder={cDir === '取得' ? '說明（例：頂更、OT）' : '說明（例：提早 2 小時下班）'} value={cNote} onChange={(e) => setCNote(e.target.value)} />
+        </div>
+        <button className="pwd-la-confirm" style={{ marginTop: 12, width: '100%' }} disabled={!cDate || !(Number(cHours) > 0)} onClick={addComp}>
+          ＋ 為 {staff.name} 記錄{cDir}補鐘{cHours ? ` ${cHours} 小時` : ''}
+        </button>
+        <div className="pwd-larec" style={{ marginTop: 14 }}>
+          {(comp.recent || []).map(en => (
+            <div key={en.id} className="pwd-larec-row">
+              <span className={'pwd-mgr-swap-status ' + (en.hours > 0 ? 'approved' : 'pending')}>{en.hours > 0 ? '+' : ''}{en.hours} 小時</span>
+              <span className="pwd-larec-date">{fmtDate(en.date)} {en.note}</span>
+              <button className="pwd-larec-del" onClick={() => delComp(en)}>✕</button>
+            </div>
+          ))}
+          {(!comp.recent || comp.recent.length === 0) && <div className="pwd-ph-empty">未有補鐘記錄</div>}
+        </div>
+      </div>
+      <div className="pwd-card pwd-block">
+        <div className="pwd-eyebrow">請假申請（年假／事假／恩恤假，交管理層批核）</div>
         {/* [2026-09-08 老闆定] 長假類別只設 年假/病假/事假——例假由店長排更時自己編，唔行申請批核 */}
         <div className="pwd-la-types" style={{ marginTop: 12 }}>
-          {['年假', '病假', '事假'].map(t => (
+          {['年假', '事假', '恩恤假'].map(t => (
             <button key={t} className={'pwd-la-chip' + (llType === t ? ' on' : '')} onClick={() => setLlType(t)}>{t}</button>
           ))}
         </div>
@@ -1876,7 +2024,7 @@ function MgrLeave({ month, mgrData }) {
           <input className="pwd-club-input" placeholder="備註 (可留空, 例: 回鄉)" value={llNote} onChange={(e) => setLlNote(e.target.value)} />
         </div>
         <button className="pwd-la-confirm" style={{ marginTop: 12, width: '100%' }} disabled={!llStart || !llEnd} onClick={addLongLeave}>
-          ＋ 為 {staff.name} 提交長假申請
+          ＋ 為 {staff.name} 提交請假申請
         </button>
         <div className="pwd-larec" style={{ marginTop: 14 }}>
           {llReqs.filter(r => r.staffId == sel).map((r) => (
@@ -1886,10 +2034,10 @@ function MgrLeave({ month, mgrData }) {
               <span className={'pwd-mgr-swap-status ' + r.status}>{r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待管理層批核'}</span>
             </div>
           ))}
-          {llReqs.filter(r => r.staffId == sel).length === 0 && <div className="pwd-ph-empty">未有長假申請</div>}
+          {llReqs.filter(r => r.staffId == sel).length === 0 && <div className="pwd-ph-empty">未有請假申請</div>}
         </div>
       </div>
-      <div className="pwd-card pwd-block">
+      {false && <div className="pwd-card pwd-block">
         <div className="pwd-eyebrow">待放公眾假期 (員工頁顯示)</div>
         <div className="pwd-club-frow" style={{ marginTop: 12 }}>
           <input className="pwd-club-input" placeholder="假期名稱(例:勞動節)" value={phName} onChange={(e) => setPhName(e.target.value)} />
@@ -1908,7 +2056,7 @@ function MgrLeave({ month, mgrData }) {
           ))}
           {phs.length === 0 && <div className="pwd-ph-empty">未有登記待放公眾假期</div>}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -2372,7 +2520,7 @@ function OwnerKpiEditor({ month, mgrData, person, onSaved }) {
       {!isMktg && (
         <div className="pwd-card pwd-mgr-late">
           <div className="pwd-mgr-late-row">
-            <div><b>當月遲到 / 請假次數</b><span>超過 3 次 → KPI 直接為 0</span></div>
+            <div><b>當月遲到 / 無假紙或無通知缺勤次數</b><span>3 次或以上 → KPI 直接為 0（有醫生紙的病假不計）</span></div>
             <Stepper value={lateLeave} suffix="次" onChange={setLate} />
           </div>
           {lateLeave > 3 && <div className="pwd-warn" style={{ marginTop: 12 }}>已超過 3 次 — {person.name} 本月 KPI 將為 0</div>}
@@ -2526,8 +2674,8 @@ function OwnerLongLeave({ mgrData }) {
     !(o.start > r.end || o.end < r.start));
   return (
     <div className="pwd-card pwd-block">
-      <div className="pwd-eyebrow">長假申請批核 ({pending.length})</div>
-      {pending.length === 0 ? <div className="pwd-ph-empty" style={{ marginTop: 12 }}>沒有待批核的長假申請</div> : (
+      <div className="pwd-eyebrow">請假申請批核 ({pending.length})</div>
+      {pending.length === 0 ? <div className="pwd-ph-empty" style={{ marginTop: 12 }}>沒有待批核的請假申請</div> : (
         <div className="pwd-mgr-swaps">
           {pending.map(r => (
             <div key={r.id} className="pwd-mgr-swap">
@@ -2540,7 +2688,7 @@ function OwnerLongLeave({ mgrData }) {
               </div>
               {overlapOf(r).length > 0 && (
                 <div className="pwd-warn" style={{ marginTop: 8, marginBottom: 8 }}>
-                  ⚠️ 同期已有長假：{overlapOf(r).map(o => `${nameOf(o.staffId)} ${fmtD(o.start)}–${fmtD(o.end)}${o.status === 'pending' ? '（待批核）' : ''}`).join('、')}
+                  ⚠️ 同期已有請假：{overlapOf(r).map(o => `${nameOf(o.staffId)} ${fmtD(o.start)}–${fmtD(o.end)}${o.status === 'pending' ? '（待批核）' : ''}`).join('、')}
                 </div>
               )}
               <div className="pwd-mgr-swap-acts">
@@ -3349,7 +3497,7 @@ function CommissionApp() {
         )}
         {tab === 'duty' && (
           <DutyRoster staff={staff} weeks={dash.weeks} currentWeekIdx={dash.currentWeekIdx} todayDow={dash.todayDow}
-            leave={dash.leave} leaveRecords={dash.leaveRecords} longLeave={dash.longLeave} coworkers={dash.coworkers}
+            leave={dash.leave} leaveRecords={dash.leaveRecords} longLeave={dash.longLeave} leaveStats={dash.leaveStats} comp={dash.comp} coworkers={dash.coworkers}
             onSwap={submitSwap} onLongLeave={submitLongLeave} />
         )}
         {tab === 'mgr' && (

@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-08b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -34,6 +34,60 @@ async function pwApi(action, params = {}) {
 // 之前多個寫入係「樂觀更新 + await 但唔 check」——授權過期後端回「未授權」乜都唔寫，
 // 畫面照樣顯示成功，用戶一 reload 就發現嘢唔見咗（2026-07-06 更表事故同一種病）。
 // 規矩：寫入失敗 → 回滾樂觀更新 ＋ 報後端真實原因。onErr 唔傳就用 alert（保證睇得見）。
+// [2026-11-08] 請假證明相片上載（相片太大唔可以行 GET → POST；text/plain 避 CORS preflight）
+async function pwUploadProof(params, file) {
+  const data = await new Promise((resolve, reject) => {
+    if (file.type === 'application/pdf') {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result).split(',')[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+      return;
+    }
+    const img = new Image(),
+      url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+  const res = await fetch(window.APPS_SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify({
+      action: 'leaveProofUpload',
+      key: PW_KEY,
+      mime: file.type === 'application/pdf' ? 'application/pdf' : 'image/jpeg',
+      data,
+      ...params
+    })
+  });
+  return res.json();
+}
+const isoToday = () => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
+const isoAddDays = (iso, n) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = new Date(y, m - 1, d + n);
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+};
+const isoDays = (a, b) => {
+  const [y1, m1, d1] = a.split('-').map(Number),
+    [y2, m2, d2] = b.split('-').map(Number);
+  return Math.round((new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1)) / 86400000) + 1;
+};
 async function pwWrite(action, params, revert, onErr) {
   const show = onErr || function (m) {
     window.alert(m);
@@ -788,7 +842,7 @@ function fullResult(staff, team, overrides = {}) {
       overrideReason = '團隊發生走失狗狗事故';
     } else if (lateLeave >= 3) {
       override = true;
-      overrideReason = `當月累積遲到 / 請假 ${lateLeave} 次 (3 次或以上)`;
+      overrideReason = `當月累積遲到 / 無假紙或無通知缺勤 ${lateLeave} 次 (3 次或以上)`;
     }
   }
   // 入職首月唔發佣金(2026-08-12 制度):員工表「佣金起始月」(第9欄,yyyy-MM)之前嘅月份,
@@ -1419,7 +1473,7 @@ function KpiClauses({
     className: "pwd-clause-dot"
   }), /*#__PURE__*/React.createElement("div", {
     className: "pwd-clause-text"
-  }, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u7D2F\u7A4D\u9072\u5230\u6216\u8ACB\u5047 3 \u6B21\u6216\u4EE5\u4E0A"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u7D2F\u7A4D\u9072\u5230\u3001\u7121\u5047\u7D19\u6216\u7121\u901A\u77E5\u7F3A\u52E4 3 \u6B21\u6216\u4EE5\u4E0A"), /*#__PURE__*/React.createElement("span", {
     className: "pwd-clause-sub"
   }, "\u500B\u4EBA \xB7 \u672C\u6708\u5DF2\u7D2F\u7A4D ", lateLeave, " \u6B21")), /*#__PURE__*/React.createElement("span", {
     className: 'pwd-clause-tag' + (lateTriggered ? ' hit' : '')
@@ -2146,6 +2200,8 @@ function DutyRoster({
   leave,
   leaveRecords,
   longLeave,
+  leaveStats,
+  comp,
   coworkers,
   onSwap,
   onLongLeave
@@ -2169,6 +2225,22 @@ function DutyRoster({
       setLlMsg({
         ok: false,
         text: '結束日期早過開始日期'
+      });
+      return;
+    }
+    // [2026-11-08 PAW-SOP-016] 事假最少提前 7 日；連續 3 日或以上最少提前一個月（特殊情況由店長代為提交）
+    const t0 = isoToday();
+    if (llType === '事假' && llStart < isoAddDays(t0, 7)) {
+      setLlMsg({
+        ok: false,
+        text: '事假須最少提前 7 日申請。突發事情請最遲開工前 2 小時直接通知店長本人。'
+      });
+      return;
+    }
+    if (isoDays(llStart, llEnd) >= 3 && llStart < isoAddDays(t0, 30)) {
+      setLlMsg({
+        ok: false,
+        text: '連續 3 日或以上的假期須最少提前一個月申請。如有特殊情況，請直接與店長商討。'
       });
       return;
     }
@@ -2388,12 +2460,19 @@ function DutyRoster({
     className: 'pwd-larec-type t-' + rec.type
   }, rec.type), /*#__PURE__*/React.createElement("span", {
     className: "pwd-larec-date"
-  }, rec.date)))) : /*#__PURE__*/React.createElement("div", {
+  }, rec.date), rec.proof === '未交' && /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-status rejected"
+  }, "\u5F85\u4EA4\u91AB\u751F\u8B49\u660E\u66F8")))) : /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty",
     style: {
       marginTop: 12
     }
-  }, "\u672C\u6708\u66AB\u7121\u8ACB\u5047\u8A18\u9304"), /*#__PURE__*/React.createElement("div", {
+  }, "\u672C\u6708\u66AB\u7121\u8ACB\u5047\u8A18\u9304"), (leaveStats || comp) && staff.role !== 'marketing' && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 12
+    }
+  }, leaveStats && /*#__PURE__*/React.createElement(React.Fragment, null, "\u4ECA\u5E74\u4E8B\u5047\uFF1A", leaveStats.personalYear, " / ", leaveStats.personalCap, " \u65E5"), comp && /*#__PURE__*/React.createElement(React.Fragment, null, leaveStats ? ' · ' : '', "\u88DC\u9418\u7D50\u9918\uFF1A", comp.balance, " \u5C0F\u6642"), comp && comp.expiring && comp.expiring.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), "\u26A0\uFE0F ", comp.expiring.map(x => `${x.hours} 小時於 ${x.expiry} 到期`).join('、'), "\uFF0C\u8ACB\u8207\u5E97\u9577\u5B89\u6392\u4F7F\u7528")), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 14
     }
@@ -2406,14 +2485,19 @@ function DutyRoster({
       setLlOpen(true);
       setLlMsg(null);
     }
-  }, "\uFF0B \u7533\u8ACB\u9577\u5047\uFF08\u4EA4\u7BA1\u7406\u5C64\u6279\u6838\uFF09"), llOpen && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "\uFF0B \u7533\u8ACB\u8ACB\u5047\uFF08", staff.role === 'marketing' ? '年假／恩恤假' : '年假／事假／恩恤假', "\uFF0C\u4EA4\u7BA1\u7406\u5C64\u6279\u6838\uFF09"), llOpen && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u7533\u8ACB\u9577\u5047"), /*#__PURE__*/React.createElement("div", {
+  }, "\u7533\u8ACB\u8ACB\u5047"), staff.role !== 'marketing' && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 6
+    }
+  }, "\u75C5\u5047\u6216\u7A81\u767C\u4E8B\u60C5\uFF1A\u6700\u9072\u958B\u5DE5\u524D 2 \u5C0F\u6642\u76F4\u63A5\u81F4\u96FB\u6216 WhatsApp \u5E97\u9577\u672C\u4EBA\uFF0C\u6BCB\u9808\u5728\u6B64\u7533\u8ACB\u3002"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-la-types",
     style: {
       marginTop: 10
     }
-  }, ['年假', '病假', '事假'].map(t => /*#__PURE__*/React.createElement("button", {
+  }, (staff.role === 'marketing' ? ['年假', '恩恤假'] : ['年假', '事假', '恩恤假']).map(t => /*#__PURE__*/React.createElement("button", {
     key: t,
     className: 'pwd-la-chip' + (llType === t ? ' on' : ''),
     onClick: () => setLlType(t)
@@ -2482,7 +2566,7 @@ function DutyRoster({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u9577\u5047\u7533\u8ACB"), /*#__PURE__*/React.createElement("div", {
+  }, "\u6211\u7684\u8ACB\u5047\u7533\u8ACB"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-larec",
     style: {
       marginTop: 8
@@ -2510,7 +2594,7 @@ function DutyRoster({
     className: "pwd-eyebrow"
   }, "\u5047\u671F / \u7D50\u9918"), /*#__PURE__*/React.createElement("span", {
     className: "pwd-leave-by"
-  }, "\u7531\u5E97\u9577\u66F4\u65B0")), /*#__PURE__*/React.createElement("div", {
+  }, "\u7531\u5E97\u9577\u66F4\u65B0")), false && /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-lbl"
@@ -2522,13 +2606,13 @@ function DutyRoster({
   }, "\uD83C\uDF8C ", p.name, " \xB7 ", p.date))) : /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty"
   }, "\u672C\u6708\u66AB\u7121\u5F85\u653E\u516C\u773E\u5047\u671F")), /*#__PURE__*/React.createElement("div", {
-    className: "pwd-leave-grid"
+    className: "pwd-leave-grid",
+    style: {
+      gridTemplateColumns: "1fr 1fr"
+    }
   }, [{
     key: 'annual',
     lbl: '尚餘年假'
-  }, {
-    key: 'statutory',
-    lbl: '例假結餘'
   }, {
     key: 'sick',
     lbl: '累積有薪病假'
@@ -2989,7 +3073,7 @@ function MgrKpi({
 }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
-  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
+  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing' && s.role !== 'owner');
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const k0 = mgrData.allKpi[sel] || {
@@ -3105,16 +3189,29 @@ function MgrKpi({
     className: "pwd-card pwd-mgr-late"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-late-row"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u9072\u5230 / \u8ACB\u5047\u6B21\u6578"), /*#__PURE__*/React.createElement("span", null, "\u8D85\u904E 3 \u6B21 \u2192 KPI \u76F4\u63A5\u70BA 0")), /*#__PURE__*/React.createElement(Stepper, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u9072\u5230 / \u7121\u5047\u7D19\u6216\u7121\u901A\u77E5\u7F3A\u52E4\u6B21\u6578"), /*#__PURE__*/React.createElement("span", null, "3 \u6B21\u6216\u4EE5\u4E0A \u2192 KPI \u76F4\u63A5\u70BA 0\uFF08\u6709\u91AB\u751F\u7D19\u7684\u75C5\u5047\u4E0D\u8A08\uFF09")), /*#__PURE__*/React.createElement(Stepper, {
     value: lateLeave,
     suffix: "\u6B21",
     onChange: setLate
-  })), lateLeave > 3 && /*#__PURE__*/React.createElement("div", {
+  })), mgrData.allLeaveStats && mgrData.allLeaveStats[sel] && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 10
+    }
+  }, "\u7CFB\u7D71\u6309\u8ACB\u5047\u8A18\u9304\u8A08\uFF1A", /*#__PURE__*/React.createElement("b", null, mgrData.allLeaveStats[sel].kpiAuto), " \u6B21", mgrData.allLeaveStats[sel].flags.filter(f => f.kpi).map((f, i) => /*#__PURE__*/React.createElement("span", {
+    key: i
+  }, /*#__PURE__*/React.createElement("br", null), "\xB7 ", f.date, " ", f.type, "\uFF1A", f.kpiWhy)), mgrData.allLeaveStats[sel].kpiAuto !== lateLeave && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-swap-toggle",
+    style: {
+      marginTop: 6
+    },
+    onClick: () => setLate(mgrData.allLeaveStats[sel].kpiAuto)
+  }, "\u5957\u7528\u7CFB\u7D71\u8A08\u6578"))), lateLeave >= 3 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-warn",
     style: {
       marginTop: 12
     }
-  }, "\u5DF2\u8D85\u904E 3 \u6B21 \u2014 ", staff.name, " \u672C\u6708 KPI \u5C07\u70BA 0")), staff.role !== 'frontdesk' && /*#__PURE__*/React.createElement("div", {
+  }, "\u5DF2\u9054 3 \u6B21 \u2014 ", staff.name, " \u672C\u6708 KPI \u5C07\u70BA 0")), staff.role !== 'frontdesk' && /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
@@ -3259,13 +3356,15 @@ function MgrSwap({
 }
 
 // ── 請假 / 假期結餘 ──
+const PROOF_T = ['病假', '恩恤假', '工傷病假'],
+  NOTICE_T = ['病假', '突發事假'];
 function MgrLeave({
   month,
   mgrData
 }) {
   // [2026-09-21 老闆定] 內容與流量部唔由店長評核——四項指標(查詢數/內容質素/產量合規/
   //   數據紀律)店長冇基礎判斷。改由「老闆評核 🔑」區域(需老闆密碼)處理。
-  const list = mgrData.staffList.filter(s => s.role !== 'manager' && s.role !== 'marketing');
+  const list = mgrData.staffList.filter(s => s.role !== 'owner' && s.role !== 'marketing'); // [2026-11-08 老闆定] 管理層不列；內容專員假期直接交管理層；店長列入
   const [sel, setSel] = useState(list[0] ? list[0].id : null);
   const staff = list.find(s => s.id == sel);
   const b0 = mgrData.allLeaveBal[sel] || {
@@ -3279,8 +3378,21 @@ function MgrLeave({
     sick: b0.sick
   });
   const [recs, setRecs] = useState(() => (mgrData.allLeaveRec[sel] || []).slice());
-  const [type, setType] = useState('年假');
+  const [type, setType] = useState('病假');
   const [date, setDate] = useState('');
+  const [notice, setNotice] = useState('準時'); // [2026-11-08] 病假／突發事假
+  const [proof, setProof] = useState('未交'); // [2026-11-08] 病假／恩恤假／工傷病假
+  const [upBusy, setUpBusy] = useState('');
+  const st0 = mgrData.allLeaveStats && mgrData.allLeaveStats[sel] || null;
+  const [comp, setComp] = useState(() => mgrData.allComp && mgrData.allComp[sel] || {
+    balance: 0,
+    expiring: [],
+    recent: []
+  });
+  const [cDir, setCDir] = useState('取得');
+  const [cDate, setCDate] = useState('');
+  const [cHours, setCHours] = useState('');
+  const [cNote, setCNote] = useState('');
   const [phs, setPhs] = useState(() => (mgrData.allPH && mgrData.allPH[sel] || []).slice());
   const [phName, setPhName] = useState('');
   const [phDate, setPhDate] = useState('');
@@ -3311,6 +3423,14 @@ function MgrLeave({
     setPhName('');
     setPhDate('');
     setErr('');
+    setComp(mgrData.allComp && mgrData.allComp[id] || {
+      balance: 0,
+      expiring: [],
+      recent: []
+    });
+    setCDate('');
+    setCHours('');
+    setCNote('');
     setLlStart('');
     setLlEnd('');
     setLlNote('');
@@ -3345,16 +3465,22 @@ function MgrLeave({
     const ds = fmtDate(date),
       t = type,
       keep = date;
+    const pf = PROOF_T.includes(t) ? proof : '',
+      nt = NOTICE_T.includes(t) ? notice : '';
     setRecs(r => [...r, {
       date: ds,
-      type: t
+      type: t,
+      proof: pf,
+      notice: nt
     }]);
     setDate('');
     await write('addLeaveRec', {
       month,
       staffId: sel,
       date: ds,
-      type: t
+      type: t,
+      proof: pf,
+      notice: nt
     }, () => {
       setRecs(r => r.filter(x => !(x.date === ds && x.type === t)));
       setDate(keep);
@@ -3372,6 +3498,76 @@ function MgrLeave({
       c.splice(i, 0, rec);
       return c;
     }));
+  }
+  async function markProof(rec, i) {
+    setRecs(r => r.map((x, j) => j === i ? {
+      ...x,
+      proof: '已交'
+    } : x));
+    await write('leaveProofSet', {
+      month,
+      staffId: sel,
+      date: rec.date,
+      type: rec.type,
+      proof: '已交'
+    }, () => setRecs(r => r.map((x, j) => j === i ? {
+      ...x,
+      proof: '未交'
+    } : x)));
+  }
+  async function uploadProof(rec, i, file) {
+    if (!file) return;
+    setUpBusy(rec.date + rec.type);
+    setErr('');
+    try {
+      const r = await pwUploadProof({
+        month,
+        staffId: sel,
+        date: rec.date,
+        type: rec.type
+      }, file);
+      if (r && r.ok) setRecs(rs => rs.map((x, j) => j === i ? {
+        ...x,
+        proof: '已交',
+        link: r.link
+      } : x));else setErr((r && r.error || '上載失敗') + '（未上載）');
+    } catch (e) {
+      setErr('上載失敗：網絡錯誤，請再試一次');
+    }
+    setUpBusy('');
+  }
+  async function addComp() {
+    const h = Number(cHours);
+    if (!cDate || !(h > 0)) return;
+    setErr('');
+    try {
+      const r = await pwApi('compAdd', {
+        staffId: sel,
+        date: cDate,
+        hours: cDir === '使用' ? -h : h,
+        note: cNote.trim()
+      });
+      if (r && r.ok) {
+        setComp(r.summary);
+        setCDate('');
+        setCHours('');
+        setCNote('');
+      } else setErr(/未授權/.test(r && r.error || '') ? '授權過期：請撳「🔒 鎖定」後重新輸入管理密碼，再試一次' : (r && r.error || '儲存失敗') + '（未寫入）');
+    } catch (e) {
+      setErr('儲存失敗：網絡錯誤（未寫入）');
+    }
+  }
+  async function delComp(en) {
+    if (!window.confirm('確認刪除 ' + en.date + ' ' + (en.hours > 0 ? '+' : '') + en.hours + ' 小時？')) return;
+    try {
+      const r = await pwApi('compDelete', {
+        staffId: sel,
+        id: en.id
+      });
+      if (r && r.ok) setComp(r.summary);else setErr((r && r.error || '刪除失敗') + '（未刪除）');
+    } catch (e) {
+      setErr('刪除失敗：網絡錯誤');
+    }
   }
   async function addLongLeave() {
     if (!llStart || !llEnd) return;
@@ -3465,14 +3661,13 @@ function MgrLeave({
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
   }, staff.name, " \xB7 \u5047\u671F\u7D50\u9918 (\u53EF\u8ABF\u6574)"), /*#__PURE__*/React.createElement("div", {
-    className: "pwd-leave-grid"
+    className: "pwd-leave-grid",
+    style: {
+      gridTemplateColumns: "1fr 1fr"
+    }
   }, [{
     key: 'annual',
     lbl: '尚餘年假',
-    step: 1
-  }, {
-    key: 'statutory',
-    lbl: '例假結餘',
     step: 1
   }, {
     key: 'sick',
@@ -3502,16 +3697,56 @@ function MgrLeave({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u767B\u8A18\u8ACB\u5047"), /*#__PURE__*/React.createElement("div", {
+  }, "\u51FA\u52E4\u8A18\u9304\uFF08\u5E97\u9577\u767B\u8A18\uFF09"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 6
+    }
+  }, "\u75C5\u5047\u3001\u7A81\u767C\u4E8B\u5047\u3001\u5DE5\u50B7\u75C5\u5047\u3001\u9072\u5230\u53CA\u7121\u901A\u77E5\u7F3A\u52E4\u7531\u5E97\u9577\u5728\u6B64\u767B\u8A18\u3002\u5E74\u5047\u3001\u4E8B\u5047\u53CA\u6069\u6064\u5047\u7531\u540C\u4E8B\u65BC\u300C\u8ACB\u5047\u7533\u8ACB\u300D\u63D0\u4EA4\uFF0C\u6279\u51C6\u5F8C\u81EA\u52D5\u8A18\u9304\u3002"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-la-types",
     style: {
-      marginTop: 12
+      marginTop: 12,
+      flexWrap: 'wrap'
     }
-  }, ['年假', '例假', '病假', '事假'].map(t => /*#__PURE__*/React.createElement("button", {
+  }, ['病假', '突發事假', '工傷病假', '遲到', '無通知缺勤'].map(t => /*#__PURE__*/React.createElement("button", {
     key: t,
     className: 'pwd-la-chip' + (type === t ? ' on' : ''),
+    style: {
+      flex: '0 0 auto',
+      padding: '8px 13px'
+    },
     onClick: () => setType(t)
-  }, t))), /*#__PURE__*/React.createElement("div", {
+  }, t))), NOTICE_T.includes(type) && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-types",
+    style: {
+      marginTop: 10,
+      flexWrap: 'wrap'
+    }
+  }, [['準時', '準時通知'], ['遲或無通知', '遲通知／無通知']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    className: 'pwd-la-chip' + (notice === v ? ' on' : ''),
+    style: {
+      padding: '8px 6px'
+    },
+    onClick: () => setNotice(v)
+  }, l))), PROOF_T.includes(type) && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-types",
+    style: {
+      marginTop: 10
+    }
+  }, [['未交', '證明未交'], ['已交', '證明已交']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    className: 'pwd-la-chip' + (proof === v ? ' on' : ''),
+    style: {
+      padding: '8px 6px'
+    },
+    onClick: () => setProof(v)
+  }, l))), st0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 10
+    }
+  }, "\u4ECA\u5E74\u4E8B\u5047\u5DF2\u7528 ", st0.personalYear, " / ", st0.personalCap, " \u65E5 \xB7 \u672C\u6708\u8A08\u5165 KPI ", st0.kpiAuto, " \u6B21\uFF08\u91CD\u65B0\u6574\u7406\u5F8C\u66F4\u65B0\uFF09"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-la-daterow"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-la-datelbl"
@@ -3535,24 +3770,136 @@ function MgrLeave({
     }
   }, recs.map((rec, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
-    className: "pwd-larec-row"
+    className: "pwd-larec-row",
+    style: {
+      flexWrap: 'wrap',
+      rowGap: 8
+    }
   }, /*#__PURE__*/React.createElement("span", {
     className: 'pwd-larec-type t-' + rec.type
   }, rec.type), /*#__PURE__*/React.createElement("span", {
-    className: "pwd-larec-date"
-  }, rec.date), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-larec-date",
+    style: {
+      whiteSpace: 'nowrap'
+    }
+  }, rec.date), rec.notice === '遲或無通知' && /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-status rejected"
+  }, "\u9072\u6216\u7121\u901A\u77E5"), rec.proof === '未交' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "pwd-swap-toggle",
+    style: {
+      whiteSpace: 'nowrap'
+    },
+    onClick: () => markProof(rec, i)
+  }, "\u5DF2\u4EA4"), /*#__PURE__*/React.createElement("label", {
+    className: "pwd-swap-toggle",
+    style: {
+      cursor: 'pointer',
+      whiteSpace: 'nowrap'
+    }
+  }, upBusy === rec.date + rec.type ? '上載中…' : '拍照上載', /*#__PURE__*/React.createElement("input", {
+    type: "file",
+    accept: "image/*,application/pdf",
+    style: {
+      display: 'none'
+    },
+    disabled: !!upBusy,
+    onChange: e => uploadProof(rec, i, e.target.files[0])
+  }))), rec.proof === '已交' && (rec.link ? /*#__PURE__*/React.createElement("a", {
+    className: "pwd-mgr-swap-status approved",
+    href: rec.link,
+    target: "_blank",
+    rel: "noopener"
+  }, "\u8B49\u660E \u2197") : /*#__PURE__*/React.createElement("span", {
+    className: "pwd-mgr-swap-status approved"
+  }, "\u8B49\u660E\u5DF2\u4EA4")), /*#__PURE__*/React.createElement("button", {
     className: "pwd-larec-del",
+    style: {
+      marginLeft: 'auto'
+    },
     onClick: () => delRec(rec, i)
   }, "\u2715"))))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u9577\u5047\u7533\u8ACB (\u4EA4\u7BA1\u7406\u5C64\u6279\u6838)"), /*#__PURE__*/React.createElement("div", {
+  }, staff.name, " \xB7 \u88DC\u9418\u8A18\u9304"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot",
+    style: {
+      marginTop: 8
+    }
+  }, "\u7D50\u9918 ", /*#__PURE__*/React.createElement("b", null, comp.balance), " \u5C0F\u6642", comp.expiring && comp.expiring.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 \u26A0\uFE0F ", comp.expiring.map(x => `${x.hours} 小時於 ${x.expiry} 到期`).join('、'))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-types",
+    style: {
+      marginTop: 10
+    }
+  }, [['取得', '取得'], ['使用', '使用']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    className: 'pwd-la-chip' + (cDir === v ? ' on' : ''),
+    onClick: () => setCDir(v)
+  }, l))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-la-daterow"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-la-datelbl"
+  }, "\u65E5\u671F"), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-la-date",
+    type: "date",
+    value: cDate,
+    onChange: e => setCDate(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-frow",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "pwd-club-input",
+    type: "number",
+    min: "0.5",
+    step: "0.5",
+    placeholder: "\u5C0F\u6642",
+    value: cHours,
+    onChange: e => setCHours(e.target.value),
+    style: {
+      maxWidth: 90
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-club-input",
+    placeholder: cDir === '取得' ? '說明（例：頂更、OT）' : '說明（例：提早 2 小時下班）',
+    value: cNote,
+    onChange: e => setCNote(e.target.value)
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    style: {
+      marginTop: 12,
+      width: '100%'
+    },
+    disabled: !cDate || !(Number(cHours) > 0),
+    onClick: addComp
+  }, "\uFF0B \u70BA ", staff.name, " \u8A18\u9304", cDir, "\u88DC\u9418", cHours ? ` ${cHours} 小時` : ''), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-larec",
+    style: {
+      marginTop: 14
+    }
+  }, (comp.recent || []).map(en => /*#__PURE__*/React.createElement("div", {
+    key: en.id,
+    className: "pwd-larec-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: 'pwd-mgr-swap-status ' + (en.hours > 0 ? 'approved' : 'pending')
+  }, en.hours > 0 ? '+' : '', en.hours, " \u5C0F\u6642"), /*#__PURE__*/React.createElement("span", {
+    className: "pwd-larec-date"
+  }, fmtDate(en.date), " ", en.note), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-larec-del",
+    onClick: () => delComp(en)
+  }, "\u2715"))), (!comp.recent || comp.recent.length === 0) && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-ph-empty"
+  }, "\u672A\u6709\u88DC\u9418\u8A18\u9304"))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u8ACB\u5047\u7533\u8ACB\uFF08\u5E74\u5047\uFF0F\u4E8B\u5047\uFF0F\u6069\u6064\u5047\uFF0C\u4EA4\u7BA1\u7406\u5C64\u6279\u6838\uFF09"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-la-types",
     style: {
       marginTop: 12
     }
-  }, ['年假', '病假', '事假'].map(t => /*#__PURE__*/React.createElement("button", {
+  }, ['年假', '事假', '恩恤假'].map(t => /*#__PURE__*/React.createElement("button", {
     key: t,
     className: 'pwd-la-chip' + (llType === t ? ' on' : ''),
     onClick: () => setLlType(t)
@@ -3592,7 +3939,7 @@ function MgrLeave({
     },
     disabled: !llStart || !llEnd,
     onClick: addLongLeave
-  }, "\uFF0B \u70BA ", staff.name, " \u63D0\u4EA4\u9577\u5047\u7533\u8ACB"), /*#__PURE__*/React.createElement("div", {
+  }, "\uFF0B \u70BA ", staff.name, " \u63D0\u4EA4\u8ACB\u5047\u7533\u8ACB"), /*#__PURE__*/React.createElement("div", {
     className: "pwd-larec",
     style: {
       marginTop: 14
@@ -3608,7 +3955,7 @@ function MgrLeave({
     className: 'pwd-mgr-swap-status ' + r.status
   }, r.status === 'approved' ? '已批准' : r.status === 'rejected' ? '未獲批准' : '待管理層批核'))), llReqs.filter(r => r.staffId == sel).length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty"
-  }, "\u672A\u6709\u9577\u5047\u7533\u8ACB"))), /*#__PURE__*/React.createElement("div", {
+  }, "\u672A\u6709\u8ACB\u5047\u7533\u8ACB"))), false && /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
@@ -4467,7 +4814,7 @@ function OwnerKpiEditor({
     className: "pwd-card pwd-mgr-late"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-late-row"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u9072\u5230 / \u8ACB\u5047\u6B21\u6578"), /*#__PURE__*/React.createElement("span", null, "\u8D85\u904E 3 \u6B21 \u2192 KPI \u76F4\u63A5\u70BA 0")), /*#__PURE__*/React.createElement(Stepper, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, "\u7576\u6708\u9072\u5230 / \u7121\u5047\u7D19\u6216\u7121\u901A\u77E5\u7F3A\u52E4\u6B21\u6578"), /*#__PURE__*/React.createElement("span", null, "3 \u6B21\u6216\u4EE5\u4E0A \u2192 KPI \u76F4\u63A5\u70BA 0\uFF08\u6709\u91AB\u751F\u7D19\u7684\u75C5\u5047\u4E0D\u8A08\uFF09")), /*#__PURE__*/React.createElement(Stepper, {
     value: lateLeave,
     suffix: "\u6B21",
     onChange: setLate
@@ -4729,12 +5076,12 @@ function OwnerLongLeave({
     className: "pwd-card pwd-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-eyebrow"
-  }, "\u9577\u5047\u7533\u8ACB\u6279\u6838 (", pending.length, ")"), pending.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "\u8ACB\u5047\u7533\u8ACB\u6279\u6838 (", pending.length, ")"), pending.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "pwd-ph-empty",
     style: {
       marginTop: 12
     }
-  }, "\u6C92\u6709\u5F85\u6279\u6838\u7684\u9577\u5047\u7533\u8ACB") : /*#__PURE__*/React.createElement("div", {
+  }, "\u6C92\u6709\u5F85\u6279\u6838\u7684\u8ACB\u5047\u7533\u8ACB") : /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-swaps"
   }, pending.map(r => /*#__PURE__*/React.createElement("div", {
     key: r.id,
@@ -4751,7 +5098,7 @@ function OwnerLongLeave({
       marginTop: 8,
       marginBottom: 8
     }
-  }, "\u26A0\uFE0F \u540C\u671F\u5DF2\u6709\u9577\u5047\uFF1A", overlapOf(r).map(o => `${nameOf(o.staffId)} ${fmtD(o.start)}–${fmtD(o.end)}${o.status === 'pending' ? '（待批核）' : ''}`).join('、')), /*#__PURE__*/React.createElement("div", {
+  }, "\u26A0\uFE0F \u540C\u671F\u5DF2\u6709\u8ACB\u5047\uFF1A", overlapOf(r).map(o => `${nameOf(o.staffId)} ${fmtD(o.start)}–${fmtD(o.end)}${o.status === 'pending' ? '（待批核）' : ''}`).join('、')), /*#__PURE__*/React.createElement("div", {
     className: "pwd-mgr-swap-acts"
   }, /*#__PURE__*/React.createElement("button", {
     className: "pwd-btn-reject",
@@ -6065,6 +6412,8 @@ function CommissionApp() {
     leave: dash.leave,
     leaveRecords: dash.leaveRecords,
     longLeave: dash.longLeave,
+    leaveStats: dash.leaveStats,
+    comp: dash.comp,
     coworkers: dash.coworkers,
     onSwap: submitSwap,
     onLongLeave: submitLongLeave

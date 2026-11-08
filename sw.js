@@ -3,7 +3,7 @@
 //   殼（頁面/JS/圖/字體）＝ cache 先行、背景更新（開 app 即開，改版下次開自動生效）
 //   API（script.google.com）＝ 一律行網絡，唔 cache——佣金/更表/檢查記錄必須係最新
 // ⚠️ 改任何殼檔案（index.html / app.js / 圖）都要令 VERSION 行前一格，唔係員工會食舊 cache
-const VERSION = 'pw-v5-20261108a';   // [2026-11-08] 學費收入：取消續報（只限套票）
+const VERSION = 'pw-v5-20261108b';   // [2026-11-08] KPI 3 次或以上＋假期系統化（缺勤類別、證明、補鐘）
 const SHELL = [
   './',
   './index.html',
