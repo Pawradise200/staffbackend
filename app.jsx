@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-08f';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-09a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1391,7 +1391,7 @@ function DutyRoster({ staff, weeks, currentWeekIdx, todayDow, leave, leaveRecord
 // ═══════════ Manager helpers ═══════════
 const MGR_AREAS = [
   { key: 'ops', label: '營運數據' }, { key: 'kpi', label: 'KPI 評核' },
-  { key: 'club', label: '會籍提名' }, { key: 'swap', label: '換更審批' },
+  { key: 'club', label: '會籍提名' },   // [2026-11-09] 換更審批已拎走（員工頁已無換更申請）
   { key: 'leave', label: '請假假期' }, { key: 'roster', label: '排更' },
   { key: 'clean', label: '清潔檢查' },
   // [2026-11-06 Erica 定] 管理層評核移走：只喺「管理層總覽」做；店長後台只放管理員工嘅項目
