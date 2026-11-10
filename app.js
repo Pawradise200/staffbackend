@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-10a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-10b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -5966,6 +5966,166 @@ function MgrTuition() {
   }, h.reason)))));
 }
 
+// ── 校服收入（2026-11-10 Erica 批）──
+// 一套 $380（校服＋校褸＋名牌），同學費一齊收但分開入數；揀學生 → 尺碼 → 付款方式 → 確認。
+// 金額由系統填，唔計佣金；營運數據計入「G. 其他」。學生名單沿用 tuitionStudents。
+const UNIFORM_SIZES = ['S', 'M', 'L', 'XL', '特大'];
+function MgrUniform() {
+  const [list, setList] = useState(null);
+  const [pays, setPays] = useState([]);
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const [size, setSize] = useState('');
+  const [pay, setPay] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  async function load() {
+    try {
+      const r = await pwApi('tuitionStudents');
+      if (r.ok) {
+        setList(r.items);
+        setPays(r.pays || []);
+      } else setErr(r.error || '學生名單載入失敗');
+    } catch (e) {
+      setErr('網絡錯誤：' + (e.message || e));
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+  const qq = q.trim().toLowerCase();
+  const hits = !list || !qq ? [] : list.filter(s => s.dog.toLowerCase().indexOf(qq) >= 0 || s.owner.toLowerCase().indexOf(qq) >= 0 || s.phone.replace(/\D/g, '').indexOf(qq.replace(/\D/g, '') || '§') >= 0).slice(0, 8);
+  const canSubmit = sel && size && pay && !busy;
+  function pick(s) {
+    setSel(s);
+    setQ('');
+    setMsg('');
+    setErr('');
+  }
+  function reset() {
+    setSel(null);
+    setSize('');
+    setPay('');
+  }
+  async function submit(force) {
+    if (!canSubmit) return;
+    setBusy(true);
+    setMsg('');
+    setErr('');
+    try {
+      const r = await pwApi('uniformSave', {
+        phone: sel.phone,
+        dog: sel.dog,
+        size,
+        pay,
+        date,
+        force: force ? '1' : ''
+      });
+      if (r && r.ok === false && r.dup) {
+        setBusy(false);
+        if (window.confirm(r.error)) return submit(true);
+        return;
+      }
+      if (!r || r.ok === false) setErr(r && r.error || '儲存失敗（未寫入）');else if (!r.synced) {
+        setErr(r.warn);
+        reset();
+      } else {
+        setMsg('✓ 已記錄：' + sel.dog + ' 校服 ' + size + ' 碼 $380（' + pay + '）。');
+        reset();
+      }
+    } catch (e) {
+      setErr('網絡錯誤：' + (e.message || e) + '。請先於收入記錄查核是否已寫入，切勿立即重新輸入。');
+    }
+    setBusy(false);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\uD83D\uDC54 \u6821\u670D\u6536\u5165"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u6BCF\u5957 $380\uFF08\u6821\u670D\u9023\u6821\u8938\uFF0C\u9644\u540D\u724C\uFF09\u3002\u9078\u64C7\u5B78\u751F \u2192 \u9078\u64C7\u5C3A\u78BC \u2192 \u9078\u64C7\u4ED8\u6B3E\u65B9\u5F0F\u3002\u5B78\u8CBB\u8ACB\u65BC\u4E0A\u65B9\u300C\u5B78\u8CBB\u6536\u5165\u300D\u53E6\u884C\u8F38\u5165\uFF0C\u4E0D\u53EF\u5408\u4F75\u3002"), err && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: 'var(--pw-danger)'
+    }
+  }, err), msg && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: 'var(--pw-navy-deep)'
+    }
+  }, msg), list === null && !err && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u5B78\u751F\u540D\u55AE\u8F09\u5165\u4E2D\u2026"), !sel && list !== null && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
+    className: "pwd-tr-input",
+    style: {
+      width: '100%',
+      marginTop: 10
+    },
+    placeholder: "\u641C\u5C0B\u72D7\u540D\uFF0F\u5BB6\u9577\uFF0F\u96FB\u8A71",
+    value: q,
+    onChange: e => setQ(e.target.value)
+  }), hits.map(s => /*#__PURE__*/React.createElement("button", {
+    key: s.phone + s.dog,
+    className: "pwd-mgr-navbtn",
+    style: {
+      display: 'block',
+      width: '100%',
+      textAlign: 'left',
+      marginTop: 6
+    },
+    onClick: () => pick(s)
+  }, /*#__PURE__*/React.createElement("b", null, s.dog), " \xB7 ", s.owner, " \xB7 ", s.phone)), qq && hits.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u627E\u4E0D\u5230\u76F8\u95DC\u8A18\u9304\u3002\u65B0\u751F\u9808\u5148\u5EFA\u7ACB\u5BA2\u6236\u8CC7\u6599\u3002")), sel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("b", null, sel.dog), "\uFF08", sel.owner, " \xB7 ", sel.phone, "\uFF09", ' ', /*#__PURE__*/React.createElement("button", {
+    className: "pwd-mgr-lock",
+    onClick: reset
+  }, "\u66F4\u63DB\u5B78\u751F")), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-view-toggle",
+    style: {
+      marginTop: 10
+    }
+  }, UNIFORM_SIZES.map(k => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    className: size === k ? 'on' : '',
+    onClick: () => setSize(k)
+  }, k))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-row",
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    className: "pwd-monthsel",
+    value: pay,
+    onChange: e => setPay(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u4ED8\u6B3E\u65B9\u5F0F"), pays.map(x => /*#__PURE__*/React.createElement("option", {
+    key: x,
+    value: x
+  }, x))), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-tr-input",
+    type: "date",
+    value: date,
+    onChange: e => setDate(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-formacts"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tr-sub"
+  }, size ? '校服 ' + size + ' 碼 · $380' : '請選擇尺碼'), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    disabled: !canSubmit,
+    onClick: () => submit(false)
+  }, busy ? '處理中…' : '確認記錄'))));
+}
+
 // ── 賣套票（2026-11-06 Erica 批）──
 // 揀客人 → 揀方案（金額／面值由方案表填，店長唔使打數字）→ 付款方式 → 確認。
 // 系統自動填 Profile 套票類型／總值／餘額／有效期（續購加落現有餘額）。方案表以外交管理層。
@@ -6641,7 +6801,7 @@ function CommissionApp() {
     mgrData: mgrData,
     onUnlock: unlockMgr,
     onSaved: reloadMgr
-  }), tab === 'income' && (isManager || isOwner) && (mgrUnlocked ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MgrTuition, null), /*#__PURE__*/React.createElement(MgrPackageSale, null)) : /*#__PURE__*/React.createElement(ManagerGate, {
+  }), tab === 'income' && (isManager || isOwner) && (mgrUnlocked ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MgrTuition, null), /*#__PURE__*/React.createElement(MgrUniform, null), /*#__PURE__*/React.createElement(MgrPackageSale, null)) : /*#__PURE__*/React.createElement(ManagerGate, {
     onUnlock: unlockMgr,
     action: isOwner ? 'verifyOwner' : 'verifyMgr',
     title: "\u6536\u5165\u8A18\u9304 \xB7 \u9700\u8981\u7BA1\u7406\u5BC6\u78BC",
