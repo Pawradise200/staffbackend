@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-09b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-10a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -3102,6 +3102,7 @@ function MgrTuition() {
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [hist, setHist] = useState(null);   // [2026-11-08] 學費記錄＋取消續報
+  const [welcome, setWelcome] = useState(null);   // [2026-11-10] 新生專屬頁歡迎訊息 {dog,url,copied}
 
   async function load() {
     try {
@@ -3124,8 +3125,23 @@ function MgrTuition() {
     try { const r = await pwApi('tuitionHistory', { phone: s.phone, dog: s.dog }); setHist(r && r.ok ? r.items : []); }
     catch (e) { setHist([]); }
   }
-  function pick(s) { setSel(s); setQ(''); setMsg(''); setErr(''); loadHist(s); }
+  function pick(s) { setSel(s); setQ(''); setMsg(''); setErr(''); setWelcome(null); loadHist(s); }
   function reset() { setSel(null); setType(''); setAmount(''); setPay(''); setHist(null); }
+  // [2026-11-10] 文字跟「訊息範本／11 學生專屬頁開通.txt」；改範本要同步改呢度
+  async function copyWelcome(w) {
+    const text = '您好！' + w.dog + '的「學院學生專屬頁」已經開通了 🎓\n\n👉 ' + w.url + '\n\n' +
+      '這是您的專屬私人連結 🔗，打開後可以看到：\n🪪 狗狗證：班別、社交分級、學期有效期\n' +
+      '🎖️ 校褸披肩：日後在課堂及活動取得的勳章，會在這裏一枚一枚亮起\n📅 已預約的課堂及出席進度\n\n' +
+      '🗓️ 課堂日曆已經出爐，現在就可以預約！校內通告亦會公布學校舉辦的不同活動，歡迎踴躍參加 ✨\n\n' +
+      '📲 以後預約課堂，在專屬頁按「預約課堂」即可；有任何疑問，亦可以直接按「聯絡導師」WhatsApp 我們。\n' +
+      '📷 還可以在狗狗證上載靚相！\n\n兩個小提示：\n1️⃣ 第一次打開需要等幾秒載入，屬正常情況\n' +
+      '2️⃣ 建議「加入主畫面」，之後一按即開，毋須登入\n\n📱 加入主畫面方法：\n' +
+      'iOS：用 Safari 打開連結 → 按底部「分享」⬆️ →「加入主畫面」\n' +
+      'Android：用 Chrome 打開連結 → 按右上角「⋮」→「加到主畫面」\n\n' +
+      '如果在 WhatsApp 內直接打開了，請先按右上角，選「用 Safari／Chrome 開啟」，再按上面步驟操作 💛';
+    try { await navigator.clipboard.writeText(text); setWelcome(Object.assign({}, w, { copied: true })); }
+    catch (e) { window.prompt('請長按複製以下訊息：', text); }
+  }
 
   async function cancelTuition(h) {
     const label = h.svc.replace('學院學期費', '');
@@ -3144,7 +3160,7 @@ function MgrTuition() {
     if (!canSubmit) return;
     if (!force && (amt < TUITION_LOW || amt > TUITION_HIGH) &&
         !window.confirm('金額 $' + amt.toLocaleString() + (amt < TUITION_LOW ? ' 低於 $' + TUITION_LOW.toLocaleString() : ' 高於 $' + TUITION_HIGH.toLocaleString()) + '，請確認金額無誤。')) return;
-    setBusy(true); setMsg(''); setErr('');
+    setBusy(true); setMsg(''); setErr(''); setWelcome(null);
     try {
       const r = await pwApi('tuitionSave', { phone: sel.phone, dog: sel.dog, type, amount: amt, pay, date, force: force ? '1' : '' });
       if (r && r.ok === false && r.dup) {
@@ -3155,7 +3171,9 @@ function MgrTuition() {
       if (!r || r.ok === false) { setErr((r && r.error) || '儲存失敗（未寫入）'); }
       else if (!r.synced) { setErr(r.warn); reset(); load(); }
       else {
-        setMsg('✓ 已記錄：' + sel.dog + ' ' + (types[type] || type) + ' $' + amt.toLocaleString() + '（' + pay + '）。堂數及有效期已自動更新。');
+        setMsg('✓ 已記錄：' + sel.dog + ' ' + (types[type] || type) + ' $' + amt.toLocaleString() + '（' + pay + '）。堂數及有效期已自動更新。' +
+          (r.studentErr ? '\n⚠️ 學生專屬頁連結未能產生（' + r.studentErr + '），請通知管理層。' : ''));
+        if (r.studentNew && r.studentUrl) setWelcome({ dog: sel.dog, url: r.studentUrl, copied: false });
         reset(); load();
       }
     } catch (e) { setErr('網絡錯誤：' + (e.message || e) + '。請先於收入記錄查核是否已寫入，切勿立即重新輸入。'); }
@@ -3167,7 +3185,13 @@ function MgrTuition() {
       <div className="pwd-eyebrow">💰 學費收入</div>
       <div className="pwd-tr-hint">選擇學生 → 選擇類型 → 輸入實收金額 → 選擇付款方式。系統將自動寫入收入記錄、增加堂數及計算有效期，毋須另行人手輸入。</div>
       {err && <div className="pwd-tr-hint" style={{ color: 'var(--pw-danger)' }}>{err}</div>}
-      {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
+      {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)', whiteSpace: 'pre-line' }}>{msg}</div>}
+      {welcome && (
+        <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>
+          🎓 {welcome.dog} 是新生，專屬頁已開通。請今晚將歡迎訊息 WhatsApp 給家長：{' '}
+          <button className="pwd-la-confirm" onClick={() => copyWelcome(welcome)}>{welcome.copied ? '✓ 已複製' : '📋 複製歡迎訊息'}</button>
+        </div>
+      )}
       {list === null && !err && <div className="pwd-tr-hint">學生名單載入中…</div>}
 
       {!sel && list !== null && (
