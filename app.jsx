@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-10b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-16a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -2650,6 +2650,29 @@ function OwnerCommissionTable({ mgrData }) {
     </div>
   );
 }
+// [2026-11-16 Erica 定] 每月新生試堂進度（老闆／店長／marketing）：目標 12 組，
+// 招生日＋平日散堂試堂一齊計。數據由 dashboard 嘅 trialProgress 嚟，只有數字冇家長資料。
+function NewTrialProgressCard({ p, isCurrentMonth }) {
+  if (!p) return null;
+  const left = Math.max(0, p.target - p.done - p.upcoming);
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-tr-head">
+        <div>
+          <div className="pwd-eyebrow">本月新生試堂進度</div>
+          <div className="pwd-tr-sub">招生日＋平日試堂一併計 · 已取消不計</div>
+        </div>
+        <div className="pwd-club-earned"><b>{p.done}</b> / {p.target}</div>
+      </div>
+      <div className="pwd-mgrgoal-next">
+        已上 <b>{p.done}</b> 組 · 已預約未上 <b>{p.upcoming}</b> 組
+        {isCurrentMonth && <> · 尚差 <b>{left}</b> 組 · 剩 <b>{p.daysLeft}</b> 日</>}
+      </div>
+      {isCurrentMonth && <div className="pwd-mgrgoal-foot">上月同期：{p.prevSameDay} 組</div>}
+    </div>
+  );
+}
+
 // 試堂登記摘要（唯讀）：即將到來＋最近 14 日完成＋未來 45 日剩餘名額。
 // 數據直接用 dash 現有嘅 trialSlots/trialBookings/trialDone，唔另外打 API。
 function OwnerTrialSummary({ slots, bookings, done }) {
@@ -2809,6 +2832,7 @@ function OwnerOverview({ month, dash, mgrUnlocked, mgrData, onUnlock, onSaved, v
     <>
       <OwnerDeptRevenue team={mgrData.team} />
       <OwnerCommissionTable mgrData={mgrData} />
+      <NewTrialProgressCard p={dash.trialProgress} isCurrentMonth={month === currentMonth()} />
       <OwnerTrialSummary slots={dash.trialSlots} bookings={dash.trialBookings} done={dash.trialDone} />
     </>
   );
@@ -3677,6 +3701,9 @@ function CommissionApp() {
                   ? <span>門店總業績 <b>{money(storeRevenueOf(team))}</b></span>
                   : <span>新生 S1<b>{team.s1New||0}</b>/S2<b>{team.s2New||0}</b>/雙<b>{team.comboNew||0}</b> · 續報 <b>{team.renewals}</b></span>}
               </div>
+            )}
+            {(isManager || kpiRoleOf(staff) === 'marketing') && (
+              <NewTrialProgressCard p={dash.trialProgress} isCurrentMonth={month === currentMonth()} />
             )}
             <IndividualView staff={staff} calc={calc} items={items} kpi={kpi} team={team}
               lateLeave={lateLeave} dogEscape={dogEscape} clubNoms={dash.clubNoms} history={dash.history}

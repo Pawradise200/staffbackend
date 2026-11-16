@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-10b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-16a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -5088,6 +5088,31 @@ function OwnerCommissionTable({
     className: "pwd-led-val"
   }, money(total)))));
 }
+// [2026-11-16 Erica 定] 每月新生試堂進度（老闆／店長／marketing）：目標 12 組，
+// 招生日＋平日散堂試堂一齊計。數據由 dashboard 嘅 trialProgress 嚟，只有數字冇家長資料。
+function NewTrialProgressCard({
+  p,
+  isCurrentMonth
+}) {
+  if (!p) return null;
+  const left = Math.max(0, p.target - p.done - p.upcoming);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "pwd-card pwd-block"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-eyebrow"
+  }, "\u672C\u6708\u65B0\u751F\u8A66\u5802\u9032\u5EA6"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-sub"
+  }, "\u62DB\u751F\u65E5\uFF0B\u5E73\u65E5\u8A66\u5802\u4E00\u4F75\u8A08 \xB7 \u5DF2\u53D6\u6D88\u4E0D\u8A08")), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-earned"
+  }, /*#__PURE__*/React.createElement("b", null, p.done), " / ", p.target)), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-next"
+  }, "\u5DF2\u4E0A ", /*#__PURE__*/React.createElement("b", null, p.done), " \u7D44 \xB7 \u5DF2\u9810\u7D04\u672A\u4E0A ", /*#__PURE__*/React.createElement("b", null, p.upcoming), " \u7D44", isCurrentMonth && /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 \u5C1A\u5DEE ", /*#__PURE__*/React.createElement("b", null, left), " \u7D44 \xB7 \u5269 ", /*#__PURE__*/React.createElement("b", null, p.daysLeft), " \u65E5")), isCurrentMonth && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-mgrgoal-foot"
+  }, "\u4E0A\u6708\u540C\u671F\uFF1A", p.prevSameDay, " \u7D44"));
+}
+
 // 試堂登記摘要（唯讀）：即將到來＋最近 14 日完成＋未來 45 日剩餘名額。
 // 數據直接用 dash 現有嘅 trialSlots/trialBookings/trialDone，唔另外打 API。
 function OwnerTrialSummary({
@@ -5333,6 +5358,9 @@ function OwnerOverview({
     team: mgrData.team
   }), /*#__PURE__*/React.createElement(OwnerCommissionTable, {
     mgrData: mgrData
+  }), /*#__PURE__*/React.createElement(NewTrialProgressCard, {
+    p: dash.trialProgress,
+    isCurrentMonth: month === currentMonth()
   }), /*#__PURE__*/React.createElement(OwnerTrialSummary, {
     slots: dash.trialSlots,
     bookings: dash.trialBookings,
@@ -6739,7 +6767,10 @@ function CommissionApp() {
     className: "pwd-readout"
   }, /*#__PURE__*/React.createElement("span", {
     className: "pwd-readout-tag"
-  }, "\u672C\u6708\u5BE6\u969B"), isManager ? /*#__PURE__*/React.createElement("span", null, "\u9580\u5E97\u7E3D\u696D\u7E3E ", /*#__PURE__*/React.createElement("b", null, money(storeRevenueOf(team)))) : /*#__PURE__*/React.createElement("span", null, "\u65B0\u751F S1", /*#__PURE__*/React.createElement("b", null, team.s1New || 0), "/S2", /*#__PURE__*/React.createElement("b", null, team.s2New || 0), "/\u96D9", /*#__PURE__*/React.createElement("b", null, team.comboNew || 0), " \xB7 \u7E8C\u5831 ", /*#__PURE__*/React.createElement("b", null, team.renewals))), /*#__PURE__*/React.createElement(IndividualView, {
+  }, "\u672C\u6708\u5BE6\u969B"), isManager ? /*#__PURE__*/React.createElement("span", null, "\u9580\u5E97\u7E3D\u696D\u7E3E ", /*#__PURE__*/React.createElement("b", null, money(storeRevenueOf(team)))) : /*#__PURE__*/React.createElement("span", null, "\u65B0\u751F S1", /*#__PURE__*/React.createElement("b", null, team.s1New || 0), "/S2", /*#__PURE__*/React.createElement("b", null, team.s2New || 0), "/\u96D9", /*#__PURE__*/React.createElement("b", null, team.comboNew || 0), " \xB7 \u7E8C\u5831 ", /*#__PURE__*/React.createElement("b", null, team.renewals))), (isManager || kpiRoleOf(staff) === 'marketing') && /*#__PURE__*/React.createElement(NewTrialProgressCard, {
+    p: dash.trialProgress,
+    isCurrentMonth: month === currentMonth()
+  }), /*#__PURE__*/React.createElement(IndividualView, {
     staff: staff,
     calc: calc,
     items: items,
