@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-19a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-19b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1787,6 +1787,11 @@ function TrialCard({
   }, /*#__PURE__*/React.createElement("b", null, b.dog, b.phone ? /*#__PURE__*/React.createElement("span", {
     className: "pwd-club-nom-owner"
   }, " \xB7 ", b.phone) : null), /*#__PURE__*/React.createElement("span", null, b.label)), /*#__PURE__*/React.createElement("button", {
+    className: "pwd-tr-x",
+    onClick: () => {
+      if (window.confirm(b.dog + ' 已直接入學？確定後會騰出試堂名額，試堂數照計。')) onCancel(b.id, 'enroll');
+    }
+  }, "\u8F49\u5165\u5B78"), /*#__PURE__*/React.createElement("button", {
     className: "pwd-tr-x",
     onClick: () => onCancel(b.id)
   }, "\u53D6\u6D88")))), doneList.length > 0 && /*#__PURE__*/React.createElement("div", {
@@ -6803,8 +6808,11 @@ function CommissionApp() {
     await reloadDash();
     return r;
   }
-  async function cancelTrial(trialId) {
-    await pwWrite('trialCancel', {
+  async function cancelTrial(trialId, mode) {
+    await pwWrite('trialCancel', mode ? {
+      trialId,
+      mode
+    } : {
       trialId
     });
     await reloadDash(); // 成功失敗都重讀，名單一定同 sheet 一致
