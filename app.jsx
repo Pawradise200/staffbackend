@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-16a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-19a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -3371,6 +3371,104 @@ function MgrUniform() {
   );
 }
 
+// ── 美容／接送收入（2026-11-19 Erica 批）──
+// 揀客人 → 揀服務 → 店長自己填金額 → 付款方式 → 確認。只入冇經網上預約嘅美容／接送。
+// 客人名單沿用 packageCustomers（全部客戶資料）；付款方式同學費一樣（套票會自動扣）。
+const SVC_INCOME_TYPES = ['基本美容', '星級美容', '接送服務'];
+const SVC_INCOME_PAYS = ['轉賬', '信用卡', '現金', '套票'];
+function MgrServiceIncome() {
+  const [list, setList] = useState(null);
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const [svc, setSvc] = useState('');
+  const [amount, setAmount] = useState('');
+  const [pay, setPay] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  async function load() {
+    try {
+      const r = await pwApi('packageCustomers');
+      if (r.ok) setList(r.items);
+      else setErr(r.error || '客戶名單載入失敗');
+    } catch (e) { setErr('網絡錯誤：' + (e.message || e)); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const qq = q.trim().toLowerCase();
+  const hits = !list || !qq ? [] : list.filter(s =>
+    s.dog.toLowerCase().indexOf(qq) >= 0 || s.owner.toLowerCase().indexOf(qq) >= 0 || s.phone.replace(/\D/g, '').indexOf(qq.replace(/\D/g, '') || '§') >= 0
+  ).slice(0, 8);
+  const amt = Number(amount);
+  const canSubmit = sel && svc && amt > 0 && pay && !busy;
+  function pick(s) { setSel(s); setQ(''); setMsg(''); setErr(''); }
+  function reset() { setSel(null); setSvc(''); setAmount(''); setPay(''); }
+
+  async function submit(force) {
+    if (!canSubmit) return;
+    setBusy(true); setMsg(''); setErr('');
+    try {
+      const r = await pwApi('serviceIncomeSave', { phone: sel.phone, dog: sel.dog, svc, amount: String(amt), pay, date, force: force ? '1' : '' });
+      if (r && r.ok === false && r.dup) {
+        setBusy(false);
+        if (window.confirm(r.error)) return submit(true);
+        return;
+      }
+      if (!r || r.ok === false) setErr((r && r.error) || '儲存失敗（未寫入）');
+      else if (!r.synced) { setErr(r.warn); reset(); }
+      else { setMsg('✓ 已記錄：' + sel.dog + ' ' + svc + ' $' + amt + '（' + pay + '）。'); reset(); }
+    } catch (e) { setErr('網絡錯誤：' + (e.message || e) + '。請先於收入記錄查核是否已寫入，切勿立即重新輸入。'); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="pwd-card pwd-block">
+      <div className="pwd-eyebrow">✂️ 美容／接送收入</div>
+      <div className="pwd-tr-hint">只輸入未經網上預約的美容或接送。網上預約已包括的美容／接送費用已計入預約，請勿重複輸入。</div>
+      {err && <div className="pwd-tr-hint" style={{ color: 'var(--pw-danger)' }}>{err}</div>}
+      {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
+      {list === null && !err && <div className="pwd-tr-hint">客戶名單載入中…</div>}
+
+      {!sel && list !== null && (
+        <>
+          <input className="pwd-tr-input" style={{ width: '100%', marginTop: 10 }} placeholder="搜尋狗名／家長／電話" value={q} onChange={e => setQ(e.target.value)} />
+          {hits.map(s => (
+            <button key={s.phone + s.dog} className="pwd-mgr-navbtn" style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 6 }} onClick={() => pick(s)}>
+              <b>{s.dog}</b> · {s.owner} · {s.phone}
+            </button>
+          ))}
+          {qq && hits.length === 0 && <div className="pwd-tr-hint">找不到相關記錄。請先建立客戶資料。</div>}
+        </>
+      )}
+
+      {sel && (
+        <>
+          <div className="pwd-tr-hint" style={{ marginTop: 10 }}>
+            <b>{sel.dog}</b>（{sel.owner} · {sel.phone}）{' '}<button className="pwd-mgr-lock" onClick={reset}>更換客人</button>
+          </div>
+          <div className="pwd-view-toggle" style={{ marginTop: 10 }}>
+            {SVC_INCOME_TYPES.map(k => <button key={k} className={svc === k ? 'on' : ''} onClick={() => setSvc(k)}>{k}</button>)}
+          </div>
+          <div className="pwd-tr-row" style={{ marginTop: 10 }}>
+            <input className="pwd-tr-input" type="number" inputMode="decimal" min="0" placeholder="金額 $" value={amount} onChange={e => setAmount(e.target.value)} />
+            <select className="pwd-monthsel" value={pay} onChange={e => setPay(e.target.value)}>
+              <option value="">付款方式</option>
+              {SVC_INCOME_PAYS.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+            <input className="pwd-tr-input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          <div className="pwd-club-formacts">
+            <span className="pwd-tr-sub">{svc ? svc + (amt > 0 ? ' · $' + amt : ' · 請輸入金額') : '請選擇服務'}</span>
+            <button className="pwd-la-confirm" disabled={!canSubmit} onClick={() => submit(false)}>{busy ? '處理中…' : '確認記錄'}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── 賣套票（2026-11-06 Erica 批）──
 // 揀客人 → 揀方案（金額／面值由方案表填，店長唔使打數字）→ 付款方式 → 確認。
 // 系統自動填 Profile 套票類型／總值／餘額／有效期（續購加落現有餘額）。方案表以外交管理層。
@@ -3734,7 +3832,7 @@ function CommissionApp() {
         )}
         {/* [2026-11-06 Erica 定] 收學費＋賣套票獨立一個「收入記錄」分頁；只店長／管理層，要管理密碼 */}
         {tab === 'income' && (isManager || isOwner) && (mgrUnlocked
-          ? <><MgrTuition /><MgrUniform /><MgrPackageSale /></>
+          ? <><MgrTuition /><MgrUniform /><MgrServiceIncome /><MgrPackageSale /></>
           : <ManagerGate onUnlock={unlockMgr} action={isOwner ? 'verifyOwner' : 'verifyMgr'}
               title="收入記錄 · 需要管理密碼" sub="請輸入店長／管理層管理密碼" />)}
         {tab === 'seats' && (
