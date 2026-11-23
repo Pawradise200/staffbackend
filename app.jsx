@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-22a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-23a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -793,6 +793,18 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
   const [customerType, setCustomerType] = useState('new');
   const [ownerName, setOwnerName] = useState('');
   const [payMethod, setPayMethod] = useState('現金');
+  // [2026-11-23 Erica 定] 店長入最少資料：入 8 位電話 → 自動帶出家長姓名＋狗狗（撳一下揀），
+  //   同時顯示呢隻狗用咗 $499 試堂未、安全風險評估、今次收幾錢。
+  const [look, setLook] = useState(null);
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '').replace(/^(00)?852/, '');
+    if (digits.length !== 8) { setLook(null); return; }
+    let alive = true;
+    pwApi('trialLookup', { phone: digits }).then(r => { if (alive) setLook(r && r.ok ? r : null); });
+    return () => { alive = false; };
+  }, [phone]);
+  const lookDog = look && look.dogs ? look.dogs.find(d => d.dog.toLowerCase() === dog.trim().toLowerCase()) : null;
+  const needOwner = !(look && look.owner);
   // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
   //   （例：8月尾4日+9月頭8日已經夠12，9月中至尾嘅日子永遠見唔到，畫面又冇提示）。
   //   後端 trialSlotsHandler 本身已限 45 日窗，呢度唔再加疊第二層截斷。
@@ -806,8 +818,8 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
   const leftOf = s => isHotel ? (s.hotelRemaining || 0) : s.remaining;
   // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
   const newBlocked = isNew && s1Full;
-  const canSubmit = sel && dog.trim() && !busy && !newBlocked && (!isNew || (ownerName.trim() && payMethod))
-    && (!isHotel || (ownerName.trim() && phone.trim() && payMethod));
+  const canSubmit = sel && dog.trim() && phone.trim() && payMethod && !busy && !newBlocked
+    && (!needOwner || ownerName.trim());
   async function submit() {
     if (!canSubmit) return;
     setBusy(true); setMsg('');
@@ -815,7 +827,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
       ownerName: (isNew || isHotel) ? ownerName.trim() : '', payMethod: (isNew || isHotel) ? payMethod : '' });
     setBusy(false);
     if (r && r.ok === false) { setMsg(r.error || '登記失敗'); return; }
-    setSel(''); setDog(''); setPhone(''); setOwnerName('');
+    setSel(''); setDog(''); setPhone(''); setOwnerName(''); setLook(null);
     setMsg(isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。`
          : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。`
                  : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
@@ -852,13 +864,26 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
               <option value="hotel">🏨 酒店住客（首次 ${TRIAL_NEW_STUDENT_FEE}／加堂 $622）</option>
             </select>
             <div className="pwd-tr-row" style={{ marginTop: 10 }}>
-              <input className="pwd-tr-input" placeholder="狗狗名稱" value={dog} onChange={e => setDog(e.target.value)} />
-              <input className="pwd-tr-input" type="tel" inputMode="tel" placeholder="家長電話" value={phone} onChange={e => setPhone(e.target.value)} />
+              <input className="pwd-tr-input" type="tel" inputMode="tel" placeholder="① 家長電話（8 位）" value={phone} onChange={e => setPhone(e.target.value)} />
+              <input className="pwd-tr-input" placeholder="② 狗狗名稱（或撳下面）" value={dog} onChange={e => setDog(e.target.value)} />
             </div>
+            {look && look.dogs && look.dogs.length > 0 && (
+              <div className="pwd-tr-days" style={{ marginTop: 8 }}>
+                {look.dogs.map(d => (
+                  <div key={d.dog} className={'pwd-tr-day' + (dog.trim().toLowerCase() === d.dog.toLowerCase() ? ' sel' : '') + (d.fee == null ? ' full' : '')}
+                       onClick={() => { setDog(d.dog); setCustomerType(d.trialUsed ? 'hotel' : customerType); }}>
+                    <div className="pwd-tr-day-d">{d.dog}</div>
+                    <div className={'pwd-tr-day-r ' + (d.fee == null ? 'no' : 'ok')}>{d.fee == null ? '未能報' : '$' + d.fee}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {look && look.owner && <div className="pwd-tr-hint">家長：{look.owner}（自動帶出）</div>}
+            {lookDog && <div className="pwd-tr-hint" style={{ color: lookDog.fee == null ? 'var(--pw-danger)' : 'var(--pw-navy-deep)' }}>{lookDog.dog}：{lookDog.status}</div>}
             {newBlocked && <div className="pwd-tr-hint" style={{ color: 'var(--pw-danger)' }}>幼稚園（S1）學位已滿（已計算已登記的新生試堂），暫停新生試堂。請為家長登記候補名單，有學位時再安排試堂。</div>}
             {(isNew || isHotel) && (
               <div className="pwd-tr-row">
-                <input className="pwd-tr-input" placeholder="家長姓名（入收入記錄用）" value={ownerName} onChange={e => setOwnerName(e.target.value)} />
+                {needOwner && <input className="pwd-tr-input" placeholder="家長姓名（新客先要填）" value={ownerName} onChange={e => setOwnerName(e.target.value)} />}
                 <select className="pwd-monthsel" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
                   <option value="現金">現金</option>
                   <option value="轉賬">轉賬</option>
@@ -867,7 +892,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
             )}
             <div className="pwd-tr-hint">
               {isHotel
-                ? <>酒店住客每日最多 2 個，佔用當日學生位。系統會按電話＋狗名自動判斷：首次 ${TRIAL_NEW_STUDENT_FEE}（含入學評估）、之後每日 $622。<b>收咗錢先提交</b>，然後即刻 WhatsApp 發確認訊息。</>
+                ? <>酒店住客每日最多 2 個，佔用當日學生位。每隻狗只有一次 ${TRIAL_NEW_STUDENT_FEE} 試堂（含入學評估）；之後每日 $622，要安全風險評估通過先可以報。<b>收咗錢先提交</b>，然後即刻 WhatsApp 發確認訊息。</>
                 : isNew
                 ? <>揀好日子 → 入齊資料同已收嘅 ${TRIAL_NEW_STUDENT_FEE} → 提交（會自動記入收入記錄），<b>然後即刻 WhatsApp 發確認訊息</b>。</>
                 : <>揀好日子 → 入名 → 提交，<b>然後即刻 WhatsApp 發確認訊息</b>（見《體驗邀請與確認訊息範本》訊息二）。口頭講完唔入呢度，等於冇留位。</>}

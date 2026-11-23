@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-22a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-23a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1653,6 +1653,27 @@ function TrialCard({
   const [customerType, setCustomerType] = useState('new');
   const [ownerName, setOwnerName] = useState('');
   const [payMethod, setPayMethod] = useState('現金');
+  // [2026-11-23 Erica 定] 店長入最少資料：入 8 位電話 → 自動帶出家長姓名＋狗狗（撳一下揀），
+  //   同時顯示呢隻狗用咗 $499 試堂未、安全風險評估、今次收幾錢。
+  const [look, setLook] = useState(null);
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '').replace(/^(00)?852/, '');
+    if (digits.length !== 8) {
+      setLook(null);
+      return;
+    }
+    let alive = true;
+    pwApi('trialLookup', {
+      phone: digits
+    }).then(r => {
+      if (alive) setLook(r && r.ok ? r : null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [phone]);
+  const lookDog = look && look.dogs ? look.dogs.find(d => d.dog.toLowerCase() === dog.trim().toLowerCase()) : null;
+  const needOwner = !(look && look.owner);
   // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
   //   （例：8月尾4日+9月頭8日已經夠12，9月中至尾嘅日子永遠見唔到，畫面又冇提示）。
   //   後端 trialSlotsHandler 本身已限 45 日窗，呢度唔再加疊第二層截斷。
@@ -1666,7 +1687,7 @@ function TrialCard({
   const leftOf = s => isHotel ? s.hotelRemaining || 0 : s.remaining;
   // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
   const newBlocked = isNew && s1Full;
-  const canSubmit = sel && dog.trim() && !busy && !newBlocked && (!isNew || ownerName.trim() && payMethod) && (!isHotel || ownerName.trim() && phone.trim() && payMethod);
+  const canSubmit = sel && dog.trim() && phone.trim() && payMethod && !busy && !newBlocked && (!needOwner || ownerName.trim());
   async function submit() {
     if (!canSubmit) return;
     setBusy(true);
@@ -1688,6 +1709,7 @@ function TrialCard({
     setDog('');
     setPhone('');
     setOwnerName('');
+    setLook(null);
     setMsg(isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
   }
   return /*#__PURE__*/React.createElement("div", {
@@ -1743,26 +1765,49 @@ function TrialCard({
     }
   }, /*#__PURE__*/React.createElement("input", {
     className: "pwd-tr-input",
-    placeholder: "\u72D7\u72D7\u540D\u7A31",
-    value: dog,
-    onChange: e => setDog(e.target.value)
-  }), /*#__PURE__*/React.createElement("input", {
-    className: "pwd-tr-input",
     type: "tel",
     inputMode: "tel",
-    placeholder: "\u5BB6\u9577\u96FB\u8A71",
+    placeholder: "\u2460 \u5BB6\u9577\u96FB\u8A71\uFF088 \u4F4D\uFF09",
     value: phone,
     onChange: e => setPhone(e.target.value)
-  })), newBlocked && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("input", {
+    className: "pwd-tr-input",
+    placeholder: "\u2461 \u72D7\u72D7\u540D\u7A31\uFF08\u6216\u64B3\u4E0B\u9762\uFF09",
+    value: dog,
+    onChange: e => setDog(e.target.value)
+  })), look && look.dogs && look.dogs.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-days",
+    style: {
+      marginTop: 8
+    }
+  }, look.dogs.map(d => /*#__PURE__*/React.createElement("div", {
+    key: d.dog,
+    className: 'pwd-tr-day' + (dog.trim().toLowerCase() === d.dog.toLowerCase() ? ' sel' : '') + (d.fee == null ? ' full' : ''),
+    onClick: () => {
+      setDog(d.dog);
+      setCustomerType(d.trialUsed ? 'hotel' : customerType);
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-day-d"
+  }, d.dog), /*#__PURE__*/React.createElement("div", {
+    className: 'pwd-tr-day-r ' + (d.fee == null ? 'no' : 'ok')
+  }, d.fee == null ? '未能報' : '$' + d.fee)))), look && look.owner && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u5BB6\u9577\uFF1A", look.owner, "\uFF08\u81EA\u52D5\u5E36\u51FA\uFF09"), lookDog && /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint",
+    style: {
+      color: lookDog.fee == null ? 'var(--pw-danger)' : 'var(--pw-navy-deep)'
+    }
+  }, lookDog.dog, "\uFF1A", lookDog.status), newBlocked && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       color: 'var(--pw-danger)'
     }
   }, "\u5E7C\u7A1A\u5712\uFF08S1\uFF09\u5B78\u4F4D\u5DF2\u6EFF\uFF08\u5DF2\u8A08\u7B97\u5DF2\u767B\u8A18\u7684\u65B0\u751F\u8A66\u5802\uFF09\uFF0C\u66AB\u505C\u65B0\u751F\u8A66\u5802\u3002\u8ACB\u70BA\u5BB6\u9577\u767B\u8A18\u5019\u88DC\u540D\u55AE\uFF0C\u6709\u5B78\u4F4D\u6642\u518D\u5B89\u6392\u8A66\u5802\u3002"), (isNew || isHotel) && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-row"
-  }, /*#__PURE__*/React.createElement("input", {
+  }, needOwner && /*#__PURE__*/React.createElement("input", {
     className: "pwd-tr-input",
-    placeholder: "\u5BB6\u9577\u59D3\u540D\uFF08\u5165\u6536\u5165\u8A18\u9304\u7528\uFF09",
+    placeholder: "\u5BB6\u9577\u59D3\u540D\uFF08\u65B0\u5BA2\u5148\u8981\u586B\uFF09",
     value: ownerName,
     onChange: e => setOwnerName(e.target.value)
   }), /*#__PURE__*/React.createElement("select", {
@@ -1775,7 +1820,7 @@ function TrialCard({
     value: "\u8F49\u8CEC"
   }, "\u8F49\u8CEC"))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, isHotel ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u9152\u5E97\u4F4F\u5BA2\u6BCF\u65E5\u6700\u591A 2 \u500B\uFF0C\u4F54\u7528\u7576\u65E5\u5B78\u751F\u4F4D\u3002\u7CFB\u7D71\u6703\u6309\u96FB\u8A71\uFF0B\u72D7\u540D\u81EA\u52D5\u5224\u65B7\uFF1A\u9996\u6B21 $", TRIAL_NEW_STUDENT_FEE, "\uFF08\u542B\u5165\u5B78\u8A55\u4F30\uFF09\u3001\u4E4B\u5F8C\u6BCF\u65E5 $622\u3002", /*#__PURE__*/React.createElement("b", null, "\u6536\u5497\u9322\u5148\u63D0\u4EA4"), "\uFF0C\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F\u3002") : isNew ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u9F4A\u8CC7\u6599\u540C\u5DF2\u6536\u5605 $", TRIAL_NEW_STUDENT_FEE, " \u2192 \u63D0\u4EA4\uFF08\u6703\u81EA\u52D5\u8A18\u5165\u6536\u5165\u8A18\u9304\uFF09\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\u3002") : /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u540D \u2192 \u63D0\u4EA4\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\uFF08\u898B\u300A\u9AD4\u9A57\u9080\u8ACB\u8207\u78BA\u8A8D\u8A0A\u606F\u7BC4\u672C\u300B\u8A0A\u606F\u4E8C\uFF09\u3002\u53E3\u982D\u8B1B\u5B8C\u5514\u5165\u5462\u5EA6\uFF0C\u7B49\u65BC\u5187\u7559\u4F4D\u3002")), msg && /*#__PURE__*/React.createElement("div", {
+  }, isHotel ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u9152\u5E97\u4F4F\u5BA2\u6BCF\u65E5\u6700\u591A 2 \u500B\uFF0C\u4F54\u7528\u7576\u65E5\u5B78\u751F\u4F4D\u3002\u6BCF\u96BB\u72D7\u53EA\u6709\u4E00\u6B21 $", TRIAL_NEW_STUDENT_FEE, " \u8A66\u5802\uFF08\u542B\u5165\u5B78\u8A55\u4F30\uFF09\uFF1B\u4E4B\u5F8C\u6BCF\u65E5 $622\uFF0C\u8981\u5B89\u5168\u98A8\u96AA\u8A55\u4F30\u901A\u904E\u5148\u53EF\u4EE5\u5831\u3002", /*#__PURE__*/React.createElement("b", null, "\u6536\u5497\u9322\u5148\u63D0\u4EA4"), "\uFF0C\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F\u3002") : isNew ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u9F4A\u8CC7\u6599\u540C\u5DF2\u6536\u5605 $", TRIAL_NEW_STUDENT_FEE, " \u2192 \u63D0\u4EA4\uFF08\u6703\u81EA\u52D5\u8A18\u5165\u6536\u5165\u8A18\u9304\uFF09\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\u3002") : /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u540D \u2192 \u63D0\u4EA4\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\uFF08\u898B\u300A\u9AD4\u9A57\u9080\u8ACB\u8207\u78BA\u8A8D\u8A0A\u606F\u7BC4\u672C\u300B\u8A0A\u606F\u4E8C\uFF09\u3002\u53E3\u982D\u8B1B\u5B8C\u5514\u5165\u5462\u5EA6\uFF0C\u7B49\u65BC\u5187\u7559\u4F4D\u3002")), msg && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       color: 'var(--pw-navy-deep)'
