@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-23c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-24a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1689,7 +1689,7 @@ function TrialCard({
   function switchType(t) {
     setCustomerType(t);
     setMsg('');
-    if (t !== 'hotel' && payMethod === '酒店預約已付') setPayMethod('現金');
+    if (t !== 'hotel' && (payMethod === '酒店預約已付' || payMethod === '退房時收')) setPayMethod('現金');
     const cur = (slots || []).find(x => x.id === sel);
     if (cur && (t === 'hotel' ? cur.hotelRemaining || 0 : cur.remaining) <= 0) setSel('');
   }
@@ -1697,6 +1697,69 @@ function TrialCard({
   // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
   const newBlocked = isNew && s1Full;
   const canSubmit = sel && dog.trim() && phone.trim() && payMethod && !busy && !newBlocked && (!needOwner || ownerName.trim());
+  // [2026-11-24] 寄宿上學院：退房收單堂費、寄宿轉 S1
+  const [s1q, setS1q] = useState(null);
+  const payOk = ['現金', '轉賬'].indexOf(payMethod) !== -1;
+  async function checkoutCollect(b) {
+    if (!payOk) {
+      window.alert('請先喺上面揀付款方式（現金或轉賬）');
+      return;
+    }
+    if (!window.confirm(b.dog + '：家長唔報學期，確認已收所有「退房時收」單堂費（' + payMethod + '）？\n如家長報學期，請改用下面「寄宿轉 S1」，唔使另收單堂費。')) return;
+    try {
+      const r = await pwApi('hotelCollect', {
+        phone: b.phone,
+        dog: b.dog,
+        payMethod
+      });
+      setMsg(r && r.ok ? '已收 $' + r.total + '（' + r.count + ' 堂）並記入收入記錄。' : r && r.error || '收款失敗');
+    } catch (e) {
+      setMsg('收款失敗：' + e.message);
+    }
+  }
+  async function s1Quote() {
+    if (!phone.trim() || !dog.trim()) {
+      setMsg('請先輸入家長電話並撳選狗狗');
+      return;
+    }
+    try {
+      const r = await pwApi('hotelToS1Quote', {
+        phone: phone.trim(),
+        dog: dog.trim()
+      });
+      if (!r || r.ok === false) {
+        setS1q(null);
+        setMsg(/未授權/.test(r && r.error || '') ? '寄宿轉 S1 要先喺「員工管理」輸入管理密碼解鎖' : r && r.error || '計算失敗');
+        return;
+      }
+      setS1q(r);
+      setMsg('');
+    } catch (e) {
+      setMsg('計算失敗：' + e.message);
+    }
+  }
+  async function s1Save() {
+    if (!s1q || !payOk) {
+      window.alert('請先揀付款方式（現金或轉賬）');
+      return;
+    }
+    if (!window.confirm(dog.trim() + '：確認已收補款 $' + s1q.topUp + '（' + payMethod + '）並轉為 S1 學生？')) return;
+    try {
+      const r = await pwApi('hotelToS1Save', {
+        phone: phone.trim(),
+        dog: dog.trim(),
+        pay: payMethod
+      });
+      if (!r || r.ok === false) {
+        setMsg(r && r.error || '入數失敗');
+        return;
+      }
+      setMsg('已入補款 $' + r.topUp + '。' + (r.baseNote || '') + (r.warn ? ' ' + r.warn : ''));
+      setS1q(null);
+    } catch (e) {
+      setMsg('入數失敗：' + e.message);
+    }
+  }
   async function submit() {
     if (!canSubmit) return;
     setBusy(true);
@@ -1719,7 +1782,7 @@ function TrialCard({
     setPhone('');
     setOwnerName('');
     setLook(null);
-    setMsg(isHotel && payMethod === '酒店預約已付' ? '已留位（酒店預約已付，冇再入收入記錄）。記得即刻 WhatsApp 發確認訊息畀家長。' : isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
+    setMsg(isHotel && payMethod === '退房時收' ? '已留位（退房時收 $' + (r && r.fee) + '，已標「待收款」，退房前一日會出現喺待處理）。記得即刻 WhatsApp 發確認訊息畀家長。' : isHotel && payMethod === '酒店預約已付' ? '已留位（酒店預約已付，冇再入收入記錄）。記得即刻 WhatsApp 發確認訊息畀家長。' : isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
@@ -1824,6 +1887,8 @@ function TrialCard({
   }, "\u73FE\u91D1"), /*#__PURE__*/React.createElement("option", {
     value: "\u8F49\u8CEC"
   }, "\u8F49\u8CEC"), isHotel && /*#__PURE__*/React.createElement("option", {
+    value: "\u9000\u623F\u6642\u6536"
+  }, "\u9000\u623F\u6642\u6536\uFF08$622 \u55AE\u5802\uFF0C\u5148\u7559\u4F4D\uFF09"), isHotel && /*#__PURE__*/React.createElement("option", {
     value: "\u9152\u5E97\u9810\u7D04\u5DF2\u4ED8"
   }, "\u9152\u5E97\u9810\u7D04\u5DF2\u4ED8\uFF08\u53EA\u7559\u4F4D\uFF0C\u5514\u518D\u5165\u6578\uFF09"))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
@@ -1851,7 +1916,10 @@ function TrialCard({
     className: "pwd-tr-item-i"
   }, /*#__PURE__*/React.createElement("b", null, b.dog, b.phone ? /*#__PURE__*/React.createElement("span", {
     className: "pwd-club-nom-owner"
-  }, " \xB7 ", b.phone) : null), /*#__PURE__*/React.createElement("span", null, b.label)), /*#__PURE__*/React.createElement("button", {
+  }, " \xB7 ", b.phone) : null), /*#__PURE__*/React.createElement("span", null, b.label, /待收款/.test(b.note || '') ? ' · 退房時收' : /酒店預約待確認/.test(b.note || '') ? ' · 酒店預約未確認' : '')), /待收款/.test(b.note || '') && /*#__PURE__*/React.createElement("button", {
+    className: "pwd-tr-x",
+    onClick: () => checkoutCollect(b)
+  }, "\u9000\u623F\u6536\u6B3E"), /*#__PURE__*/React.createElement("button", {
     className: "pwd-tr-x",
     onClick: () => {
       if (window.confirm(b.dog + ' 已直接入學？確定後會騰出試堂名額，試堂數照計。')) onCancel(b.id, 'enroll');
@@ -1859,7 +1927,23 @@ function TrialCard({
   }, "\u8F49\u5165\u5B78"), /*#__PURE__*/React.createElement("button", {
     className: "pwd-tr-x",
     onClick: () => onCancel(b.id)
-  }, "\u53D6\u6D88")))), doneList.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "\u53D6\u6D88")))), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-list"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-list-lbl"
+  }, "\uD83C\uDF93 \u5BC4\u5BBF\u8F49 S1\uFF08\u9000\u623F 48 \u5C0F\u6642\u5167\uFF09"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-tr-hint"
+  }, "\u7528\u4E0A\u9762\u5605\u96FB\u8A71\u540C\u72D7\u72D7\u8A08\u7B97\uFF1A$5,599 \u6E1B\u5BC4\u5BBF\u671F\u9593\u5DF2\u4ED8\u5802\u8CBB\uFF08$499 \u8A66\u5802\u53CA\u5DF2\u4ED8 $622 \u5168\u6578\u62B5\u6263\uFF09\u3002\u300C\u9000\u623F\u6642\u6536\u300D\u5605\u55AE\u5802\u5514\u4F7F\u53E6\u6536\uFF0C\u76F4\u63A5\u8A08\u5165\u5DF2\u4E0A\u5802\u6578\u3002"), /*#__PURE__*/React.createElement("div", {
+    className: "pwd-club-formacts"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "pwd-tr-sub"
+  }, s1q ? '已付 $' + s1q.paid + '・已上 ' + s1q.lessons + ' 堂 → 補 $' + s1q.topUp + '，餘 ' + s1q.left + ' 堂' + (s1q.expired ? '（已過期限 ' + s1q.deadline + '）' : '（期限 ' + s1q.deadline + '）') : '尚未計算'), !s1q && /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    onClick: s1Quote
+  }, "\u8A08\u7B97\u88DC\u6B3E"), s1q && !s1q.expired && /*#__PURE__*/React.createElement("button", {
+    className: "pwd-la-confirm",
+    onClick: s1Save
+  }, "\u78BA\u8A8D\u6536\u53D6 $", s1q.topUp))), doneList.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-list"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pwd-club-list-lbl"
@@ -6874,12 +6958,18 @@ function CommissionApp() {
     return r;
   }
   async function cancelTrial(trialId, mode) {
-    await pwWrite('trialCancel', mode ? {
-      trialId,
-      mode
-    } : {
-      trialId
-    });
+    // [2026-11-24] 寄宿上學院：取消會自動減酒店預約金額，後端回傳提示要顯示
+    try {
+      const r = await pwApi('trialCancel', mode ? {
+        trialId,
+        mode
+      } : {
+        trialId
+      });
+      if (!r || r.ok === false) window.alert((r && r.error || '取消失敗') + '（未寫入）');else if (r.hotelMsg) window.alert(r.hotelMsg);
+    } catch (e) {
+      window.alert('取消失敗：' + e.message);
+    }
     await reloadDash(); // 成功失敗都重讀，名單一定同 sheet 一致
   }
   async function submitSwap({
