@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-19b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-22a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1649,21 +1649,24 @@ function TrialCard({
   const [msg, setMsg] = useState('');
   // [2026-08-25 老闆定] 統一喺呢度留位：酒店客免費體驗 vs 新生要收 $499（同步入收入記錄）。
   // [2026-11-06 Erica 定] 酒店客免費體驗已停，只留新生試堂
-  const [customerType] = useState('new');
+  // [2026-11-22 Erica 定] 加返酒店住客（收費）：首次 $499、其後每日 $622，佔每日 20 隻內，最多 2 個
+  const [customerType, setCustomerType] = useState('new');
   const [ownerName, setOwnerName] = useState('');
   const [payMethod, setPayMethod] = useState('現金');
   // [2026-08-25 修復] 舊版硬 cap 12 個，45 日窗內 S1 日數多過 12 就會截斷
   //   （例：8月尾4日+9月頭8日已經夠12，9月中至尾嘅日子永遠見唔到，畫面又冇提示）。
   //   後端 trialSlotsHandler 本身已限 45 日窗，呢度唔再加疊第二層截斷。
   const list = slots || [];
-  const totalLeft = (slots || []).reduce((a, s) => a + s.remaining, 0);
+  const totalLeft = (slots || []).reduce((a, s) => a + (customerType === 'hotel' ? s.hotelRemaining || 0 : s.remaining), 0);
   const mine = bookings || [];
   // 已完成試堂（最近 14 日，最近嘅排前）——純唯讀。跟進記錄統一喺 Leads 主表做，唔喺呢度填。
   const doneList = done || [];
   const isNew = customerType === 'new';
+  const isHotel = customerType === 'hotel';
+  const leftOf = s => isHotel ? s.hotelRemaining || 0 : s.remaining;
   // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
   const newBlocked = isNew && s1Full;
-  const canSubmit = sel && dog.trim() && !busy && !newBlocked && (!isNew || ownerName.trim() && payMethod);
+  const canSubmit = sel && dog.trim() && !busy && !newBlocked && (!isNew || ownerName.trim() && payMethod) && (!isHotel || ownerName.trim() && phone.trim() && payMethod);
   async function submit() {
     if (!canSubmit) return;
     setBusy(true);
@@ -1673,8 +1676,8 @@ function TrialCard({
       dogName: dog.trim(),
       phone: phone.trim(),
       customerType,
-      ownerName: isNew ? ownerName.trim() : '',
-      payMethod: isNew ? payMethod : ''
+      ownerName: isNew || isHotel ? ownerName.trim() : '',
+      payMethod: isNew || isHotel ? payMethod : ''
     });
     setBusy(false);
     if (r && r.ok === false) {
@@ -1685,7 +1688,7 @@ function TrialCard({
     setDog('');
     setPhone('');
     setOwnerName('');
-    setMsg(isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
+    setMsg(isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
@@ -1705,7 +1708,7 @@ function TrialCard({
   }, "\u672A\u4F86 45 \u65E5\u66AB\u6642\u672A\u6709\u5E7C\u7A1A\u5712\u65E5\uFF0C\u6216\u8AB2\u5802\u540D\u984D\u8868\u672A\u66F4\u65B0\u3002"), list.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-days"
   }, list.map(s => {
-    const full = s.remaining <= 0;
+    const full = leftOf(s) <= 0;
     return /*#__PURE__*/React.createElement("div", {
       key: s.id,
       className: 'pwd-tr-day' + (sel === s.id ? ' sel' : '') + (full ? ' full' : ''),
@@ -1718,12 +1721,22 @@ function TrialCard({
       className: "pwd-tr-day-w"
     }, s.time || ''), /*#__PURE__*/React.createElement("div", {
       className: 'pwd-tr-day-r ' + (full ? 'no' : 'ok')
-    }, full ? '已滿' : '尚餘 ' + s.remaining));
+    }, full ? '已滿' : '尚餘 ' + leftOf(s)));
   })), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-form"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "pwd-tr-sub"
-  }, "\uD83C\uDD95 \u65B0\u751F\u8A66\u5802\uFF08$", TRIAL_NEW_STUDENT_FEE, "\uFF09"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("select", {
+    className: "pwd-monthsel",
+    value: customerType,
+    onChange: e => {
+      setCustomerType(e.target.value);
+      setSel('');
+      setMsg('');
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "new"
+  }, "\uD83C\uDD95 \u65B0\u751F\u8A66\u5802\uFF08$", TRIAL_NEW_STUDENT_FEE, "\uFF09"), /*#__PURE__*/React.createElement("option", {
+    value: "hotel"
+  }, "\uD83C\uDFE8 \u9152\u5E97\u4F4F\u5BA2\uFF08\u9996\u6B21 $", TRIAL_NEW_STUDENT_FEE, "\uFF0F\u52A0\u5802 $622\uFF09")), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-row",
     style: {
       marginTop: 10
@@ -1745,7 +1758,7 @@ function TrialCard({
     style: {
       color: 'var(--pw-danger)'
     }
-  }, "\u5E7C\u7A1A\u5712\uFF08S1\uFF09\u5B78\u4F4D\u5DF2\u6EFF\uFF08\u5DF2\u8A08\u7B97\u5DF2\u767B\u8A18\u7684\u65B0\u751F\u8A66\u5802\uFF09\uFF0C\u66AB\u505C\u65B0\u751F\u8A66\u5802\u3002\u8ACB\u70BA\u5BB6\u9577\u767B\u8A18\u5019\u88DC\u540D\u55AE\uFF0C\u6709\u5B78\u4F4D\u6642\u518D\u5B89\u6392\u8A66\u5802\u3002"), isNew && /*#__PURE__*/React.createElement("div", {
+  }, "\u5E7C\u7A1A\u5712\uFF08S1\uFF09\u5B78\u4F4D\u5DF2\u6EFF\uFF08\u5DF2\u8A08\u7B97\u5DF2\u767B\u8A18\u7684\u65B0\u751F\u8A66\u5802\uFF09\uFF0C\u66AB\u505C\u65B0\u751F\u8A66\u5802\u3002\u8ACB\u70BA\u5BB6\u9577\u767B\u8A18\u5019\u88DC\u540D\u55AE\uFF0C\u6709\u5B78\u4F4D\u6642\u518D\u5B89\u6392\u8A66\u5802\u3002"), (isNew || isHotel) && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-row"
   }, /*#__PURE__*/React.createElement("input", {
     className: "pwd-tr-input",
@@ -1762,7 +1775,7 @@ function TrialCard({
     value: "\u8F49\u8CEC"
   }, "\u8F49\u8CEC"))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
-  }, isNew ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u9F4A\u8CC7\u6599\u540C\u5DF2\u6536\u5605 $", TRIAL_NEW_STUDENT_FEE, " \u2192 \u63D0\u4EA4\uFF08\u6703\u81EA\u52D5\u8A18\u5165\u6536\u5165\u8A18\u9304\uFF09\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\u3002") : /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u540D \u2192 \u63D0\u4EA4\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\uFF08\u898B\u300A\u9AD4\u9A57\u9080\u8ACB\u8207\u78BA\u8A8D\u8A0A\u606F\u7BC4\u672C\u300B\u8A0A\u606F\u4E8C\uFF09\u3002\u53E3\u982D\u8B1B\u5B8C\u5514\u5165\u5462\u5EA6\uFF0C\u7B49\u65BC\u5187\u7559\u4F4D\u3002")), msg && /*#__PURE__*/React.createElement("div", {
+  }, isHotel ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u9152\u5E97\u4F4F\u5BA2\u6BCF\u65E5\u6700\u591A 2 \u500B\uFF0C\u4F54\u7528\u7576\u65E5\u5B78\u751F\u4F4D\u3002\u7CFB\u7D71\u6703\u6309\u96FB\u8A71\uFF0B\u72D7\u540D\u81EA\u52D5\u5224\u65B7\uFF1A\u9996\u6B21 $", TRIAL_NEW_STUDENT_FEE, "\uFF08\u542B\u5165\u5B78\u8A55\u4F30\uFF09\u3001\u4E4B\u5F8C\u6BCF\u65E5 $622\u3002", /*#__PURE__*/React.createElement("b", null, "\u6536\u5497\u9322\u5148\u63D0\u4EA4"), "\uFF0C\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F\u3002") : isNew ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u9F4A\u8CC7\u6599\u540C\u5DF2\u6536\u5605 $", TRIAL_NEW_STUDENT_FEE, " \u2192 \u63D0\u4EA4\uFF08\u6703\u81EA\u52D5\u8A18\u5165\u6536\u5165\u8A18\u9304\uFF09\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\u3002") : /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u540D \u2192 \u63D0\u4EA4\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\uFF08\u898B\u300A\u9AD4\u9A57\u9080\u8ACB\u8207\u78BA\u8A8D\u8A0A\u606F\u7BC4\u672C\u300B\u8A0A\u606F\u4E8C\uFF09\u3002\u53E3\u982D\u8B1B\u5B8C\u5514\u5165\u5462\u5EA6\uFF0C\u7B49\u65BC\u5187\u7559\u4F4D\u3002")), msg && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",
     style: {
       color: 'var(--pw-navy-deep)'
