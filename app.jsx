@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-23a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-23b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -816,6 +816,13 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
   const isNew = customerType === 'new';
   const isHotel = customerType === 'hotel';
   const leftOf = s => isHotel ? (s.hotelRemaining || 0) : s.remaining;
+  // [2026-11-23] 轉類型時：已揀嘅日子喺新類型仲有位就保留，冇位先清走（唔好令店長重新揀）
+  function switchType(t) {
+    setCustomerType(t); setMsg('');
+    const cur = (slots || []).find(x => x.id === sel);
+    if (cur && (t === 'hotel' ? (cur.hotelRemaining || 0) : cur.remaining) <= 0) setSel('');
+  }
+  const selSlot = (slots || []).find(x => x.id === sel);
   // [2026-11-06 Erica 定方案 B] S1 學位（扣埋已登記新生試堂）已滿 → 暫停新生試堂
   const newBlocked = isNew && s1Full;
   const canSubmit = sel && dog.trim() && phone.trim() && payMethod && !busy && !newBlocked
@@ -859,7 +866,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
             })}
           </div>
           <div className="pwd-tr-form">
-            <select className="pwd-monthsel" value={customerType} onChange={e => { setCustomerType(e.target.value); setSel(''); setMsg(''); }}>
+            <select className="pwd-monthsel" value={customerType} onChange={e => switchType(e.target.value)}>
               <option value="new">🆕 新生試堂（${TRIAL_NEW_STUDENT_FEE}）</option>
               <option value="hotel">🏨 酒店住客（首次 ${TRIAL_NEW_STUDENT_FEE}／加堂 $622）</option>
             </select>
@@ -871,7 +878,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
               <div className="pwd-tr-days" style={{ marginTop: 8 }}>
                 {look.dogs.map(d => (
                   <div key={d.dog} className={'pwd-tr-day' + (dog.trim().toLowerCase() === d.dog.toLowerCase() ? ' sel' : '') + (d.fee == null ? ' full' : '')}
-                       onClick={() => { setDog(d.dog); setCustomerType(d.trialUsed ? 'hotel' : customerType); }}>
+                       onClick={() => { setDog(d.dog); switchType((d.trialUsed || d.hotel) ? 'hotel' : 'new'); }}>
                     <div className="pwd-tr-day-d">{d.dog}</div>
                     <div className={'pwd-tr-day-r ' + (d.fee == null ? 'no' : 'ok')}>{d.fee == null ? '未能報' : '$' + d.fee}</div>
                   </div>
@@ -892,14 +899,14 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
             )}
             <div className="pwd-tr-hint">
               {isHotel
-                ? <>酒店住客每日最多 2 個，佔用當日學生位。每隻狗只有一次 ${TRIAL_NEW_STUDENT_FEE} 試堂（含入學評估）；之後每日 $622，要安全風險評估通過先可以報。<b>收咗錢先提交</b>，然後即刻 WhatsApp 發確認訊息。</>
+                ? <>酒店住客每日最多 2 個：先用學生位，學生位滿咗就用試堂位（同新生共用）。每隻狗只有一次 ${TRIAL_NEW_STUDENT_FEE} 試堂（含入學評估）；之後每日 $622，要安全風險評估通過先可以報。<b>收咗錢先提交</b>，然後即刻 WhatsApp 發確認訊息。</>
                 : isNew
                 ? <>揀好日子 → 入齊資料同已收嘅 ${TRIAL_NEW_STUDENT_FEE} → 提交（會自動記入收入記錄），<b>然後即刻 WhatsApp 發確認訊息</b>。</>
                 : <>揀好日子 → 入名 → 提交，<b>然後即刻 WhatsApp 發確認訊息</b>（見《體驗邀請與確認訊息範本》訊息二）。口頭講完唔入呢度，等於冇留位。</>}
             </div>
             {msg && <div className="pwd-tr-hint" style={{ color: 'var(--pw-navy-deep)' }}>{msg}</div>}
             <div className="pwd-club-formacts">
-              <span className="pwd-tr-sub">{sel ? '已揀 ' + (list.find(x => x.id === sel) || {}).label : '請先揀一日'}</span>
+              <span className="pwd-tr-sub">{sel ? '已揀 ' + (selSlot || {}).label + (isHotel && selSlot ? ((selSlot.studentFree || 0) > 0 ? '（用學生位）' : '（用試堂位）') : '') : '請先揀一日'}</span>
               <button className="pwd-la-confirm" disabled={!canSubmit} onClick={submit}>
                 {busy ? '登記中…' : '確認留位'}
               </button>
