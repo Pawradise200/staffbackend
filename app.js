@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-23b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-23c'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -1689,6 +1689,7 @@ function TrialCard({
   function switchType(t) {
     setCustomerType(t);
     setMsg('');
+    if (t !== 'hotel' && payMethod === '酒店預約已付') setPayMethod('現金');
     const cur = (slots || []).find(x => x.id === sel);
     if (cur && (t === 'hotel' ? cur.hotelRemaining || 0 : cur.remaining) <= 0) setSel('');
   }
@@ -1718,7 +1719,7 @@ function TrialCard({
     setPhone('');
     setOwnerName('');
     setLook(null);
-    setMsg(isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
+    setMsg(isHotel && payMethod === '酒店預約已付' ? '已留位（酒店預約已付，冇再入收入記錄）。記得即刻 WhatsApp 發確認訊息畀家長。' : isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。` : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "pwd-card pwd-block"
@@ -1822,7 +1823,9 @@ function TrialCard({
     value: "\u73FE\u91D1"
   }, "\u73FE\u91D1"), /*#__PURE__*/React.createElement("option", {
     value: "\u8F49\u8CEC"
-  }, "\u8F49\u8CEC"))), /*#__PURE__*/React.createElement("div", {
+  }, "\u8F49\u8CEC"), isHotel && /*#__PURE__*/React.createElement("option", {
+    value: "\u9152\u5E97\u9810\u7D04\u5DF2\u4ED8"
+  }, "\u9152\u5E97\u9810\u7D04\u5DF2\u4ED8\uFF08\u53EA\u7559\u4F4D\uFF0C\u5514\u518D\u5165\u6578\uFF09"))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint"
   }, isHotel ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u9152\u5E97\u4F4F\u5BA2\u6BCF\u65E5\u6700\u591A 2 \u500B\uFF1A\u5148\u7528\u5B78\u751F\u4F4D\uFF0C\u5B78\u751F\u4F4D\u6EFF\u5497\u5C31\u7528\u8A66\u5802\u4F4D\uFF08\u540C\u65B0\u751F\u5171\u7528\uFF09\u3002\u6BCF\u96BB\u72D7\u53EA\u6709\u4E00\u6B21 $", TRIAL_NEW_STUDENT_FEE, " \u8A66\u5802\uFF08\u542B\u5165\u5B78\u8A55\u4F30\uFF09\uFF1B\u4E4B\u5F8C\u6BCF\u65E5 $622\uFF0C\u8981\u5B89\u5168\u98A8\u96AA\u8A55\u4F30\u901A\u904E\u5148\u53EF\u4EE5\u5831\u3002", /*#__PURE__*/React.createElement("b", null, "\u6536\u5497\u9322\u5148\u63D0\u4EA4"), "\uFF0C\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F\u3002") : isNew ? /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u9F4A\u8CC7\u6599\u540C\u5DF2\u6536\u5605 $", TRIAL_NEW_STUDENT_FEE, " \u2192 \u63D0\u4EA4\uFF08\u6703\u81EA\u52D5\u8A18\u5165\u6536\u5165\u8A18\u9304\uFF09\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\u3002") : /*#__PURE__*/React.createElement(React.Fragment, null, "\u63C0\u597D\u65E5\u5B50 \u2192 \u5165\u540D \u2192 \u63D0\u4EA4\uFF0C", /*#__PURE__*/React.createElement("b", null, "\u7136\u5F8C\u5373\u523B WhatsApp \u767C\u78BA\u8A8D\u8A0A\u606F"), "\uFF08\u898B\u300A\u9AD4\u9A57\u9080\u8ACB\u8207\u78BA\u8A8D\u8A0A\u606F\u7BC4\u672C\u300B\u8A0A\u606F\u4E8C\uFF09\u3002\u53E3\u982D\u8B1B\u5B8C\u5514\u5165\u5462\u5EA6\uFF0C\u7B49\u65BC\u5187\u7559\u4F4D\u3002")), msg && /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-hint",

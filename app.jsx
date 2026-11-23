@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-23b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-23c';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -819,6 +819,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
   // [2026-11-23] 轉類型時：已揀嘅日子喺新類型仲有位就保留，冇位先清走（唔好令店長重新揀）
   function switchType(t) {
     setCustomerType(t); setMsg('');
+    if (t !== 'hotel' && payMethod === '酒店預約已付') setPayMethod('現金');
     const cur = (slots || []).find(x => x.id === sel);
     if (cur && (t === 'hotel' ? (cur.hotelRemaining || 0) : cur.remaining) <= 0) setSel('');
   }
@@ -835,7 +836,8 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
     setBusy(false);
     if (r && r.ok === false) { setMsg(r.error || '登記失敗'); return; }
     setSel(''); setDog(''); setPhone(''); setOwnerName(''); setLook(null);
-    setMsg(isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。`
+    setMsg(isHotel && payMethod === '酒店預約已付' ? '已留位（酒店預約已付，冇再入收入記錄）。記得即刻 WhatsApp 發確認訊息畀家長。'
+         : isHotel ? `已留位＋已記 $${r && r.fee}（${r && r.first ? '首次試堂' : '加堂'}）入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。`
          : isNew ? `已留位＋已記 $${TRIAL_NEW_STUDENT_FEE} 入收入記錄。記得即刻 WhatsApp 發確認訊息畀家長。`
                  : '已留位。記得即刻 WhatsApp 發確認訊息畀家長。');
   }
@@ -894,6 +896,7 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
                 <select className="pwd-monthsel" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
                   <option value="現金">現金</option>
                   <option value="轉賬">轉賬</option>
+                  {isHotel && <option value="酒店預約已付">酒店預約已付（只留位，唔再入數）</option>}
                 </select>
               </div>
             )}
