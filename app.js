@@ -12,7 +12,7 @@ const {
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-26a'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-26b'; // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = ''; // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -6313,7 +6313,9 @@ function MgrUniform() {
 // ── 美容／接送收入（2026-11-19 Erica 批）──
 // 揀客人 → 揀服務 → 店長自己填金額 → 付款方式 → 確認。只入冇經網上預約嘅美容／接送。
 // 客人名單沿用 packageCustomers（全部客戶資料）；付款方式同學費一樣（套票會自動扣）。
-const SVC_INCOME_TYPES = ['基本美容', '星級美容', '接送服務'];
+const SVC_INCOME_TYPES = ['基本美容', '星級美容', '接送服務', '星級美容（單剪指甲）'];
+// [2026-11-26 Erica 批] 單剪指甲：計星級美容、預設 $100（店長可改）
+const SVC_NAIL = '星級美容（單剪指甲）';
 const SVC_INCOME_PAYS = ['轉賬', '信用卡', '現金', '套票'];
 function MgrServiceIncome() {
   const [list, setList] = useState(null);
@@ -6440,8 +6442,11 @@ function MgrServiceIncome() {
   }, SVC_INCOME_TYPES.map(k => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: svc === k ? 'on' : '',
-    onClick: () => setSvc(k)
-  }, k))), /*#__PURE__*/React.createElement("div", {
+    onClick: () => {
+      setSvc(k);
+      if (k === SVC_NAIL) setAmount('100');
+    }
+  }, k === SVC_NAIL ? '單剪指甲' : k))), /*#__PURE__*/React.createElement("div", {
     className: "pwd-tr-row",
     style: {
       marginTop: 10
