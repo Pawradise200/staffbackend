@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // （7/6 店長「更表儲存唔到」、8/12 導師仲見到酒店業績）。頁腳印住版本＝
 // 有人報問題時第一句問「你頁腳寫住咩版本？」就分辨到係真 bug 定係 cache。
 // ⚠️ 每次 push 前記得改呢個字串，否則印咗都冇用。
-const APP_VERSION = 'v2026-11-25b';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
+const APP_VERSION = 'v2026-11-26a';  // ⚠️ 每次出街都要 bump——Erica 靠登入頁/頁腳呢個號驗證有冇食到新版
 
 // ═══════════ API ═══════════
 let PW_KEY = '';  // 店長/老闆解鎖後記住，寫入 action 後端要驗
@@ -859,6 +859,9 @@ function TrialCard({ staff, slots, bookings, done, onBook, onCancel, s1Full }) {
   }
   async function submit() {
     if (!canSubmit) return;
+    // [2026-11-26 Erica 批] 呢個電話已有狗，但打嘅名唔喺名單 → 確認係新狗先登記（防 CRM 開重複 Profile）
+    if (look && look.dogs && look.dogs.length > 0 && !lookDog &&
+        !window.confirm('呢個電話已有：' + look.dogs.map(d => d.dog).join('、') + '。\n「' + dog.trim() + '」確定係另一隻新狗？\n如果係同一隻，請撳「取消」再撳上面嘅舊狗名。')) return;
     setBusy(true); setMsg('');
     const r = await onBook({ classId: sel, dogName: dog.trim(), phone: phone.trim(), customerType,
       ownerName: (isNew || isHotel) ? ownerName.trim() : '', payMethod: (isNew || isHotel) ? payMethod : '' });
